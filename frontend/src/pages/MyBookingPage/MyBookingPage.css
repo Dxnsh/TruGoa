@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+.mb-root {
+  font-family: 'Instrument Sans', sans-serif;
+  background: #F7F3EC; min-height: 100svh; color: #1A1F1C;
+}
+
+/* ── Loading ─────────────────────────────────── */
+.mb-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.mb-loading-ring { width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(45,106,79,0.15); border-top-color: #2D6A4F; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.mb-loading-text { font-size: 12px; color: rgba(0,0,0,0.32); letter-spacing: 2px; text-transform: uppercase; }
+
+/* ── Top bar ─────────────────────────────────── */
+.mb-topbar { height: 64px; background: #F7F3EC; border-bottom: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 40; }
+.mb-back { background: transparent; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(0,0,0,0.4); font-family: 'Instrument Sans', sans-serif; font-weight: 500; transition: color 0.2s; padding: 0; }
+.mb-back:hover { color: #1A1F1C; }
+.mb-topbar-logo { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; cursor: pointer; }
+
+/* ── Inner ───────────────────────────────────── */
+.mb-inner { max-width: 1100px; margin: 0 auto; }
+
+/* ── Header ──────────────────────────────────── */
+.mb-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 40px; margin-bottom: 0; }
+.mb-eyebrow { font-size: 10px; color: #8A7A5A; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+.mb-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; color: #1A1F1C; line-height: 0.92; letter-spacing: -2px; margin: 0 0 12px; }
+.mb-welcome { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: rgba(0,0,0,0.42); font-style: normal; }
+.mb-welcome em { font-style: italic; color: #2D6A4F; }
+.mb-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+.mb-stat { display: flex; flex-direction: column; gap: 6px; }
+.mb-stat-rule { width: 100%; height: 1px; background: rgba(0,0,0,0.08); margin-bottom: 4px; }
+.mb-stat-num { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 700; color: #1A1F1C; line-height: 1; }
+.mb-stat-label { font-size: 10px; color: rgba(0,0,0,0.35); letter-spacing: 2px; text-transform: uppercase; }
+.mb-rule { height: 1px; background: rgba(0,0,0,0.08); margin: 40px 0 32px; }
+
+/* ── Filter tabs ─────────────────────────────── */
+.mb-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 36px; }
+.mb-filter-btn { background: white; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 10px 22px; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; color: rgba(0,0,0,0.45); font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-filter-btn:hover { border-color: rgba(0,0,0,0.25); color: #1A1F1C; }
+.mb-filter-btn.active { background: #1A1F1C; border-color: #1A1F1C; color: white; }
+
+/* ── Error ───────────────────────────────────── */
+.mb-error { background: #FDE8E8; color: #A83232; border-radius: 8px; padding: 12px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+
+/* ── Empty ───────────────────────────────────── */
+.mb-empty { text-align: center; padding: 80px 24px; border: 1px dashed rgba(0,0,0,0.1); border-radius: 20px; }
+.mb-empty-icon { font-size: 48px; margin-bottom: 20px; }
+.mb-empty-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: #1A1F1C; margin-bottom: 10px; }
+.mb-empty-sub { font-size: 14px; color: rgba(0,0,0,0.45); line-height: 1.75; margin-bottom: 28px; }
+
+/* ── Cards ───────────────────────────────────── */
+.mb-cards { display: flex; flex-direction: column; gap: 20px; }
+
+.mb-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 22px; overflow: hidden;
+  display: grid; grid-template-columns: 200px 1fr;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  transition: box-shadow 0.25s, transform 0.25s;
+  animation: card-in 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes card-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.mb-card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.1); transform: translateY(-3px); }
+.mb-card-past { opacity: 0.72; }
+.mb-card-past:hover { opacity: 1; }
+
+/* Card image */
+.mb-card-img-wrap { position: relative; overflow: hidden; }
+.mb-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mb-card-img-placeholder { width: 100%; height: 100%; min-height: 180px; background: #EDE8DD; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+.mb-card-status-dot { position: absolute; top: 14px; left: 14px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+
+/* Card body */
+.mb-card-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; }
+.mb-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.mb-card-status-pill { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; display: inline-block; margin-bottom: 8px; font-family: 'Instrument Sans', sans-serif; }
+.mb-card-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: #1A1F1C; line-height: 1.05; margin: 0; }
+.mb-card-location { font-size: 12px; color: rgba(0,0,0,0.38); margin-top: 4px; display: flex; align-items: center; gap: 4px; font-family: 'Instrument Sans', sans-serif; }
+.mb-card-ref { font-size: 11px; color: rgba(0,0,0,0.22); letter-spacing: 2px; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0; }
+.mb-card-details { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: rgba(0,0,0,0.52); font-family: 'Instrument Sans', sans-serif; }
+.mb-card-details span { display: flex; align-items: center; gap: 5px; }
+.mb-card-request { font-family: 'Cormorant Garamond', serif; font-size: 15px; font-style: italic; color: rgba(0,0,0,0.42); line-height: 1.6; margin: 0; }
+.mb-card-owner-note { background: #EEF5F1; border-left: 2px solid #2D6A4F; border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: rgba(0,0,0,0.62); font-family: 'Instrument Sans', sans-serif; }
+.mb-card-owner-note-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #2D6A4F; font-weight: 600; display: block; margin-bottom: 4px; }
+.mb-card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.06); }
+.mb-card-booked-on { font-size: 11px; color: rgba(0,0,0,0.28); letter-spacing: 0.5px; font-family: 'Instrument Sans', sans-serif; }
+.mb-card-actions { display: flex; gap: 8px; }
+.mb-btn-view { background: #1A1F1C; color: white; border: none; border-radius: 6px; padding: 9px 18px; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-btn-view:hover { background: #2D6A4F; }
+.mb-btn-cancel { background: transparent; color: rgba(168,50,50,0.7); border: 1px solid rgba(168,50,50,0.2); border-radius: 6px; padding: 9px 16px; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-btn-cancel:hover { background: #FDE8E8; border-color: rgba(168,50,50,0.5); color: #A83232; }
+
+/* ── Cancel Modal ────────────────────────────── */
+.mb-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.mb-modal { background: white; border-radius: 24px; padding: 36px; max-width: 480px; width: 100%; box-shadow: 0 32px 80px rgba(0,0,0,0.22); }
+.mb-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.mb-modal-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: #1A1F1C; margin: 0; }
+.mb-modal-close { background: transparent; border: none; cursor: pointer; color: rgba(0,0,0,0.35); padding: 4px; transition: color 0.2s; }
+.mb-modal-close:hover { color: #1A1F1C; }
+.mb-modal-sub { font-size: 14px; color: rgba(0,0,0,0.52); line-height: 1.75; margin-bottom: 24px; }
+.mb-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.mb-label { font-size: 10px; color: rgba(0,0,0,0.38); letter-spacing: 2px; text-transform: uppercase; font-weight: 600; font-family: 'Instrument Sans', sans-serif; }
+.mb-textarea { padding: 12px 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; font-size: 14px; font-family: 'Instrument Sans', sans-serif; resize: vertical; outline: none; transition: border-color 0.2s; }
+.mb-textarea:focus { border-color: #2D6A4F; }
+.mb-modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.mb-btn-cancel-confirm { background: #A83232; color: white; border: none; border-radius: 6px; padding: 15px 24px; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-btn-cancel-confirm:hover:not(:disabled) { background: #8A2828; }
+.mb-btn-cancel-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Shared buttons ──────────────────────────── */
+.mb-btn-green { background: #2D6A4F; color: white; border: none; border-radius: 6px; padding: 14px 28px; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-btn-green:hover { background: #1A5C38; }
+.mb-btn-outline { background: transparent; color: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; padding: 14px 24px; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all 0.2s; }
+.mb-btn-outline:hover { border-color: rgba(0,0,0,0.35); color: #1A1F1C; }
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 768px) {
+  .mb-card { grid-template-columns: 1fr; }
+  .mb-card-img-wrap { height: 200px; }
+  .mb-card-body { padding: 20px; }
+  .mb-card-name { font-size: 22px; }
+  .mb-header { flex-direction: column; gap: 28px; }
+  .mb-stats { gap: 20px; }
+  .mb-stat-num { font-size: 32px; }
+}
