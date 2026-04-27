@@ -1,10 +1,9 @@
-// ─── Add these functions to your existing services/api.js ───
-// They all read the tourist JWT from localStorage automatically.
 
 const API = import.meta.env.VITE_API_URL || "";
 
 const authHeader = () => {
   const token = localStorage.getItem("touristToken");
+  localStorage.getItem("trugoa_tourist_token")
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

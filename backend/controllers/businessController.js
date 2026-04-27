@@ -1,8 +1,9 @@
 import Business from "../models/Business.js";
 import cloudinary from "../config/cloudinary.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 // POST
-export const createBusiness = async (req, res) => {
+export const createBusiness = asyncHandler(async (req, res) => {
   try {
     console.log("=== CREATE BUSINESS ===");
     console.log("body:", JSON.stringify(req.body, null, 2)); // ✅
@@ -22,6 +23,8 @@ export const createBusiness = async (req, res) => {
       description,
       contact,
       images: images || [],
+      owner: req.ownerId,
+      status: "pending",
     });
 
     res.status(201).json(business);
@@ -31,20 +34,17 @@ export const createBusiness = async (req, res) => {
     console.log(error.stack);   // ✅
     res.status(500).json({ error: error.message });
   }
-};
+});
 
 // GET ALL
-export const getBusinesses = async (req, res) => {
-  try {
-    const data = await Business.find({status: "approved"});
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export const getBusinesses = asyncHandler(async (req, res) => {
+  const data = await Business.find({ status: "approved" });
+  res.json(data);
+  
+});
 
 // GET single business by ID
-export const getBusinessById = async (req, res) => {
+export const getBusinessById = asyncHandler(async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
 
@@ -56,12 +56,12 @@ export const getBusinessById = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
+});
 
 // UPLOAD IMAGES
-    export const uploadImages = async (req, res) => {
+    export const uploadImages = asyncHandler(async (req, res) => {
       try {
-        console.log("files received:", req.files.length); // ✅ add this
+        console.log("files received:", req.files.length); 
         console.log("files:", req.files.map(f => f.originalname)); 
         if (!req.files || req.files.length === 0) {
           return res.status(400).json({ error: "No images uploaded" });
@@ -89,4 +89,4 @@ export const getBusinessById = async (req, res) => {
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
-    };
+    });

@@ -1,9 +1,27 @@
 import express from "express";
-import { addReview, getReviewsForBusiness } from "../controllers/reviewController.js";
+import {
+  addReview,
+  getReviewsForBusiness,
+  markHelpful,
+  ownerReply,
+  deleteReview
+} from "../controllers/reviewController.js";
+
+import { cacheResponse } from "../middleware/cacheMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getReviewsForBusiness);   // GET /api/reviews?business_id=xxx
-router.post("/", addReview);              // POST /api/reviews
+
+router.get("/", getReviewsForBusiness);
+router.post("/", addReview);
+
+/* Interactions */
+router.patch("/:id/helpful", markHelpful);
+
+/* Owner */
+router.patch("/:id/reply", ownerReply);
+
+/* Admin / user delete later auth protect */
+router.delete("/:id", deleteReview);
 
 export default router;

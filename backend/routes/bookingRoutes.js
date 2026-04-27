@@ -5,24 +5,17 @@ import {
   getBookingById,
   cancelBooking,
 } from "../controllers/bookingController.js";
-import { protectTourist } from "../middleware/authMiddleware.js";
+import { protectTourist, optionalTourist } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// All booking routes require a logged-in tourist
-router.use(protectTourist);
+// POST — optionalTourist links booking to account if logged in
+// BUG FIX: was two router.post("/") lines — second one was never reached
+router.post("/",            optionalTourist, createBooking);
 
-// POST   /api/bookings          → create a new booking
-router.post("/", createBooking);
-
-// GET    /api/bookings/my       → get all bookings for current tourist
-// NOTE: /my must be declared BEFORE /:id so Express doesn't treat "my" as an id
-router.get("/my", getMyBookings);
-
-// GET    /api/bookings/:id      → get single booking (owner only)
-router.get("/:id", getBookingById);
-
-// PATCH  /api/bookings/:id/cancel → tourist cancels booking
-router.patch("/:id/cancel", cancelBooking);
+// /my must be before /:id — otherwise "my" is treated as a mongo id
+router.get("/my",           protectTourist,  getMyBookings);
+router.get("/:id",          protectTourist,  getBookingById);
+router.patch("/:id/cancel", protectTourist,  cancelBooking);
 
 export default router;

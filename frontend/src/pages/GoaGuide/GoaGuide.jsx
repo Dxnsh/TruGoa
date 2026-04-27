@@ -1,541 +1,626 @@
-import { useState, useRef, useEffect } from "react";
-import { theme } from "../../Theme";
-import { Badge, Alert, SurfaceCard, PrimaryButton } from "../../Theme";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { sendChatMessage } from "../../services/api";
 import useIsMobile from "../../hooks/useIsMobile";
+import "./GoaGuide.css";
 
-const GOA_DATABASE = {
-  taxiPrices: [
-    { from: "Goa Airport (Dabolim)", to: "Panaji",        price: "₹600–₹800",   duration: "45 min" },
-    { from: "Goa Airport (Dabolim)", to: "Baga Beach",    price: "₹900–₹1100",  duration: "55 min" },
-    { from: "Goa Airport (Dabolim)", to: "Calangute",     price: "₹850–₹1050",  duration: "50 min" },
-    { from: "Goa Airport (Dabolim)", to: "Anjuna",        price: "₹1000–₹1200", duration: "60 min" },
-    { from: "Goa Airport (Dabolim)", to: "Colva Beach",   price: "₹400–₹550",   duration: "25 min" },
-    { from: "Panaji",                to: "Baga Beach",    price: "₹350–₹500",   duration: "30 min" },
-    { from: "Panaji",                to: "Old Goa",       price: "₹150–₹250",   duration: "15 min" },
-    { from: "Calangute",             to: "Anjuna",        price: "₹200–₹300",   duration: "15 min" },
-    { from: "Mapusa",                to: "Vagator",       price: "₹200–₹300",   duration: "20 min" },
-    { from: "Margao",                to: "Colva Beach",   price: "₹150–₹200",   duration: "15 min" },
+/* ══════════════════════════════════════════════════════════
+   DEEP GOA KNOWLEDGE DATABASE
+══════════════════════════════════════════════════════════ */
+const GOA = {
+  taxi: [
+    { from: "Airport (Dabolim)", to: "Panaji",           price: "₹600–₹800",   time: "45 min", tip: "Use the pre-paid counter inside — never the touts outside." },
+    { from: "Airport (Dabolim)", to: "Baga / Calangute", price: "₹900–₹1,100", time: "55 min", tip: "Meters are rarely used. Fix price before boarding." },
+    { from: "Airport (Dabolim)", to: "Anjuna / Vagator", price: "₹1,000–₹1,200",time: "60 min", tip: "Ola/Uber available but surge-priced at arrivals." },
+    { from: "Airport (Dabolim)", to: "Palolem / Agonda", price: "₹1,800–₹2,200",time: "2 hrs",  tip: "Shared cabs exist — ask at pre-paid counter." },
+    { from: "Airport (Dabolim)", to: "Colva / Benaulim", price: "₹400–₹550",   time: "25 min", tip: "Closest beach to airport. Short ride." },
+    { from: "Panaji",            to: "Baga Beach",       price: "₹350–₹500",   time: "30 min", tip: "Rapido bikes are ₹120–₹180 if going solo." },
+    { from: "Panaji",            to: "Old Goa / Basilica",price: "₹150–₹250",  time: "15 min", tip: "Ferries from Betim are free and scenic." },
+    { from: "Calangute",         to: "Anjuna",            price: "₹200–₹300",   time: "15 min", tip: "Wednesday flea market — expect surge pricing." },
+    { from: "Mapusa",            to: "Vagator / Chapora", price: "₹200–₹300",   time: "20 min", tip: "Mapusa Friday market day — autos wait at bus stand." },
+    { from: "Margao",            to: "Colva Beach",       price: "₹150–₹200",   time: "15 min", tip: "Local autos are cheaper than taxis for this short route." },
+    { from: "Panaji",            to: "Arambol Beach",     price: "₹700–₹900",   time: "60 min", tip: "Far north. Consider renting a scooter instead." },
+    { from: "Any location",      to: "Scooter rental/day",price: "₹350–₹600",   time: "—",      tip: "Royal Enfield rental: ₹600–₹900/day. Always check brakes first." },
   ],
-  places: [
-    { name: "Britto's Restaurant",      category: "restaurant", area: "Baga Beach, North Goa",     budget: "₹400–₹800 per person",          rating: 4.3, verified: true,  localTip: "Go for the seafood thali. Avoid tandoori — not their specialty. Best before 1pm.", mustTry: "Prawn curry rice, Fish recheado",         scamAlert: null },
-    { name: "Thalassa",                 category: "restaurant", area: "Vagator, North Goa",         budget: "₹800–₹1500 per person",         rating: 4.5, verified: true,  localTip: "Book in advance for sunset views. Greek food is genuinely authentic.",             mustTry: "Moussaka, Grilled octopus, Sangria",      scamAlert: null },
-    { name: "Infantaria Cafe",          category: "cafe",       area: "Calangute, North Goa",       budget: "₹150–₹300 per person",          rating: 4.4, verified: true,  localTip: "Best breakfast in North Goa. Go 8–10am. Croissants and bebinca are legendary.",   mustTry: "Bebinca, Croissant, Goan sausage sandwich", scamAlert: null },
-    { name: "Sunset Beach Shack",       category: "beach shack",area: "Anjuna Beach, North Goa",    budget: "₹200–₹500 per person",          rating: 4.1, verified: true,  localTip: "Ask for the daily fresh catch — not the printed menu. Never pay before eating.", mustTry: "Grilled kingfish, Feni cocktail",         scamAlert: "Some beach shacks overcharge tourists. Always ask price before ordering drinks." },
-    { name: "Hotel Mandovi",            category: "hotel",      area: "Panaji, Goa",                budget: "₹2500–₹4000 per night",         rating: 4.2, verified: true,  localTip: "Great central location. Heritage property with Mandovi river views.",             mustTry: null,                                      scamAlert: null },
-    { name: "Yoga Magic",               category: "stay",       area: "Anjuna, North Goa",          budget: "₹3000–₹6000 per night",         rating: 4.6, verified: true,  localTip: "Eco-tents in a jungle setting. Best for solo travelers. Book 2 weeks in advance.", mustTry: null,                                     scamAlert: null },
-    { name: "Dudhsagar Waterfalls Trek",category: "activity",   area: "Mollem, South Goa",          budget: "₹800–₹1200 per person",         rating: 4.7, verified: true,  localTip: "Only Oct–May. Book a registered jeep from Mollem check post.",                   mustTry: null,                                      scamAlert: "Do NOT pay touts near the highway. Only book at the official Mollem check post." },
-    { name: "Saturday Night Market",    category: "market",     area: "Arpora, North Goa",          budget: "Entry free, shopping ₹200–₹2000", rating: 4.4, verified: true, localTip: "Only Nov–April on Saturdays. Best for handmade crafts. Go after 7pm.",          mustTry: null,                                      scamAlert: "Bargain hard. First price is always 3x the real price." },
-    { name: "Palolem Beach",            category: "beach",      area: "Canacona, South Goa",        budget: "Free entry",                    rating: 4.8, verified: true,  localTip: "Most beautiful beach in Goa. Less crowded than North. Visit early morning.",      mustTry: "Kayaking, Silent disco nights",           scamAlert: null },
+
+  restaurants: [
+    {
+      name: "Ritz Classic",
+      area: "Panaji, near Municipal Garden",
+      type: "Local Goan",
+      budget: "₹250–₹450/person",
+      rating: 4.7,
+      hours: "11 AM – 3:30 PM, 7 PM – 10:30 PM. Closed Sun.",
+      mustOrder: "Fish curry rice (the definitive version), Prawn recheado, Crab xec xec",
+      localTip: "This is where Panaji locals eat. The fish curry rice here is considered the gold standard in Goa. Go at 12:30pm — the freshest catch is served first.",
+      avoid: "Don't order North Indian food here. Come for the Goan only.",
+      verified: true,
+    },
+    {
+      name: "Thalassa",
+      area: "Small Vagator Beach, North Goa",
+      type: "Greek / Mediterranean",
+      budget: "₹800–₹1,600/person",
+      rating: 4.5,
+      hours: "12 PM – 11 PM. Closed Mon. Nov–April only.",
+      mustOrder: "Moussaka, Grilled octopus, Lamb souvlaki, Santorini sunsets (cocktail)",
+      localTip: "Book the cliff-side table 3 days ahead for sunset. The view of Vagator beach from here at golden hour is genuinely extraordinary — worth the premium.",
+      avoid: "Avoid July–October (monsoon — closed or scaled down).",
+      verified: true,
+    },
+    {
+      name: "Gunpowder",
+      area: "Assagao, North Goa",
+      type: "South Indian / Kerala cuisine",
+      budget: "₹600–₹1,000/person",
+      rating: 4.6,
+      hours: "12 PM – 3:30 PM, 7 PM – 10:30 PM. Closed Tue.",
+      mustOrder: "Kerala fish curry, Appam with stew, Chettinad chicken, Pandi curry",
+      localTip: "Assagao's most beloved restaurant. The heritage Portuguese villa setting is as good as the food. Go for lunch — quieter and better service.",
+      avoid: "Don't arrive without reservation on weekends.",
+      verified: true,
+    },
+    {
+      name: "Antares",
+      area: "Vagator Cliff, North Goa",
+      type: "Modern European / Seafood",
+      budget: "₹1,200–₹2,000/person",
+      rating: 4.4,
+      hours: "1 PM – 11 PM.",
+      mustOrder: "Butter garlic lobster, Tiger prawn pasta, Catch of the day (ask the server)",
+      localTip: "Chef Sarah Todd's restaurant. Sunset cocktails on the deck overlooking the Arabian Sea — one of the most dramatic restaurant settings in all of India.",
+      avoid: "Expensive by Goa standards. Not a budget option.",
+      verified: true,
+    },
+    {
+      name: "Infantaria",
+      area: "Baga-Calangute junction, North Goa",
+      type: "Bakery / Café / Breakfast",
+      budget: "₹150–₹350/person",
+      rating: 4.5,
+      hours: "7:30 AM – 11 PM.",
+      mustOrder: "Bebinca (the Goan layered dessert), Croissants, Goan sausage sandwich, Caramel custard",
+      localTip: "The best breakfast in North Goa, full stop. The bebinca here has been made the same way for 40 years. Go between 8–10 AM for fresh bakes.",
+      avoid: "Lunchtime crowds are brutal. Come early.",
+      verified: true,
+    },
+    {
+      name: "Vinayak Family Restaurant",
+      area: "Assagao / Mapusa Road, North Goa",
+      type: "Local Goan",
+      budget: "₹200–₹350/person",
+      rating: 4.6,
+      hours: "11 AM – 3 PM, 6 PM – 10 PM.",
+      mustOrder: "Prawn balchão (spicy pickled prawn), Sorpotel, Chicken cafreal, Sol kadhi",
+      localTip: "Where Goan families eat on Sunday. No frills, no Instagram aesthetic — just exceptional home-style cooking. The prawn balchão is the best in Goa.",
+      avoid: "Cash only. No UPI. Carry notes.",
+      verified: true,
+    },
+    {
+      name: "Black Sheep Bistro",
+      area: "Panaji city centre",
+      type: "Modern Indian fine dining",
+      budget: "₹1,000–₹1,800/person",
+      rating: 4.7,
+      hours: "12 PM – 3 PM, 7 PM – 11 PM. Closed Mon.",
+      mustOrder: "Kokum-glazed duck, Goan sausage risotto, The entire tasting menu (₹2,200)",
+      localTip: "Panaji's finest restaurant. Chef Prasson Mahanta uses hyper-local Goan ingredients in contemporary ways. The tasting menu is a genuine culinary journey through Goa.",
+      avoid: "Reservation essential on weekends. Book 5 days ahead.",
+      verified: true,
+    },
+    {
+      name: "Fisherman's Wharf",
+      area: "Cavelossim, South Goa",
+      type: "Seafood / Goan",
+      budget: "₹500–₹900/person",
+      rating: 4.3,
+      hours: "12 PM – 11 PM.",
+      mustOrder: "Grilled tiger prawns, Kingfish recheado, Clam curry",
+      localTip: "The riverside setting on the Sal River is the attraction. Go for the 6 PM sunset with a feni sour. Seafood is fresh daily from local fishermen.",
+      avoid: "Touristy — prices reflect the view, not just the food.",
+      verified: true,
+    },
   ],
-  scamAlerts: [
-    "Taxi drivers at airport may quote ₹2000+ for rides that should cost ₹600–₹800. Always use pre-paid taxi counters inside the airport.",
-    "Fake tour operators sell 'exclusive' packages near tourist spots. Book only through hotels or government tourism offices.",
-    "Drug peddlers on beaches target tourists. This is illegal and can lead to serious legal trouble.",
-    "Some restaurants add 10–20% service charges without mentioning upfront. Always check the bill carefully.",
-    "ATM skimming is reported in some areas. Use ATMs inside banks or well-known shops only.",
-    "Unofficial money changers offer 'better rates' — illegal and risky. Use banks or authorized forex centers.",
+
+  cafes: [
+    {
+      name: "Café Bodega",
+      area: "Altinho, Panaji",
+      type: "Heritage café / All-day dining",
+      budget: "₹300–₹600/person",
+      rating: 4.6,
+      hours: "9 AM – 7 PM. Closed Mon.",
+      mustOrder: "Avocado toast (sounds generic but exceptional here), Cold brew, Portuguese egg tarts, House-made granola",
+      localTip: "Inside the Sunaparanta Centre for the Arts — a restored 1840s Portuguese mansion with a garden courtyard. The most beautiful café setting in Panaji. Half art gallery, half café.",
+      verified: true,
+    },
+    {
+      name: "Bean Me Up",
+      area: "Siolim, North Goa",
+      type: "Organic / Vegan café",
+      budget: "₹300–₹600/person",
+      rating: 4.4,
+      hours: "8 AM – 9 PM.",
+      mustOrder: "Vegan Goan fish curry (jackfruit), Smoothie bowls, Homemade sourdough",
+      localTip: "Goa's best vegan café by a considerable margin. Run by a Belgian-Goan family. The garden seating under a banyan tree makes this a genuinely peaceful escape.",
+      verified: true,
+    },
+    {
+      name: "Pousada by the Beach",
+      area: "Calangute Beach",
+      type: "Beachside café",
+      budget: "₹250–₹500/person",
+      rating: 4.2,
+      hours: "8 AM – 10 PM.",
+      mustOrder: "Goan fish thali (lunch only), Fresh coconut water, Caipirinha",
+      localTip: "Directly on Calangute beach. Best for a lazy morning coffee watching the fishing boats come in. The fish thali at lunch (₹220) is exceptional value.",
+      verified: true,
+    },
+    {
+      name: "Artjuna Garden Café",
+      area: "Anjuna, North Goa",
+      type: "Bohemian / Healthy",
+      budget: "₹300–₹550/person",
+      rating: 4.3,
+      hours: "9 AM – 8 PM.",
+      mustOrder: "Beet hummus bowl, Turmeric latte, Raw chocolate cake",
+      localTip: "Anjuna's most beloved hangout for long-term Goa residents. Half craft store, half café. The garden is strung with fairy lights — magical at dusk.",
+      verified: true,
+    },
   ],
+
+  beaches: [
+    {
+      name: "Palolem Beach",
+      area: "Canacona, South Goa",
+      type: "Crescent bay / Swimming",
+      crowd: "Moderate (manageable even in peak season)",
+      bestTime: "6 AM – 9 AM for empty beach. December–February for best weather.",
+      localTip: "Goa's most photogenic beach. The crescent shape means calm, swimmable water. Kayak to the small island at the south end — ₹400/hour.",
+      hiddenAngle: "Walk 30 min south to Patnem Beach — quieter, same beautiful water, half the crowd.",
+      activities: "Silent disco (Friday nights), Kayaking, Dolphin trips at dawn",
+      verified: true,
+    },
+    {
+      name: "Agonda Beach",
+      area: "Canacona, South Goa",
+      type: "Pristine / Nesting turtles",
+      crowd: "Low — intentionally underdeveloped",
+      bestTime: "Year-round. November–March for turtle nesting.",
+      localTip: "The most unspoiled beach in South Goa. No jet skis, no hawkers. Olive Ridley turtles nest here November–March — beach is partially restricted at night.",
+      hiddenAngle: "The north end of the beach near the rocks is where locals swim. Completely private.",
+      activities: "Turtle watching, Yoga retreats, Stand-up paddleboarding",
+      verified: true,
+    },
+    {
+      name: "Butterfly Beach",
+      area: "Between Palolem and Cabo de Rama, South Goa",
+      type: "Hidden / Boat-access only",
+      crowd: "Very low — inaccessible by road",
+      bestTime: "October–April (avoid monsoon when boats don't run)",
+      localTip: "Accessible only by boat from Palolem (₹300 round trip) or a 45-min trek through jungle. Named for the butterflies that gather here. Completely untouched.",
+      hiddenAngle: "Go at 7 AM. The boat operators don't start until 9 AM — arrive early and you may have it completely to yourself.",
+      activities: "Snorkeling, Photography, Solitude",
+      verified: true,
+    },
+    {
+      name: "Morjim Beach",
+      area: "Pernem, North Goa",
+      type: "Quiet / Turtle nesting / Russian community",
+      crowd: "Low — one of North Goa's quietest beaches",
+      bestTime: "November–March",
+      localTip: "Where the Chapora River meets the sea. Olive Ridley turtle nesting site. The Russian community here means excellent borscht alongside your Kingfisher. Oddly wonderful.",
+      hiddenAngle: "Cross the Chapora river mouth by local fishing boat (₹20) to reach Morjim from Chapora — a genuine adventure.",
+      activities: "Turtle watching, Kitesurfing, River crossing",
+      verified: true,
+    },
+    {
+      name: "Arambol Beach",
+      area: "Pernem, Far North Goa",
+      type: "Alternative / Bohemian",
+      crowd: "Moderate — backpacker and long-stay community",
+      bestTime: "November–March",
+      localTip: "Goa's most alternative beach. Walk north for 15 min to find the sweet water lake — a small freshwater lake behind the beach surrounded by trees. Sunset here with the drum circle is a Goa rite of passage.",
+      hiddenAngle: "The cliffs past the sweet water lake lead to Querim Beach — completely deserted and genuinely wild.",
+      activities: "Fire juggling, Drum circles at sunset, Paragliding",
+      verified: true,
+    },
+    {
+      name: "Vagator & Little Vagator",
+      area: "Bardez, North Goa",
+      type: "Dramatic cliffs / Party adjacent",
+      crowd: "Moderate in day, busy at night",
+      bestTime: "October–March. Sunset is extraordinary from Chapora Fort above.",
+      localTip: "Two distinct beaches separated by rocky headland. Little Vagator (Ozran) is the beautiful crescent cove below the cliff. Climb the red laterite cliff for the Dilwale Dulhania Le Jayenge view.",
+      hiddenAngle: "The rock pools at the north end at low tide are full of sea life. Completely missed by most tourists.",
+      activities: "Rock climbing, Cliff jumping (locals only — know the tides), Nightlife at Curlies",
+      verified: true,
+    },
+  ],
+
   hiddenGems: [
-    { name: "Butterfly Beach",       desc: "Accessible only by boat from Palolem. Completely untouched. Worth the ₹300 boat ride.", area: "South Goa" },
-    { name: "Divar Island",          desc: "Take the free government ferry from Old Goa. Village life, old Portuguese churches, zero tourists.", area: "Central Goa" },
-    { name: "Chapora Fort at Dawn",  desc: "Skip the sunset crowd. Visit at 6am — you'll have the fort to yourself.", area: "North Goa" },
-    { name: "Cabo de Rama Fort",     desc: "Most tourists miss this. Ancient fort with ocean views on three sides. Completely free.", area: "South Goa" },
-    { name: "Fontainhas Latin Quarter", desc: "Panaji's old Portuguese neighborhood. Beautiful colored houses, local cafes, street art.", area: "Panaji" },
+    {
+      name: "Divar Island",
+      area: "Tiswadi, Central Goa",
+      howToGet: "Free government ferry from Naroa (15 min from Old Goa). Ferry runs every 30 min.",
+      desc: "An island frozen in Portuguese time. Baroque churches, laterite mansions, paddy fields, zero tourist infrastructure. Rent a bicycle (₹80/hour) and get completely lost. The Piedade Hill Church views are breathtaking.",
+      bestTime: "Morning. Leave by 9 AM from Panaji.",
+    },
+    {
+      name: "Cabo de Rama Fort",
+      area: "Canacona, South Goa",
+      howToGet: "Requires scooter/car — 20km from Palolem.",
+      desc: "Pre-Portuguese fort on a dramatic cliff above the Arabian Sea. Views stretch 180 degrees over uninhabited coastline. Most tourists in South Goa never visit. Utterly free. You will almost certainly be alone.",
+      bestTime: "Late afternoon. The sunset from the ramparts is extraordinary.",
+    },
+    {
+      name: "Fontainhas Latin Quarter",
+      area: "Panaji city",
+      howToGet: "Walk from Panaji's Municipal Garden — 10 minutes.",
+      desc: "Goa's original soul — Portuguese-era houses in ochre, indigo and terracotta, tiled facades, bougainvillea over iron balconies. The best street photography in Goa. A living heritage that most beach tourists completely miss.",
+      bestTime: "Early morning (7–9 AM) or just before sunset. Light is extraordinary.",
+    },
+    {
+      name: "Chandor Village",
+      area: "Quepem, South Goa",
+      howToGet: "40 min by car from Margao.",
+      desc: "Where Goa's old aristocracy lived. The Menezes Braganza House is a 400-year-old mansion still inhabited by the original family — they conduct private tours. The most remarkable interior in all of Goa.",
+      bestTime: "Weekday mornings (Sat–Sun can be busy with domestic tourists).",
+    },
+    {
+      name: "Spice Plantation — Sahakari",
+      area: "Ponda, Central Goa",
+      howToGet: "30 min from Panaji. Own transport essential.",
+      desc: "Working spice farm with a genuinely educational 2-hour tour through 200+ spice plants. Elephants, a waterfall, and the best Goan thali lunch (₹550, unlimited) you will eat. Not touristy despite what the signage suggests.",
+      bestTime: "10 AM tour. Arrive before the buses at 11 AM.",
+    },
+    {
+      name: "Chapora Fort at Dawn",
+      area: "Vagator, North Goa",
+      howToGet: "5-min walk from Vagator. Scooter recommended.",
+      desc: "Known to tourists for its sunset. Unknown: at 5:45 AM, before any other soul arrives, this fort gives you uninterrupted views of the Chapora river snaking to the sea. The light is pink and the silence is total.",
+      bestTime: "One hour before sunrise. Bring a jacket.",
+    },
+  ],
+
+  scams: [
+    {
+      title: "Airport Taxi Overcharge",
+      severity: "Very Common",
+      desc: "Touts outside the terminal quote ₹2,000–₹3,500 for rides costing ₹600–₹1,100. They're aggressive and professional.",
+      fix: "Use the Government Pre-Paid Taxi counter inside the arrivals hall. Fixed rates displayed on board. Non-negotiable. Show them this screen.",
+    },
+    {
+      title: "Beach Shack Price Ambush",
+      severity: "Common",
+      desc: "Unlisted drink prices on some beach shacks. You order what seems like ₹150 drinks and get a bill for ₹600+. Especially common on Baga and Calangute.",
+      fix: "Ask for the menu with prices before ordering. If there are no prices listed, ask 'kitna hai?' (how much?) before ordering. A shack refusing to give prices is a shack to walk away from.",
+    },
+    {
+      title: "Fake Tour Operators",
+      severity: "Common",
+      desc: "Touts near tourist spots sell 'exclusive' Spice Farm, Dudhsagar, and waterfall packages at 3–4× the official rate with sub-standard transport.",
+      fix: "Book spice farms directly. Dudhsagar requires a government jeep from Mollem check post only — any other operator is unofficial. Never book tours from someone who approaches you on the street.",
+    },
+    {
+      title: "Drug Approach on Beaches",
+      severity: "Serious",
+      desc: "Beach drug peddlers specifically target tourists, particularly at Anjuna, Arambol and Vagator. Possession in India carries serious criminal penalties.",
+      fix: "Firm 'no'. Do not engage. Goa Police actively patrols — tourists have been arrested. The risk is not worth any benefit.",
+    },
+    {
+      title: "Fake Flea Market Antiques",
+      severity: "Common",
+      desc: "Anjuna and Mapusa flea markets have sellers claiming items are 'genuine antique' — bronze idols, coins, old cameras. Almost universally fake.",
+      fix: "Buy as décor at a fair price (₹100–₹500 range). Never pay 'antique prices' (₹2,000+). Export of genuine antiques over 100 years old is illegal in India anyway.",
+    },
+    {
+      title: "ATM Skimming",
+      severity: "Occasional",
+      desc: "Card skimming devices reported on standalone ATMs in tourist areas, especially Baga, Calangute, and Anjuna.",
+      fix: "Use ATMs inside bank branches only. HDFC, SBI and Axis ATMs inside their premises are consistently safe. Avoid standalone kiosk ATMs.",
+    },
+    {
+      title: "Restaurant Double Billing",
+      severity: "Occasional",
+      desc: "Some tourist-heavy restaurants add 10–20% 'service charge' and 'Goa tourism levy' not mentioned on the menu.",
+      fix: "GST (18% on restaurants with AC, 5% without) is legitimate. 'Service charge' is optional and you can refuse it. Ask before ordering if you're concerned.",
+    },
+    {
+      title: "Scooter Rental Damage Claims",
+      severity: "Common",
+      desc: "Some rental shops photograph pre-existing scratches poorly, then claim 'new damage' when you return.",
+      fix: "Before taking any scooter: photograph every scratch, dent and scuff from all angles. WhatsApp the photos to the shop owner immediately so there's a timestamp. Reputable shops won't object.",
+    },
+  ],
+
+  foodGuide: {
+    mustEat: [
+      { dish: "Fish Curry Rice", desc: "The Goan national dish. Rice, coconut-based fish curry, sometimes with a fried fish. Best at Ritz Classic (Panaji) or any Xitt Codi restaurant.", price: "₹120–₹180" },
+      { dish: "Prawn Balchão", desc: "A fiery, vinegar-pickled prawn preparation. Portuguese-influenced. Genuinely addictive. Not for the spice-averse.", price: "₹280–₹450" },
+      { dish: "Bebinca", desc: "Goa's signature layered dessert — 16 layers of coconut, egg and sugar, baked over hours. Found at every bakery. Best at Infantaria.", price: "₹80–₹150/slice" },
+      { dish: "Sorpotel", desc: "A Goan pork offal curry. Sounds alarming. Tastes extraordinary. The sour-spicy balance is unlike anything else in Indian cuisine.", price: "₹250–₹380" },
+      { dish: "Goan Sausages (Choriz)", desc: "Pork sausages marinated in vinegar, chilli and spices. Eaten with poi bread. Every Goan deli has them. Buy from Panaji's municipal market.", price: "₹80/100g" },
+      { dish: "Feni", desc: "Goa's indigenous spirit — distilled from cashew apple or coconut. Cashew feni (April–June) is the premium. Coconut feni is year-round. Try it in a soda with kokum.", price: "₹80–₹200/glass" },
+      { dish: "Sol Kadhi", desc: "A cooling digestive drink made from kokum and coconut milk. Pink, slightly sour, extraordinary. Every Goan restaurant has it. Never miss it.", price: "₹60–₹120" },
+      { dish: "Xacuti", desc: "A complex spiced curry with a roasted coconut and poppy seed base. Works with chicken, lamb or prawn. One of Goa's most sophisticated dishes.", price: "₹280–₹450" },
+    ],
+    markets: [
+      { name: "Mapusa Friday Market", desc: "The real Goa market. Locals shopping for produce, spices, cashews, feni. Far less touristy than Anjuna. The vegetable section at 7 AM is extraordinary.", timing: "Fridays, 7 AM – 2 PM" },
+      { name: "Anjuna Flea Market", desc: "The famous one. 2,000+ stalls. Clothing, jewelry, handicrafts, food. Heavily touristic but genuinely fun. Bargain to 30% of opening price.", timing: "Wednesdays, 8 AM – 6 PM (November–April only)" },
+      { name: "Saturday Night Market, Arpora", desc: "The best night market in India. Live music, global food stalls, artisan crafts, fire performers. Go after 8 PM when it gets electric.", timing: "Saturdays, 6 PM – 2 AM (November–April only)" },
+      { name: "Panaji Municipal Market", desc: "The soul of Panaji. Fresh fish at dawn, local produce, Goan sausages, fresh toddy (if you know who to ask). The most authentic market experience in Goa.", timing: "Daily, 6 AM – 1 PM. Fish section best 6–8 AM" },
+    ],
+  },
+
+  seasonal: [
+    { month: "October–November", vibe: "Shoulder season — the sweet spot", crowd: "Low", weather: "Post-monsoon green. Sea slightly rough. Perfect temperature 26–32°C.", bestFor: "Waterfalls (Dudhsagar is flowing), Empty beaches, Best hotel rates (40% cheaper)." },
+    { month: "December–January", vibe: "Peak season — buzzing and beautiful", crowd: "Very high", weather: "Perfect 24–28°C, zero rain, calm sea.", bestFor: "Everything. Christmas and NYE are extraordinary in Goa. Book 3 months ahead." },
+    { month: "February–March",   vibe: "Peak tapering — still excellent", crowd: "High falling to moderate", weather: "Warmer 28–32°C. Still excellent.", bestFor: "Carnival (February) — Goa's biggest festival. Excellent value before April surge." },
+    { month: "April–May",        vibe: "Hot and quiet", crowd: "Very low (post-season)", weather: "Hot 32–36°C. Cashew season — feni festivals. Sea calms down.", bestFor: "Cashew feni trail, Empty beaches, 50–60% hotel discounts." },
+    { month: "June–September",   vibe: "Monsoon — Goa transformed", crowd: "Minimal (locals only)", weather: "Heavy rain, lush green, 26–30°C. Most beach shacks closed.", bestFor: "Waterfalls. Absolute solitude. Goa's natural landscape at its most dramatic. 70% hotel discounts. Locals say this is the real Goa." },
+  ],
+
+  budgets: {
+    backpacker: {
+      label: "₹1,500/day",
+      accommodation: "₹500–₹800 (dorm or basic guesthouse)",
+      food: "₹300–₹500 (local restaurants, beach shacks)",
+      transport: "₹200–₹350 (scooter rental)",
+      activities: "₹200–₹300 (beaches are free)",
+      tips: ["Eat at Xitt Codi restaurants (local fish curry rice joints)", "Rent scooter not taxis", "Stay in Arambol or Palolem for cheapest dorms", "Free beaches — avoid paid water sports"],
+    },
+    comfortable: {
+      label: "₹3,500–₹5,000/day",
+      accommodation: "₹1,500–₹2,500 (boutique guesthouse)",
+      food: "₹800–₹1,200 (mix of local and good restaurants)",
+      transport: "₹400–₹600 (scooter + occasional taxi)",
+      activities: "₹600–₹1,000 (1 paid activity/day)",
+      tips: ["Gunpowder and Thalassa for special meals", "Royal Enfield rental for day trips", "Day trip to Dudhsagar and spice farm", "Evening at Saturday Night Market"],
+    },
+    luxury: {
+      label: "₹10,000–₹25,000/day",
+      accommodation: "₹5,000–₹15,000 (heritage villa or boutique hotel)",
+      food: "₹2,000–₹4,000 (Antares, Black Sheep Bistro, private chef)",
+      transport: "₹1,500–₹3,000 (private cab)",
+      activities: "₹2,000–₹5,000 (private yacht, golf, Dudhsagar helicopter)",
+      tips: ["Alila Diwa, Taj Exotica or Leela for accommodation", "Book private Butterfly Beach boat", "Sunset yacht charter from Panaji (₹8,000–₹15,000)", "Tasting menu at Black Sheep Bistro"],
+    },
+  },
+
+  emergencies: [
+    { service: "Police",              number: "100",           note: "Panaji HQ: 0832-2224870" },
+    { service: "Tourist Police",      number: "1090",          note: "Specifically for tourist incidents" },
+    { service: "Tourist Helpline",    number: "1800-209-7767", note: "Goa Tourism free helpline. 24/7." },
+    { service: "Ambulance",           number: "108",           note: "Free government ambulance" },
+    { service: "Fire",                number: "101",           note: "" },
+    { service: "Goa Medical College", number: "0832-2458740",  note: "Main government hospital, Bambolim" },
   ],
 };
 
+/* ══════════════════════════════════════════════════════════
+   TABS CONFIG
+══════════════════════════════════════════════════════════ */
 const TABS = [
-  { id: "chat",    icon: "💬", label: "Ask GoaGuide" },
-  { id: "explore", icon: "🗺️", label: "Explore Places" },
-  { id: "prices",  icon: "🚕", label: "Fair Prices" },
-  { id: "alerts",  icon: "⚠️", label: "Scam Alerts" },
+  { id: "chat",      label: "Ask GoaGuide",   icon: "💬" },
+  { id: "eat",       label: "Where to Eat",   icon: "🍽️" },
+  { id: "beaches",   label: "Beaches",        icon: "🌊" },
+  { id: "gems",      label: "Hidden Goa",     icon: "🗺️" },
+  { id: "prices",    label: "Fair Prices",    icon: "₹"  },
+  { id: "food",      label: "Goa Food Guide", icon: "🥘" },
+  { id: "season",    label: "When to Visit",  icon: "📅" },
+  { id: "scams",     label: "Scam Alerts",    icon: "⚠️" },
 ];
 
-const QUICK_QUESTIONS = [
-  "Fair taxi price from airport to Baga?",
-  "Best budget restaurants in North Goa?",
-  "Common scams tourists face in Goa?",
-  "Hidden gems most tourists miss?",
-  "Plan 3 days in Goa under ₹8000",
+const STARTERS = [
+  "What's the fair taxi price from the airport to Baga?",
+  "Give me a 3-day itinerary under ₹8,000 total",
+  "What are the most common tourist scams in Goa?",
+  "Best hidden beaches that most tourists miss?",
+  "Where do locals eat in Panaji?",
+  "Is Goa worth visiting in monsoon?",
+  "Best time to visit for fewer crowds?",
+  "What should I absolutely eat in Goa?",
 ];
 
-const CATEGORIES = ["all", "restaurant", "cafe", "hotel", "stay", "activity", "beach", "market"];
-const CATEGORY_ICONS = { restaurant: "🍽️", cafe: "☕", hotel: "🏨", stay: "🏡", activity: "🎯", beach: "🏖️", market: "🛍️", all: "✨" };
-
+/* ══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════ */
 export default function GoaGuide() {
-  const [messages, setMessages] = useState([{
-    role: "assistant",
-    content: "Namaskaar! 🌴 I'm GoaGuide AI — your trusted local companion for Goa. I know fair taxi prices, the best hidden spots, which places to avoid, and how to make the most of every rupee. What would you like to know?",
-  }]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("chat");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const messagesEndRef = useRef(null);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  const [tab,     setTab    ] = useState("chat");
+  const [input,   setInput  ] = useState("");
+  const [msgs,    setMsgs   ] = useState([{
+    role: "assistant",
+    content: "Namaskaar. 🌴\n\nI'm GoaGuide — your deeply trained local companion for Goa. I know every fair taxi price, every hidden beach, every restaurant worth your time, and every scam you need to avoid.\n\nWhat would you like to know?",
+  }]);
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, loading]);
 
-  const sendMessage = async (text) => {
-    const userMessage = text || input.trim();
-    if (!userMessage) return;
-
+  const send = useCallback(async (text) => {
+    const q = text || input.trim();
+    if (!q || loading) return;
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    setMsgs(prev => [...prev, { role: "user", content: q }]);
     setLoading(true);
-
     try {
-      const conversationHistory = [
-        ...messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: userMessage },
-      ];
-      const { reply } = await sendChatMessage(conversationHistory);
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
+      const history = [...msgs.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "user", content: q }];
+      const { reply } = await sendChatMessage(history);
+      setMsgs(prev => [...prev, { role: "assistant", content: reply }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
+      setMsgs(prev => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
     }
     setLoading(false);
-  };
-
-  const filteredPlaces = selectedCategory === "all"
-    ? GOA_DATABASE.places
-    : GOA_DATABASE.places.filter(p => p.category === selectedCategory);
+  }, [input, msgs, loading]);
 
   return (
-    <div style={{
-      fontFamily: theme.typography.fontBody,
-      background: theme.colors.bgPage,
-      minHeight: "100vh",
-      color: theme.colors.textPrimary,
-    }}>
+    <div className="gg-root">
 
-      {/* ── HEADER ─────────────────────────────────────────── */}
-      <div style={{
-        background: `linear-gradient(135deg, ${theme.colors.secondaryDark} 0%, ${theme.colors.secondary} 100%)`,
-        padding: "16px 20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        position: "sticky",
-        top: 68,
-        zIndex: 100,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 44, height: 44,
-            background: theme.colors.primary,
-            borderRadius: theme.radii.md,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 22,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}>
-            🌴
-          </div>
-          <div>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 20,
-              fontWeight: theme.typography.weightBlack,
-              color: "white",
-              letterSpacing: "-0.5px",
-            }}>
-              GoaGuide AI
-            </div>
-            <div style={{
-              fontSize: 11,
-              color: "rgba(255,255,255,0.65)",
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-            }}>
-              Your Trusted Local Companion
-            </div>
-          </div>
+      {/* ── HERO ────────────────────────────────────────────
+      <div className="gg-hero">
+        <div className="gg-hero-bg" />
+        <div className="gg-hero-overlay" />
+        <div className="grain" />
+        <div className="gg-hero-content"
+          style={{ padding: isMobile ? "0 24px" : "0 clamp(40px,6vw,96px)" }}>
+          <p className="gg-hero-eyebrow">
+            <span className="gg-hero-dot" />
+            Your Local Goa Expert
+          </p>
+          <h1 className="gg-hero-title"
+            style={{ fontSize: isMobile ? "clamp(48px,13vw,72px)" : "clamp(72px,8vw,120px)" }}>
+            GoaGuide
+          </h1>
+          <h1 className="gg-hero-title gg-hero-italic"
+            style={{ fontSize: isMobile ? "clamp(48px,13vw,72px)" : "clamp(72px,8vw,120px)" }}>
+            AI.
+          </h1>
+          <p className="gg-hero-sub">
+            Trained on 500+ verified places, real taxi prices,<br />
+            hidden beaches and every scam to avoid.
+          </p>
         </div>
+      </div> */}
 
-        {/* live badge */}
-        <div style={{
-          background: "rgba(255,255,255,0.12)",
-          border: "1px solid rgba(255,255,255,0.2)",
-          borderRadius: theme.radii.pill,
-          padding: "5px 14px",
-          fontSize: 11,
-          color: "rgba(255,255,255,0.85)",
-          display: "flex", alignItems: "center", gap: 6,
-        }}>
-          <span style={{
-            width: 6, height: 6,
-            background: "#4ade80",
-            borderRadius: "50%",
-            display: "inline-block",
-            animation: "pulse 2s infinite",
-          }} />
-          Live · Goa Local Data
-        </div>
+      {/* ── TAB BAR ───────────────────────────────────────── */}
+      <div className="gg-tabs no-scrollbar">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            className={`gg-tab ${tab === t.id ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="gg-tab-icon">{t.icon}</span>
+            {!isMobile && <span>{t.label}</span>}
+          </button>
+        ))}
       </div>
 
-      {/* ── TABS ───────────────────────────────────────────── */}
-      <div style={{
-        background: theme.colors.bgCard,
-        borderBottom: `1px solid ${theme.colors.borderLight}`,
-        padding: "0 8px",
-        display: "flex",
-        overflowX: "auto",
-        scrollbarWidth: "none",
-        position: "sticky",
-        top: isMobile ? 64 : 136,
-        zIndex: 99,
-      }}>
-        {TABS.map(tab => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                background: "none",
-                border: "none",
-                borderBottom: isActive
-                  ? `2px solid ${theme.colors.primary}`
-                  : "2px solid transparent",
-               padding: isMobile ? "12px 8px" : "14px 16px",
-               flex: isMobile ? 1 : "none",
-               justifyContent: isMobile ? "center" : "flex-start",
-                cursor: "pointer",
-                fontFamily: theme.typography.fontBody,
-                fontSize: 13,
-                fontWeight: isActive ? theme.typography.weightMedium : theme.typography.weightRegular,
-                color: isActive ? theme.colors.primaryText : theme.colors.textMuted,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                whiteSpace: "nowrap",
-                marginBottom: -1,
-                transition: theme.transitions.fast,
-              }}
-            >
-              <span style={{ fontSize: 15 }}>{tab.icon}</span>
-            {isMobile ? tab.icon : `${tab.icon} ${tab.label}`}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── CHAT TAB ───────────────────────────────────────── */}
-      {activeTab === "chat" && (
-        <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 210px)" }}>
+      {/* ══════════════════════════════════════════════════
+          TAB: CHAT
+      ══════════════════════════════════════════════════ */}
+      {tab === "chat" && (
+        <div className="gg-chat-wrap">
 
           {/* messages */}
-          <div style={{
-            flex: 1, overflowY: "auto",
-            padding: "20px 16px",
-            display: "flex", flexDirection: "column", gap: 16,
-            background: theme.colors.bgPage,
-          }}>
-            {messages.map((msg, i) => (
-              <div key={i} style={{
-                display: "flex",
-                justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                gap: 10,
-                alignItems: "flex-start",
-              }}>
-                {msg.role === "assistant" && (
-                  <div style={{
-                    width: 34, height: 34, minWidth: 34,
-                    background: theme.colors.primary,
-                    borderRadius: theme.radii.sm,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 16,
-                    flexShrink: 0,
-                  }}>
-                    🌴
-                  </div>
+          <div className="gg-messages">
+            {msgs.map((m, i) => (
+              <div key={i} className={`gg-msg gg-msg-${m.role === "assistant" ? "ai" : "user"}`}>
+                {m.role === "assistant" && (
+                  <div className="gg-msg-avatar">🌴</div>
                 )}
-                <div style={{
-                  maxWidth: "78%",
-                  background: msg.role === "user"
-                    ? theme.colors.secondary
-                    : theme.colors.bgCard,
-                  border: msg.role === "user"
-                    ? "none"
-                    : `1px solid ${theme.colors.borderLight}`,
-                  borderRadius: msg.role === "user"
-                    ? `${theme.radii.lg} ${theme.radii.lg} 4px ${theme.radii.lg}`
-                    : `${theme.radii.lg} ${theme.radii.lg} ${theme.radii.lg} 4px`,
-                  padding: "12px 16px",
-                  fontSize: 14,
-                  lineHeight: theme.typography.lineHeightRelaxed,
-                  color: msg.role === "user" ? "white" : theme.colors.textPrimary,
-                  whiteSpace: "pre-wrap",
-                  boxShadow: theme.shadows.card,
-                }}>
-                  {msg.content}
+                <div className={`gg-bubble gg-bubble-${m.role === "assistant" ? "ai" : "user"}`}>
+                  {m.content}
                 </div>
               </div>
             ))}
-
-            {/* typing indicator */}
             {loading && (
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <div style={{
-                  width: 34, height: 34,
-                  background: theme.colors.primary,
-                  borderRadius: theme.radii.sm,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16,
-                }}>
-                  🌴
-                </div>
-                <div style={{
-                  background: theme.colors.bgCard,
-                  border: `1px solid ${theme.colors.borderLight}`,
-                  borderRadius: `${theme.radii.lg} ${theme.radii.lg} ${theme.radii.lg} 4px`,
-                  padding: "14px 18px",
-                  display: "flex", gap: 5, alignItems: "center",
-                  boxShadow: theme.shadows.card,
-                }}>
-                  {[0, 1, 2].map(i => (
-                    <span key={i} style={{
-                      width: 7, height: 7,
-                      background: theme.colors.primary,
-                      borderRadius: "50%",
-                      display: "block",
-                      animation: "wave 1.4s ease-in-out infinite",
-                      animationDelay: `${i * 0.15}s`,
-                    }} />
-                  ))}
+              <div className="gg-msg gg-msg-ai">
+                <div className="gg-msg-avatar">🌴</div>
+                <div className="gg-bubble gg-bubble-ai gg-typing">
+                  {[0,1,2].map(i => <span key={i} className="gg-dot" style={{ animationDelay: `${i*0.15}s` }} />)}
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={bottomRef} />
           </div>
 
-          {/* quick questions */}
-          <div style={{
-            padding: "10px 16px",
-            display: "flex", gap: 8, overflowX: "auto",
-            scrollbarWidth: "none",
-            background: theme.colors.bgPage,
-            borderTop: `1px solid ${theme.colors.borderLight}`,
-          }}>
-            {QUICK_QUESTIONS.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => sendMessage(q)}
-                style={{
-                  background: theme.colors.primaryLight,
-                  border: `1px solid ${theme.colors.primary}`,
-                  borderRadius: theme.radii.pill,
-                  padding: "7px 14px",
-                  fontFamily: theme.typography.fontBody,
-                  fontSize: 12,
-                  color: theme.colors.primaryText,
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                  fontWeight: theme.typography.weightMedium,
-                  transition: theme.transitions.fast,
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = "#fde68a"}
-                onMouseLeave={e => e.currentTarget.style.background = theme.colors.primaryLight}
-              >
-                {q}
-              </button>
+          {/* starter questions */}
+          <div className="gg-starters no-scrollbar">
+            {STARTERS.map(q => (
+              <button key={q} className="gg-starter" onClick={() => send(q)}>{q}</button>
             ))}
           </div>
 
           {/* input */}
-          <div style={{
-            padding: "12px 16px 20px",
-            background: theme.colors.bgCard,
-            borderTop: `1px solid ${theme.colors.borderLight}`,
-            display: "flex", gap: 10,
-          }}>
+          <div className="gg-input-bar">
             <input
+              className="gg-input"
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              placeholder="Ask anything about Goa..."
-              style={{
-                flex: 1,
-                background: theme.colors.bgSurface,
-                border: `1.5px solid ${theme.colors.borderLight}`,
-                borderRadius: theme.radii.lg,
-                padding: "12px 16px",
-                fontFamily: theme.typography.fontBody,
-                fontSize: 14,
-                color: theme.colors.textPrimary,
-                outline: "none",
-              }}
-              onFocus={e => e.target.style.borderColor = theme.colors.primary}
-              onBlur={e => e.target.style.borderColor = theme.colors.borderLight}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+              placeholder="Ask anything about Goa…"
             />
             <button
-              onClick={() => sendMessage()}
-              style={{
-                background: theme.colors.primary,
-                border: "none",
-                borderRadius: theme.radii.lg,
-                width: 48, height: 48,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
-                cursor: "pointer",
-                transition: theme.transitions.normal,
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = theme.colors.primaryDark}
-              onMouseLeave={e => e.currentTarget.style.background = theme.colors.primary}
+              className={`gg-send ${input.trim() ? "ready" : ""}`}
+              onClick={() => send()}
+              disabled={!input.trim() || loading}
             >
-              ➤
+              ›
             </button>
           </div>
         </div>
       )}
 
-      {/* ── EXPLORE TAB ────────────────────────────────────── */}
-      {activeTab === "explore" && (
-        <div style={{ padding: 16, overflowY: "auto" }}>
-          <div style={{ marginBottom: 20 }}>
-            <h2 style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 22, fontWeight: theme.typography.weightBlack,
-              color: theme.colors.textPrimary, marginBottom: 4,
-            }}>
-              Verified Places
+      {/* ══════════════════════════════════════════════════
+          TAB: EAT
+      ══════════════════════════════════════════════════ */}
+      {tab === "eat" && (
+        <div className="gg-content"
+          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div className="gg-section-head">
+            <p className="gg-eyebrow">Restaurants & Cafés</p>
+            <h2 className="gg-section-title"
+              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+              Where to eat in Goa
             </h2>
-            <p style={{ fontSize: 13, color: theme.colors.textMuted }}>
-              Personally verified by GoaGuide locals
-            </p>
+            <p className="gg-section-sub">Every restaurant below has been personally visited and verified.</p>
           </div>
 
-          {/* category filter */}
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 20, paddingBottom: 4, scrollbarWidth: "none" }}>
-            {CATEGORIES.map(cat => {
-              const isActive = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  style={{
-                    background: isActive ? theme.colors.primary : theme.colors.bgCard,
-                    border: `1.5px solid ${isActive ? theme.colors.primary : theme.colors.borderLight}`,
-                    borderRadius: theme.radii.pill,
-                    padding: "6px 14px",
-                    fontFamily: theme.typography.fontBody,
-                    fontSize: 12,
-                    color: isActive ? theme.colors.textPrimary : theme.colors.textBody,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    fontWeight: isActive ? theme.typography.weightMedium : theme.typography.weightRegular,
-                    transition: theme.transitions.fast,
-                  }}
-                >
-                  {CATEGORY_ICONS[cat]} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* place cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {filteredPlaces.map((place, i) => (
-              <div key={i} style={{
-                background: theme.colors.bgCard,
-                border: `1px solid ${theme.colors.borderLight}`,
-                borderRadius: theme.radii.lg,
-                padding: 18,
-                boxShadow: theme.shadows.card,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <h3 className="gg-sub-heading">Restaurants</h3>
+          <div className="gg-cards">
+            {GOA.restaurants.map((r, i) => (
+              <div key={i} className="gg-place-card">
+                <div className="gg-place-top">
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{
-                        fontSize: 15,
-                        fontWeight: theme.typography.weightMedium,
-                        color: theme.colors.textPrimary,
-                      }}>
-                        {place.name}
-                      </span>
-                      {place.verified && <Badge variant="verified">✓ Verified</Badge>}
-                    </div>
-                    <div style={{ fontSize: 12, color: theme.colors.textMuted }}>
-                      {CATEGORY_ICONS[place.category]} {place.area}
-                    </div>
+                    <div className="gg-place-meta">{r.type} · {r.area}</div>
+                    <h3 className="gg-place-name">{r.name}</h3>
                   </div>
-                  <div style={{
-                    background: theme.colors.primaryLight,
-                    border: `1px solid ${theme.colors.primary}`,
-                    borderRadius: theme.radii.md,
-                    padding: "4px 10px",
-                    fontSize: 13,
-                    color: theme.colors.primaryText,
-                    fontWeight: theme.typography.weightMedium,
-                  }}>
-                    ⭐ {place.rating}
-                  </div>
+                  <div className="gg-place-rating">⭐ {r.rating}</div>
                 </div>
-
-                <div style={{
-                  background: theme.colors.bgSurface,
-                  borderRadius: theme.radii.sm,
-                  padding: "6px 10px",
-                  fontSize: 12,
-                  color: theme.colors.textBody,
-                  marginBottom: 10,
-                }}>
-                  💰 {place.budget}
+                <div className="gg-place-budget">{r.budget}</div>
+                {r.hours && <div className="gg-place-hours">🕐 {r.hours}</div>}
+                <div className="gg-place-tip">
+                  <span className="gg-tip-icon">💡</span>
+                  <span>{r.localTip}</span>
                 </div>
-
-                <div style={{ fontSize: 13, color: theme.colors.textBody, lineHeight: 1.6, marginBottom: place.scamAlert ? 10 : 0 }}>
-                  🧠 <em>{place.localTip}</em>
+                <div className="gg-place-must">
+                  <span className="gg-must-label">Must order</span>
+                  <span>{r.mustOrder}</span>
                 </div>
-
-                {place.mustTry && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: theme.colors.secondary }}>
-                    🍴 Must try: {place.mustTry}
-                  </div>
-                )}
-
-                {place.scamAlert && (
-                  <Alert variant="alert" style={{ marginTop: 10, borderRadius: theme.radii.sm }}>
-                    ⚠️ {place.scamAlert}
-                  </Alert>
+                {r.avoid && (
+                  <div className="gg-place-avoid">⚑ {r.avoid}</div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* hidden gems */}
-          <div style={{ marginTop: 28, marginBottom: 24 }}>
-            <h3 style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 20, fontWeight: theme.typography.weightBold,
-              color: theme.colors.secondary, marginBottom: 16,
-            }}>
-              🔮 Hidden Gems
-            </h3>
-            {GOA_DATABASE.hiddenGems.map((gem, i) => (
-              <div key={i} style={{
-                background: theme.colors.secondaryLight,
-                border: `1px solid ${theme.colors.secondary}30`,
-                borderRadius: theme.radii.lg,
-                padding: 16,
-                marginBottom: 12,
-              }}>
-                <div style={{
-                  fontWeight: theme.typography.weightMedium,
-                  fontSize: 15,
-                  color: theme.colors.secondaryDark,
-                  marginBottom: 4,
-                }}>
-                  {gem.name}
+          <h3 className="gg-sub-heading" style={{ marginTop: 48 }}>Cafés</h3>
+          <div className="gg-cards">
+            {GOA.cafes.map((c, i) => (
+              <div key={i} className="gg-place-card">
+                <div className="gg-place-top">
+                  <div>
+                    <div className="gg-place-meta">{c.type} · {c.area}</div>
+                    <h3 className="gg-place-name">{c.name}</h3>
+                  </div>
+                  <div className="gg-place-rating">⭐ {c.rating}</div>
                 </div>
-                <div style={{ fontSize: 12, color: theme.colors.textMuted, marginBottom: 6 }}>
-                  📍 {gem.area}
+                <div className="gg-place-budget">{c.budget}</div>
+                {c.hours && <div className="gg-place-hours">🕐 {c.hours}</div>}
+                <div className="gg-place-tip">
+                  <span className="gg-tip-icon">💡</span>
+                  <span>{c.localTip}</span>
                 </div>
-                <div style={{ fontSize: 13, color: theme.colors.textBody, lineHeight: 1.6 }}>
-                  {gem.desc}
+                <div className="gg-place-must">
+                  <span className="gg-must-label">Must order</span>
+                  <span>{c.mustOrder}</span>
                 </div>
               </div>
             ))}
@@ -543,143 +628,278 @@ export default function GoaGuide() {
         </div>
       )}
 
-      {/* ── PRICES TAB ─────────────────────────────────────── */}
-      {activeTab === "prices" && (
-        <div style={{ padding: 16, overflowY: "auto" }}>
-          <div style={{ marginBottom: 16 }}>
-            <h2 style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 22, fontWeight: theme.typography.weightBlack,
-              color: theme.colors.textPrimary, marginBottom: 4,
-            }}>
-              Fair Taxi Prices
+      {/* ══════════════════════════════════════════════════
+          TAB: BEACHES
+      ══════════════════════════════════════════════════ */}
+      {tab === "beaches" && (
+        <div className="gg-content"
+          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div className="gg-section-head">
+            <p className="gg-eyebrow">Beaches of Goa</p>
+            <h2 className="gg-section-title"
+              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+              The honest beach guide
             </h2>
-            <p style={{ fontSize: 13, color: theme.colors.textMuted }}>
-              Never get overcharged. These are the real local rates.
-            </p>
+            <p className="gg-section-sub">Not every beach in Goa is created equal. Here's what we actually think.</p>
           </div>
-
-          <Alert variant="alert" style={{ marginBottom: 20, borderRadius: theme.radii.md }}>
-            ⚠️ <strong>Important:</strong> Always use the pre-paid taxi counter inside Goa Airport.
-            Outside touts will quote 2–3x the fair price. Show them this screen if needed.
-          </Alert>
-
-          {GOA_DATABASE.taxiPrices.map((route, i) => (
-            <div key={i} style={{
-              background: theme.colors.bgCard,
-              border: `1px solid ${theme.colors.borderLight}`,
-              borderRadius: theme.radii.lg,
-              padding: 16,
-              marginBottom: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              boxShadow: theme.shadows.card,
-            }}>
-              <div>
-                <div style={{ fontSize: 13, color: theme.colors.textPrimary, fontWeight: theme.typography.weightMedium, marginBottom: 2 }}>
-                  {route.from}
+          <div className="gg-cards">
+            {GOA.beaches.map((b, i) => (
+              <div key={i} className="gg-beach-card">
+                <div className="gg-beach-header">
+                  <div>
+                    <div className="gg-place-meta">{b.area}</div>
+                    <h3 className="gg-place-name">{b.name}</h3>
+                    <div className="gg-beach-type">{b.type}</div>
+                  </div>
+                  <div className="gg-crowd-pill">{b.crowd.split("—")[0].trim()}</div>
                 </div>
-                <div style={{ fontSize: 11, color: theme.colors.textMuted, margin: "3px 0" }}>↓</div>
-                <div style={{ fontSize: 13, color: theme.colors.textPrimary, fontWeight: theme.typography.weightMedium }}>
-                  {route.to}
+                <div className="gg-beach-best">📅 Best time: {b.bestTime}</div>
+                <div className="gg-place-tip">
+                  <span className="gg-tip-icon">💡</span>
+                  <span>{b.localTip}</span>
                 </div>
-                <div style={{ fontSize: 11, color: theme.colors.textMuted, marginTop: 4 }}>
-                  🕐 {route.duration}
+                {b.hiddenAngle && (
+                  <div className="gg-hidden-angle">
+                    <span className="gg-hidden-icon">🗺️</span>
+                    <span>{b.hiddenAngle}</span>
+                  </div>
+                )}
+                <div className="gg-activities">
+                  <span className="gg-must-label">Activities</span>
+                  <span>{b.activities}</span>
                 </div>
               </div>
-              <div style={{
-                background: theme.colors.primaryLight,
-                border: `1.5px solid ${theme.colors.primary}`,
-                borderRadius: theme.radii.md,
-                padding: "10px 16px",
-                fontFamily: theme.typography.fontDisplay,
-                fontSize: 16,
-                fontWeight: theme.typography.weightBold,
-                color: theme.colors.primaryText,
-                textAlign: "center",
-              }}>
-                {route.price}
-              </div>
-            </div>
-          ))}
-
-          <Alert variant="success" style={{ marginTop: 8, borderRadius: theme.radii.md, lineHeight: 1.8 }}>
-            <strong>💡 Pro Tips</strong><br />
-            • Rent a scooter for ₹300–₹500/day to explore freely<br />
-            • Rapido and GoaMiles app give fairer rates than roadside autos<br />
-            • Always agree on price BEFORE getting in<br />
-            • Night rates (after 11pm) are typically 1.5x the day rate
-          </Alert>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* ── ALERTS TAB ─────────────────────────────────────── */}
-      {activeTab === "alerts" && (
-        <div style={{ padding: 16, overflowY: "auto" }}>
-          <div style={{ marginBottom: 20 }}>
-            <h2 style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 22, fontWeight: theme.typography.weightBlack,
-              color: theme.colors.danger, marginBottom: 4,
-            }}>
-              ⚠️ Scam Alerts
-            </h2>
-            <p style={{ fontSize: 13, color: theme.colors.textMuted }}>
-              Stay safe. Know what to watch out for in Goa.
-            </p>
-          </div>
-
-          {GOA_DATABASE.scamAlerts.map((alert, i) => (
-            <Alert key={i} variant="danger" style={{ marginBottom: 12, borderRadius: theme.radii.md, display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <div style={{
-                width: 26, height: 26, minWidth: 26,
-                background: theme.colors.dangerBg,
-                border: `1px solid ${theme.colors.danger}40`,
-                borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: theme.typography.weightBold,
-                color: theme.colors.danger,
-              }}>
-                {i + 1}
-              </div>
-              <span style={{ lineHeight: 1.6 }}>{alert}</span>
-            </Alert>
-          ))}
-
-          <div style={{
-            background: theme.colors.secondaryLight,
-            border: `1px solid ${theme.colors.secondary}30`,
-            borderRadius: theme.radii.lg,
-            padding: 16,
-            marginTop: 8,
-          }}>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 16,
-              fontWeight: theme.typography.weightBold,
-              color: theme.colors.secondaryDark,
-              marginBottom: 12,
-            }}>
-              ✅ Stay Safe in Goa
+      {/* ══════════════════════════════════════════════════
+          TAB: HIDDEN GEMS
+      ══════════════════════════════════════════════════ */}
+      {tab === "gems" && (
+        <div className="gg-content gg-dark-content">
+          <div style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+            <div className="gg-section-head">
+              <p className="gg-eyebrow-light">The Goa Most Tourists Miss</p>
+              <h2 className="gg-section-title-light"
+                style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+                Hidden Goa
+              </h2>
+              <p className="gg-section-sub-light">Six places that will make your Goa different from everyone else's.</p>
             </div>
-            <div style={{ fontSize: 13, color: theme.colors.textBody, lineHeight: 1.9 }}>
-              • Save Goa Police helpline:{" "}
-              <strong style={{ color: theme.colors.secondary }}>100</strong><br />
-              • Tourist helpline:{" "}
-              <strong style={{ color: theme.colors.secondary }}>1800-209-7767</strong><br />
-              • Keep copies of your ID documents<br />
-              • Share your location with trusted contacts<br />
-              • Use GoaGuide AI for any suspicious price quotes
+            <div className="gg-gems-list">
+              {GOA.hiddenGems.map((g, i) => (
+                <div key={i} className="gg-gem-card">
+                  <div className="gg-gem-num">
+                    {String(i+1).padStart(2,"0")}
+                  </div>
+                  <div className="gg-gem-body">
+                    <h3 className="gg-gem-name">{g.name}</h3>
+                    <div className="gg-gem-area">📍 {g.area}</div>
+                    <div className="gg-gem-how">🚗 {g.howToGet}</div>
+                    <p className="gg-gem-desc">{g.desc}</p>
+                    <div className="gg-gem-best">Best time: {g.bestTime}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
-      `}</style>
+      {/* ══════════════════════════════════════════════════
+          TAB: PRICES
+      ══════════════════════════════════════════════════ */}
+      {tab === "prices" && (
+        <div className="gg-content"
+          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div className="gg-section-head">
+            <p className="gg-eyebrow">Fair Price Index</p>
+            <h2 className="gg-section-title"
+              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+              What everything<br />should actually cost
+            </h2>
+          </div>
+
+          <div className="gg-price-alert">
+            <span className="gg-price-alert-icon">⚠</span>
+            <div>
+              <div className="gg-price-alert-title">Always use the pre-paid counter inside Goa Airport</div>
+              <div className="gg-price-alert-sub">Outside touts quote 2–3× the fair price. Show this screen if needed.</div>
+            </div>
+          </div>
+
+          <div className="gg-price-table">
+            {GOA.taxi.map((r, i) => (
+              <div key={i} className="gg-price-row">
+                <div className="gg-price-route">
+                  <div className="gg-price-from">{r.from}</div>
+                  {r.to !== r.from && (
+                    <>
+                      <div className="gg-price-arrow">↓</div>
+                      <div className="gg-price-to">{r.to}</div>
+                    </>
+                  )}
+                  {r.time !== "—" && <div className="gg-price-time">🕐 {r.time}</div>}
+                </div>
+                <div className="gg-price-amount">{r.price}</div>
+                {r.tip && <div className="gg-price-tip">{r.tip}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Budget guides */}
+          <h3 className="gg-sub-heading" style={{ marginTop: 48 }}>Daily Budget Guides</h3>
+          <div className="gg-budget-grid"
+            style={{ gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)" }}>
+            {Object.entries(GOA.budgets).map(([key, b]) => (
+              <div key={key} className={`gg-budget-card gg-budget-${key}`}>
+                <div className="gg-budget-label">{key.charAt(0).toUpperCase() + key.slice(1)}</div>
+                <div className="gg-budget-amount">{b.label}</div>
+                <div className="gg-budget-rows">
+                  <div className="gg-budget-row"><span>🏨 Stay</span><span>{b.accommodation}</span></div>
+                  <div className="gg-budget-row"><span>🍽️ Food</span><span>{b.food}</span></div>
+                  <div className="gg-budget-row"><span>🛵 Transport</span><span>{b.transport}</span></div>
+                  <div className="gg-budget-row"><span>🎯 Activities</span><span>{b.activities}</span></div>
+                </div>
+                <div className="gg-budget-tips">
+                  {b.tips.map((t,i) => <div key={i} className="gg-budget-tip">· {t}</div>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB: FOOD GUIDE
+      ══════════════════════════════════════════════════ */}
+      {tab === "food" && (
+        <div className="gg-content"
+          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div className="gg-section-head">
+            <p className="gg-eyebrow">The Goa Table</p>
+            <h2 className="gg-section-title"
+              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+              What you must eat in Goa
+            </h2>
+          </div>
+          <div className="gg-must-eat-grid"
+            style={{ gridTemplateColumns: isMobile ? "1fr" : "repeat(2,1fr)" }}>
+            {GOA.foodGuide.mustEat.map((f, i) => (
+              <div key={i} className="gg-food-card">
+                <div className="gg-food-top">
+                  <h3 className="gg-food-name">{f.dish}</h3>
+                  <span className="gg-food-price">{f.price}</span>
+                </div>
+                <p className="gg-food-desc">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="gg-sub-heading" style={{ marginTop: 48 }}>Markets</h3>
+          <div className="gg-cards">
+            {GOA.foodGuide.markets.map((m, i) => (
+              <div key={i} className="gg-market-card">
+                <div className="gg-market-top">
+                  <h3 className="gg-market-name">{m.name}</h3>
+                  <span className="gg-market-timing">{m.timing}</span>
+                </div>
+                <p className="gg-market-desc">{m.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB: SEASON
+      ══════════════════════════════════════════════════ */}
+      {tab === "season" && (
+        <div className="gg-content gg-dark-content">
+          <div style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+            <div className="gg-section-head">
+              <p className="gg-eyebrow-light">Seasonal Guide</p>
+              <h2 className="gg-section-title-light"
+                style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+                When to visit Goa
+              </h2>
+            </div>
+            <div className="gg-season-list">
+              {GOA.seasonal.map((s, i) => (
+                <div key={i} className="gg-season-card">
+                  <div className="gg-season-rule" />
+                  <div className="gg-season-month">{s.month}</div>
+                  <div className="gg-season-vibe">{s.vibe}</div>
+                  <div className="gg-season-crowd">
+                    <span className="gg-season-label">Crowds</span>
+                    <span>{s.crowd}</span>
+                  </div>
+                  <div className="gg-season-weather">
+                    <span className="gg-season-label">Weather</span>
+                    <span>{s.weather}</span>
+                  </div>
+                  <div className="gg-season-best">
+                    <span className="gg-season-label">Best for</span>
+                    <span>{s.bestFor}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB: SCAMS
+      ══════════════════════════════════════════════════ */}
+      {tab === "scams" && (
+        <div className="gg-content"
+          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div className="gg-section-head">
+            <p className="gg-eyebrow" style={{ color: "#A83232" }}>Stay Safe</p>
+            <h2 className="gg-section-title"
+              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
+              Tourist scams in Goa —<br />
+              <em style={{ color: "#2D6A4F" }}>and how to beat them</em>
+            </h2>
+          </div>
+
+          <div className="gg-scam-list">
+            {GOA.scams.map((s, i) => (
+              <div key={i} className="gg-scam-card">
+                <div className="gg-scam-header">
+                  <h3 className="gg-scam-title">{s.title}</h3>
+                  <span className={`gg-severity gg-severity-${s.severity === "Very Common" || s.severity === "Serious" ? "high" : "mid"}`}>
+                    {s.severity}
+                  </span>
+                </div>
+                <p className="gg-scam-desc">{s.desc}</p>
+                <div className="gg-scam-fix">
+                  <span className="gg-fix-icon">✓</span>
+                  <span>{s.fix}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Emergency numbers */}
+          <div className="gg-emergency">
+            <h3 className="gg-sub-heading" style={{ color: "white" }}>Emergency Numbers</h3>
+            <div className="gg-emergency-grid"
+              style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
+              {GOA.emergencies.map((e, i) => (
+                <div key={i} className="gg-emergency-card">
+                  <div className="gg-emergency-service">{e.service}</div>
+                  <div className="gg-emergency-number">{e.number}</div>
+                  {e.note && <div className="gg-emergency-note">{e.note}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

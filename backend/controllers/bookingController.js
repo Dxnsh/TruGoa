@@ -3,16 +3,28 @@ import Business from "../models/Business.js";
 
 /* ─────────────────────────────────────────────
    POST /api/bookings
-   Tourist creates a new booking request
+   Guest or tourist creates a booking (no auth required)
 ───────────────────────────────────────────── */
-export const createBooking = async (req, res) => {
-  try {
-    const { businessId, bookingDate, timeSlot, guests, specialRequest } = req.body;
 
-    // Validate required fields
-    if (!businessId || !bookingDate || !timeSlot || !guests) {
+
+
+export const createBooking = async (req, res) => {
+  console.log("BOOKING REQ BODY:", req.body);
+  try {
+    const {
+      businessId,
+      bookingDate,
+      timeSlot,
+      guests,
+      specialRequest,
+      customerName,
+      customerEmail,
+      customerPhone,
+    } = req.body;
+
+    if (!businessId || !bookingDate || !timeSlot || !guests || !customerName || !customerEmail) {
       return res.status(400).json({
-        message: "businessId, bookingDate, timeSlot and guests are required.",
+        message: "Name, email, businessId, bookingDate, timeSlot and guests are required.",
       });
     }
 
@@ -22,27 +34,21 @@ export const createBooking = async (req, res) => {
     }
 
     const booking = await Booking.create({
-      user:    req.user._id,
-      business: business._id,
-      owner:   business.owner,
-
+      user:           req.user?._id || null,
+      business:       business._id,
+      owner:          business.owner || null,
       bookingDate,
       timeSlot,
-      guests,
+      guests:         parseInt(guests, 10),
       specialRequest: specialRequest || "",
-
-      // Snapshot tourist contact at booking time
-      customerName:  req.user.name,
-      customerEmail: req.user.email,
-      customerPhone: req.user.phone || "",
-
-      status:        "pending",
-      paymentStatus: "unpaid",
-      source:        "web",
+      customerName,
+      customerEmail,
+      customerPhone:  customerPhone || "",
+      status:         "pending",
+      source:         "web",
     });
 
-    // Populate for rich response
-    await booking.populate("business", "name location images category");
+    await booking.populate("business", "name location images");
 
     res.status(201).json({
       success: true,
@@ -85,8 +91,7 @@ export const getBookingById = async (req, res) => {
       return res.status(404).json({ message: "Booking not found." });
     }
 
-    // Only the booking owner can view it
-    if (booking.user.toString() !== req.user._id.toString()) {
+    if (booking.user?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorised to view this booking." });
     }
 
@@ -100,7 +105,6 @@ export const getBookingById = async (req, res) => {
 /* ─────────────────────────────────────────────
    PATCH /api/bookings/:id/cancel
    Tourist cancels their own booking
-   Only allowed when status is pending or confirmed
 ───────────────────────────────────────────── */
 export const cancelBooking = async (req, res) => {
   try {
@@ -110,12 +114,10 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found." });
     }
 
-    // Ownership check
-    if (booking.user.toString() !== req.user._id.toString()) {
+    if (booking.user?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorised to cancel this booking." });
     }
 
-    // Can only cancel if pending or confirmed
     const cancellableStatuses = ["pending", "confirmed"];
     if (!cancellableStatuses.includes(booking.status)) {
       return res.status(400).json({
@@ -128,11 +130,7 @@ export const cancelBooking = async (req, res) => {
     booking.cancelledReason = req.body.reason || "Cancelled by tourist";
     await booking.save();
 
-    res.json({
-      success: true,
-      message: "Booking cancelled successfully.",
-      booking,
-    });
+    res.json({ success: true, message: "Booking cancelled successfully.", booking });
   } catch (error) {
     console.error("cancelBooking error:", error);
     res.status(500).json({ message: error.message });

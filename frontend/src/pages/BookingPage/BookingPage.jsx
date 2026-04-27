@@ -1,420 +1,9 @@
-// import { useState, useEffect } from "react";
-// import { useNavigate, useParams } from "react-router-dom";
-// import {
-//   ArrowLeft,
-//   CalendarDays,
-//   Clock3,
-//   Users,
-//   MapPin,
-//   Phone,
-//   Mail,
-//   CheckCircle2,
-// } from "lucide-react";
-
-// import {
-//   theme,
-//   PrimaryButton,
-//   Card,
-//   Input,
-//   SectionHeading,
-// } from "../../Theme";
-
-// const BookingPage = () => {
-//   const navigate = useNavigate();
-//   const { id } = useParams();
-
-//   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-//   const [submitted, setSubmitted] = useState(false);
-
-//   useEffect(() => {
-//     const resize = () => setIsMobile(window.innerWidth < 900);
-//     window.addEventListener("resize", resize);
-//     return () => window.removeEventListener("resize", resize);
-//   }, []);
-
-//   // temp business data (later fetch by ID)
-//   const business = {
-//     id,
-//     name: "Britto's Restaurant",
-//     location: "Baga Beach, Goa",
-//     image:
-//       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1400&auto=format&fit=crop",
-//     rating: 4.6,
-//     reviews: 1240,
-//     price: "₹400–₹800 per person",
-//   };
-
-//   const [form, setForm] = useState({
-//     name: "",
-//     email: "",
-//     phone: "",
-//     date: "",
-//     time: "",
-//     guests: "2",
-//     notes: "",
-//   });
-
-//   const updateField = (key, value) =>
-//     setForm((prev) => ({ ...prev, [key]: value }));
-
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-
-//     console.log({
-//       businessId: id,
-//       ...form,
-//     });
-
-//     setSubmitted(true);
-//   };
-
-//   /* ---------- SUCCESS SCREEN ---------- */
-//   if (submitted) {
-//     return (
-//       <div
-//         style={{
-//           minHeight: "100vh",
-//           background: theme.colors.bgPage,
-//           display: "flex",
-//           justifyContent: "center",
-//           alignItems: "center",
-//           padding: theme.spacing.lg,
-//         }}
-//       >
-//         <Card
-//           style={{
-//             maxWidth: 560,
-//             width: "100%",
-//             textAlign: "center",
-//             padding: isMobile ? 28 : 42,
-//           }}
-//         >
-//           <CheckCircle2 size={56} color={theme.colors.secondary} />
-
-//           <h1
-//             style={{
-//               fontFamily: theme.typography.fontDisplay,
-//               fontSize: isMobile ? 36 : 52,
-//               margin: "18px 0 10px",
-//               color: theme.colors.textPrimary,
-//             }}
-//           >
-//             Booking Request Sent
-//           </h1>
-
-//           <p
-//             style={{
-//               color: theme.colors.textBody,
-//               lineHeight: 1.8,
-//               marginBottom: 28,
-//             }}
-//           >
-//             Your reservation request has been sent to{" "}
-//             <strong>{business.name}</strong>. They’ll confirm shortly.
-//           </p>
-
-//           <PrimaryButton onClick={() => navigate("/")}>
-//             Back to Home
-//           </PrimaryButton>
-//         </Card>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div
-//       style={{
-//         background: theme.colors.bgPage,
-//         minHeight: "100vh",
-//       }}
-//     >
-//       {/* HERO */}
-//       <div
-//         style={{
-//           height: isMobile ? 280 : 380,
-//           position: "relative",
-//           backgroundImage: `
-//             linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)),
-//             url(${business.image})
-//           `,
-//           backgroundSize: "cover",
-//           backgroundPosition: "center",
-//         }}
-//       >
-//         <button
-//           onClick={() => navigate(-1)}
-//           style={{
-//             position: "absolute",
-//             top: 24,
-//             left: 24,
-//             width: 44,
-//             height: 44,
-//             borderRadius: theme.radii.full,
-//             border: "none",
-//             background: "rgba(255,255,255,.12)",
-//             color: "white",
-//             cursor: "pointer",
-//           }}
-//         >
-//           <ArrowLeft size={18} />
-//         </button>
-
-//         <div
-//           style={{
-//             position: "absolute",
-//             left: isMobile ? 20 : 56,
-//             bottom: 32,
-//             right: 20,
-//             color: "white",
-//           }}
-//         >
-//           <p
-//             style={{
-//               fontSize: theme.typography.sizeXs,
-//               letterSpacing: "2px",
-//               textTransform: "uppercase",
-//               marginBottom: 10,
-//             }}
-//           >
-//             Reserve Your Experience
-//           </p>
-
-//           <h1
-//             style={{
-//               fontFamily: theme.typography.fontDisplay,
-//               fontSize: isMobile ? 44 : 76,
-//               lineHeight: 1,
-//               margin: 0,
-//             }}
-//           >
-//             {business.name}
-//           </h1>
-
-//           <div
-//             style={{
-//               display: "flex",
-//               gap: 14,
-//               flexWrap: "wrap",
-//               marginTop: 12,
-//               fontSize: theme.typography.sizeSm,
-//             }}
-//           >
-//             <span>⭐ {business.rating}</span>
-//             <span>{business.reviews} reviews</span>
-//             <span>{business.price}</span>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* CONTENT */}
-//       <div
-//         style={{
-//           maxWidth: 1320,
-//           margin: "0 auto",
-//           padding: isMobile
-//             ? "24px 16px 60px"
-//             : "48px 24px 80px",
-//           display: "grid",
-//           gridTemplateColumns: isMobile ? "1fr" : "1.35fr .85fr",
-//           gap: 24,
-//         }}
-//       >
-//         {/* FORM */}
-//         <Card style={{ padding: isMobile ? 22 : 34 }}>
-//           <SectionHeading
-//             title="Complete Your Reservation"
-//             subtitle="Secure your place in just a minute."
-//           />
-
-//           <form onSubmit={handleSubmit}>
-//             <div
-//               style={{
-//                 display: "grid",
-//                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-//                 gap: 16,
-//               }}
-//             >
-//               <Input
-//                 placeholder="Full Name"
-//                 value={form.name}
-//                 onChange={(e) => updateField("name", e.target.value)}
-//               />
-
-//               <Input
-//                 icon={<Phone size={16} />}
-//                 placeholder="Phone Number"
-//                 value={form.phone}
-//                 onChange={(e) => updateField("phone", e.target.value)}
-//               />
-
-//               <Input
-//                 icon={<Mail size={16} />}
-//                 placeholder="Email Address"
-//                 value={form.email}
-//                 onChange={(e) => updateField("email", e.target.value)}
-//               />
-
-//               <Input
-//                 icon={<CalendarDays size={16} />}
-//                 type="date"
-//                 value={form.date}
-//                 onChange={(e) => updateField("date", e.target.value)}
-//               />
-
-//               <select
-//                 value={form.time}
-//                 onChange={(e) => updateField("time", e.target.value)}
-//                 style={selectStyle}
-//               >
-//                 <option value="">Select Time</option>
-//                 <option>7:00 PM</option>
-//                 <option>7:30 PM</option>
-//                 <option>8:00 PM</option>
-//                 <option>8:30 PM</option>
-//                 <option>9:00 PM</option>
-//               </select>
-
-//               <select
-//                 value={form.guests}
-//                 onChange={(e) => updateField("guests", e.target.value)}
-//                 style={selectStyle}
-//               >
-//                 <option>1</option>
-//                 <option>2</option>
-//                 <option>3</option>
-//                 <option>4</option>
-//                 <option>5</option>
-//                 <option>6+</option>
-//               </select>
-//             </div>
-
-//             <textarea
-//               placeholder="Special requests (window seat, birthday, allergies...)"
-//               value={form.notes}
-//               onChange={(e) => updateField("notes", e.target.value)}
-//               style={{
-//                 width: "100%",
-//                 marginTop: 16,
-//                 minHeight: 120,
-//                 border: `1px solid ${theme.colors.borderLight}`,
-//                 borderRadius: theme.radii.md,
-//                 padding: 14,
-//                 fontSize: theme.typography.sizeMd,
-//                 fontFamily: theme.typography.fontBody,
-//                 resize: "vertical",
-//                 outline: "none",
-//               }}
-//             />
-
-//             <PrimaryButton
-//               style={{
-//                 width: "100%",
-//                 marginTop: 18,
-//                 padding: "16px 24px",
-//               }}
-//             >
-//               Confirm Booking
-//             </PrimaryButton>
-//           </form>
-//         </Card>
-
-//         {/* SUMMARY */}
-//         <Card style={{ padding: isMobile ? 22 : 30, height: "fit-content" }}>
-//           <SectionHeading
-//             title="Booking Summary"
-//             subtitle="Review before submitting."
-//           />
-
-//           <SummaryRow
-//             icon={<MapPin size={18} />}
-//             text={business.location}
-//           />
-
-//           <SummaryRow
-//             icon={<CalendarDays size={18} />}
-//             text={form.date || "Choose date"}
-//           />
-
-//           <SummaryRow
-//             icon={<Clock3 size={18} />}
-//             text={form.time || "Choose time"}
-//           />
-
-//           <SummaryRow
-//             icon={<Users size={18} />}
-//             text={`${form.guests} Guests`}
-//           />
-
-//           <div
-//             style={{
-//               marginTop: 22,
-//               paddingTop: 18,
-//               borderTop: `1px solid ${theme.colors.borderLight}`,
-//             }}
-//           >
-//             <p
-//               style={{
-//                 fontSize: theme.typography.sizeSm,
-//                 color: theme.colors.textMuted,
-//               }}
-//             >
-//               Estimated Spend
-//             </p>
-
-//             <h3
-//               style={{
-//                 marginTop: 6,
-//                 color: theme.colors.secondary,
-//                 fontSize: 30,
-//               }}
-//             >
-//               ₹2,000 – ₹3,500
-//             </h3>
-//           </div>
-//         </Card>
-//       </div>
-//     </div>
-//   );
-// };
-
-// /* ---------- Helpers ---------- */
-
-// const SummaryRow = ({ icon, text }) => (
-//   <div
-//     style={{
-//       display: "flex",
-//       alignItems: "center",
-//       gap: 10,
-//       marginBottom: 14,
-//       color: theme.colors.textBody,
-//       fontSize: theme.typography.sizeMd,
-//     }}
-//   >
-//     {icon}
-//     <span>{text}</span>
-//   </div>
-// );
-
-// const selectStyle = {
-//   width: "100%",
-//   height: 44,
-//   border: `1px solid ${theme.colors.borderLight}`,
-//   borderRadius: theme.radii.md,
-//   padding: "0 12px",
-//   fontSize: theme.typography.sizeMd,
-//   fontFamily: theme.typography.fontBody,
-//   outline: "none",
-//   background: "white",
-// };
-
-// export default BookingPage;
 
 import { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Clock3, Users, MapPin, CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import { TouristContext } from "../../context/TouristContext";
-import { getBusinesses } from "../../services/api";
-import { createBooking } from "../../services/bookingApi";
+import { getBusinessById, createBooking } from "../../services/api";;
 import useIsMobile from "../../hooks/useIsMobile";
 import "./BookingPage.css";
 
@@ -442,6 +31,9 @@ export default function BookingPage() {
   const [booking,    setBooking   ] = useState(null);
 
   const [form, setForm] = useState({
+    customerName:   tourist?.name  || "",
+    customerEmail:  tourist?.email || "",
+    customerPhone:  "",
     bookingDate:    "",
     timeSlot:       "",
     guests:         "2",
@@ -454,7 +46,7 @@ export default function BookingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getBusiness(id);          // GET /api/businesses/:id
+        const data = await getBusinessById(id);          // GET /api/businesses/:id
         setBusiness(data);
       } catch (e) {
         setBizError("Could not load business details.");
@@ -477,48 +69,28 @@ export default function BookingPage() {
 
   /* ── submit ──────────────────────────────────────────── */
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!tourist) return;       // guard — shouldn't reach here but safe
-    if (!form.bookingDate || !form.timeSlot) return;
+  e.preventDefault();
+  setSubmitting(true); setSubmitError(null);
+  try {
+    const result = await createBooking({
+      businessId:     id,
+      bookingDate:    form.bookingDate,
+      timeSlot:       form.timeSlot,
+      guests:         parseInt(form.guests, 10),
+      specialRequest: form.specialRequest,
+      customerName:   form.customerName,    // ← add these 3
+      customerEmail:  form.customerEmail,
+      customerPhone:  form.customerPhone,
+    });
+    setBooking(result.booking);
+    setSubmitted(true);
+  } catch (e) {
+    setSubmitError(e.message || "Something went wrong.");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const result = await createBooking({
-        businessId:     id,
-        bookingDate:    form.bookingDate,
-        timeSlot:       form.timeSlot,
-        guests:         parseInt(form.guests, 10),
-        specialRequest: form.specialRequest,
-      });
-      setBooking(result.booking);
-      setSubmitted(true);
-    } catch (e) {
-      setSubmitError(e.message || "Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /* ── auth gate ───────────────────────────────────────── */
-  if (!tourist) return (
-    <div className="bp-root bp-gate">
-      <div className="bp-gate-card">
-        <Lock size={40} className="bp-gate-icon" />
-        <h2 className="bp-gate-title">Sign in to book</h2>
-        <p className="bp-gate-sub">
-          You need a TruGoa tourist account to make a reservation.
-          It takes less than a minute.
-        </p>
-        <button className="bp-btn-gold bp-gate-btn" onClick={() => navigate("/")}>
-          Sign in with Google
-        </button>
-        <button className="bp-btn-ghost" onClick={() => navigate(-1)}>
-          ← Go back
-        </button>
-      </div>
-    </div>
-  );
 
   /* ── business loading / error ────────────────────────── */
   if (bizLoading) return (
@@ -569,8 +141,8 @@ export default function BookingPage() {
           <button className="bp-btn-gold" onClick={() => navigate("/my-bookings")}>
             View My Bookings
           </button>
-          <button className="bp-btn-ghost-dark" onClick={() => navigate("/")}>
-            Back to Home
+          <button className="bp-btn-ghost-dark" onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -634,12 +206,35 @@ export default function BookingPage() {
         <div className="bp-form-card">
           <p className="bp-section-eyebrow">Your Details</p>
           <h2 className="bp-section-title">Complete your reservation</h2>
-          <p className="bp-section-sub">
-            Logged in as <strong>{tourist?.name}</strong> · {tourist?.email}
+           <p className="bp-section-sub">
+            Booking confirmation will be sent to your registered email.
           </p>
 
-          <form onSubmit={handleSubmit} className="bp-form">
+          <form onSubmit={handleSubmit} className="bp-form">  
+          <div className="bp-tourist-info">
+            <div className="bp-tourist-avatar">
+              {tourist?.avatar
+                ? <img src={tourist.avatar} alt={tourist.name} referrerPolicy="no-referrer" />
+                : <span>{tourist?.name?.[0]?.toUpperCase()}</span>
+              }
+            </div>
+            <div className="bp-tourist-details">
+              <p className="bp-tourist-name">{tourist?.name}</p>
+              <p className="bp-tourist-email">{tourist?.email}</p>
+            </div>
+            <div className="bp-tourist-badge">✓ Verified</div>
+          </div>
 
+          {/* Phone — only field they need to fill */}
+          <div className="bp-field">
+            <label className="bp-label">Phone Number <span style={{color:"rgba(0,0,0,0.3)",fontWeight:400}}>(optional)</span></label>
+            <input
+              className="bp-input"
+              placeholder="+91 98765 43210"
+              value={form.customerPhone}
+              onChange={e => set("customerPhone", e.target.value)}
+            />
+          </div>
             {/* Date + Time */}
             <div className="bp-field-group"
               style={{ gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>

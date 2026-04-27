@@ -4,9 +4,8 @@ import { ArrowLeft, CalendarDays, Clock3, Users, MapPin, X, AlertCircle } from "
 import { TouristContext } from "../../context/TouristContext";
 import { getMyBookings, cancelBooking } from "../../services/api";
 import useIsMobile from "../../hooks/useIsMobile";
-import "./MyBookingPage.css"
+import "./MyBookingPage.css";
 
-/* ── status display config ───────────────────────────────── */
 const STATUS = {
   pending:   { label: "Awaiting Confirmation", color: "#B86A00", bg: "#FEF3E0", dot: "#F0A429" },
   confirmed: { label: "Confirmed",             color: "#1A5C38", bg: "#E8F5EE", dot: "#4ade80" },
@@ -16,33 +15,31 @@ const STATUS = {
   no_show:   { label: "No Show",               color: "#7A7068", bg: "#F0ECE6", dot: "#AAA098" },
 };
 
-/* ══════════════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════════════ */
 export default function MyBookingsPage() {
-  const navigate   = useNavigate();
-  const isMobile   = useIsMobile();
-  const { tourist }= useContext(TouristContext);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { tourist, touristLoading } = useContext(TouristContext);
 
-  const [bookings, setBookings] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [filter,   setFilter]   = useState("all");   // all | upcoming | past
-
-  // Cancel confirmation modal state
-  const [cancelTarget, setCancelTarget] = useState(null); // booking id
+  const [bookings,     setBookings    ] = useState([]);
+  const [loading,      setLoading     ] = useState(true);
+  const [error,        setError       ] = useState(null);
+  const [filter,       setFilter      ] = useState("all");
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
-  const [cancelling,   setCancelling]   = useState(false);
-  const [cancelError,  setCancelError]  = useState(null);
+  const [cancelling,   setCancelling  ] = useState(false);
+  const [cancelError,  setCancelError ] = useState(null);
 
-  /* ── redirect if not logged in ───────────────────────── */
+  // ── ALL hooks declared first — no conditional returns above these ──
+
+  // Redirect if not logged in
   useEffect(() => {
+    if (touristLoading) return;
     if (!tourist) navigate("/");
-  }, [tourist, navigate]);
+  }, [tourist, touristLoading, navigate]);
 
-  /* ── fetch bookings ──────────────────────────────────── */
+  // Fetch bookings only when tourist is confirmed
   useEffect(() => {
-    if (!tourist) return;
+    if (touristLoading || !tourist) return;
     (async () => {
       try {
         const data = await getMyBookings();
@@ -53,17 +50,16 @@ export default function MyBookingsPage() {
         setLoading(false);
       }
     })();
-  }, [tourist]);
+  }, [tourist, touristLoading]);
 
-  /* ── cancel handler ──────────────────────────────────── */
   const handleCancel = async () => {
     if (!cancelTarget) return;
     setCancelling(true); setCancelError(null);
     try {
       await cancelBooking(cancelTarget, cancelReason);
-      setBookings(prev => prev.map(b =>
-        b._id === cancelTarget ? { ...b, status: "cancelled" } : b
-      ));
+      setBookings(prev =>
+        prev.map(b => b._id === cancelTarget ? { ...b, status: "cancelled" } : b)
+      );
       setCancelTarget(null); setCancelReason("");
     } catch (e) {
       setCancelError(e.message || "Could not cancel booking.");
@@ -72,21 +68,25 @@ export default function MyBookingsPage() {
     }
   };
 
-  /* ── filter bookings ─────────────────────────────────── */
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  // ── Conditional returns AFTER all hooks ──────────────────
 
-  const displayed = bookings.filter(b => {
-    if (filter === "all") return true;
-    const d = new Date(b.bookingDate);
-    if (filter === "upcoming") return d >= today && b.status !== "cancelled" && b.status !== "rejected";
-    if (filter === "past")     return d < today  || b.status === "completed" || b.status === "cancelled";
-    return true;
-  });
+  if (touristLoading) return (
+    <div className="mb-root mb-loading">
+      <div className="mb-loading-ring" />
+      <p className="mb-loading-text">Loading…</p>
+    </div>
+  );
 
-  const canCancel = (b) => ["pending","confirmed"].includes(b.status);
+  if (!tourist) return (
+    <div className="mb-root mb-gate">
+      <div className="mb-gate-card">
+        <h2 className="mb-empty-title">Sign in to view bookings</h2>
+        <p className="mb-empty-sub">Sign in with Google to manage your reservations.</p>
+        <button className="mb-btn-green" onClick={() => navigate("/")}>Go to Home</button>
+      </div>
+    </div>
+  );
 
-  /* ── loading ─────────────────────────────────────────── */
   if (loading) return (
     <div className="mb-root mb-loading">
       <div className="mb-loading-ring" />
@@ -94,14 +94,26 @@ export default function MyBookingsPage() {
     </div>
   );
 
-  /* ═══════════════════════════════════════════════════════
-     RENDER
-  ══════════════════════════════════════════════════════ */
+  // ── Filter logic ─────────────────────────────────────────
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const displayed = bookings.filter(b => {
+    if (filter === "all") return true;
+    const d = new Date(b.bookingDate);
+    if (filter === "upcoming") return d >= today && b.status !== "cancelled" && b.status !== "rejected";
+    if (filter === "past")     return d < today  || b.status === "completed"  || b.status === "cancelled";
+    return true;
+  });
+
+  const canCancel = (b) => ["pending", "confirmed"].includes(b.status);
+
   return (
     <div className="mb-root">
 
-      {/* ── TOP BAR ──────────────────────────────────── */}
-      <div className="mb-topbar"
+      {/* TOP BAR */}
+      {/* <div className="mb-topbar"
         style={{ padding: isMobile ? "0 20px" : "0 clamp(32px,6vw,96px)" }}>
         <button className="mb-back" onClick={() => navigate(-1)}>
           <ArrowLeft size={15} /> Back
@@ -110,12 +122,12 @@ export default function MyBookingsPage() {
           <span style={{ color: "#2D6A4F" }}>Tru</span>
           <span style={{ color: "#F0B429" }}>Goa</span>
         </div>
-      </div>
+      </div> */}
 
       <div className="mb-inner"
         style={{ padding: isMobile ? "40px 20px 80px" : "56px clamp(32px,6vw,96px) 96px" }}>
 
-        {/* ── HEADER ───────────────────────────────── */}
+        {/* HEADER */}
         <div className="mb-header">
           <div>
             <p className="mb-eyebrow">My Account</p>
@@ -123,19 +135,16 @@ export default function MyBookingsPage() {
               style={{ fontSize: isMobile ? "clamp(40px,11vw,62px)" : "clamp(52px,6vw,88px)" }}>
               Your Bookings
             </h1>
-            {tourist?.name && (
-              <p className="mb-welcome">
-                Welcome back, <em>{tourist.name.split(" ")[0]}</em>
-              </p>
-            )}
+            <p className="mb-welcome">
+              Welcome back, <em>{tourist.name.split(" ")[0]}</em>
+            </p>
           </div>
 
-          {/* Stats row */}
           <div className="mb-stats">
             {[
-              { num: bookings.length, label: "Total" },
+              { num: bookings.length,                                        label: "Total"     },
               { num: bookings.filter(b => b.status === "confirmed").length,  label: "Confirmed" },
-              { num: bookings.filter(b => b.status === "pending").length,    label: "Pending" },
+              { num: bookings.filter(b => b.status === "pending").length,    label: "Pending"   },
               { num: bookings.filter(b => b.status === "completed").length,  label: "Completed" },
             ].map(s => (
               <div key={s.label} className="mb-stat">
@@ -149,9 +158,9 @@ export default function MyBookingsPage() {
 
         <div className="mb-rule" />
 
-        {/* ── FILTER TABS ──────────────────────────── */}
+        {/* FILTER TABS */}
         <div className="mb-filters">
-          {["all","upcoming","past"].map(f => (
+          {["all", "upcoming", "past"].map(f => (
             <button key={f}
               className={`mb-filter-btn ${filter === f ? "active" : ""}`}
               onClick={() => setFilter(f)}>
@@ -160,15 +169,13 @@ export default function MyBookingsPage() {
           ))}
         </div>
 
-        {/* ── ERROR ─────────────────────────────────── */}
+        {/* ERROR */}
         {error && (
-          <div className="mb-error">
-            <AlertCircle size={15} /> {error}
-          </div>
+          <div className="mb-error"><AlertCircle size={15} /> {error}</div>
         )}
 
-        {/* ── EMPTY ─────────────────────────────────── */}
-        {!loading && displayed.length === 0 && (
+        {/* EMPTY STATE */}
+        {displayed.length === 0 && (
           <div className="mb-empty">
             <div className="mb-empty-icon">🌴</div>
             <h3 className="mb-empty-title">
@@ -179,25 +186,19 @@ export default function MyBookingsPage() {
                 ? "When you book a place through TruGoa, it'll appear here."
                 : "Nothing matching this filter."}
             </p>
-            {filter === "all" && (
-              <button className="mb-btn-green" onClick={() => navigate("/listings")}>
-                Explore Places →
-              </button>
-            )}
-            {filter !== "all" && (
-              <button className="mb-btn-outline" onClick={() => setFilter("all")}>
-                Show all bookings
-              </button>
-            )}
+            {filter === "all"
+              ? <button className="mb-btn-green" onClick={() => navigate("/listings")}>Explore Places →</button>
+              : <button className="mb-btn-outline" onClick={() => setFilter("all")}>Show all bookings</button>
+            }
           </div>
         )}
 
-        {/* ── BOOKING CARDS ────────────────────────── */}
+        {/* BOOKING CARDS */}
         <div className="mb-cards">
           {displayed.map((b, i) => {
-            const s   = STATUS[b.status] || STATUS.pending;
-            const img = b.business?.images?.[0] || null;
-            const d   = new Date(b.bookingDate);
+            const s       = STATUS[b.status] || STATUS.pending;
+            const img     = b.business?.images?.[0] || null;
+            const d       = new Date(b.bookingDate);
             const dateStr = d.toLocaleDateString("en-IN", { weekday:"short", day:"numeric", month:"long", year:"numeric" });
             const isPast  = d < today || ["completed","cancelled","rejected"].includes(b.status);
 
@@ -206,17 +207,14 @@ export default function MyBookingsPage() {
                 className={`mb-card ${isPast ? "mb-card-past" : ""}`}
                 style={{ animationDelay: `${i * 0.05}s` }}>
 
-                {/* Left: image */}
                 <div className="mb-card-img-wrap">
                   {img
                     ? <img src={img} alt={b.business?.name} className="mb-card-img" />
                     : <div className="mb-card-img-placeholder">🏖️</div>
                   }
-                  {/* Status dot overlay */}
                   <div className="mb-card-status-dot" style={{ background: s.dot }} />
                 </div>
 
-                {/* Right: content */}
                 <div className="mb-card-body">
                   <div className="mb-card-top">
                     <div>
@@ -231,9 +229,7 @@ export default function MyBookingsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="mb-card-ref">
-                      #{b._id?.slice(-6).toUpperCase()}
-                    </div>
+                    <div className="mb-card-ref">#{b._id?.slice(-6).toUpperCase()}</div>
                   </div>
 
                   <div className="mb-card-details">
@@ -259,7 +255,7 @@ export default function MyBookingsPage() {
                     </span>
                     <div className="mb-card-actions">
                       <button className="mb-btn-view"
-                        onClick={() => navigate(`/business/${b.business?._id}`)}>
+                        onClick={() => navigate(`/listings/${b.business?._id}`)}>
                         View Place
                       </button>
                       {canCancel(b) && (
@@ -277,7 +273,7 @@ export default function MyBookingsPage() {
         </div>
       </div>
 
-      {/* ── CANCEL MODAL ─────────────────────────────── */}
+      {/* CANCEL MODAL */}
       {cancelTarget && (
         <div className="mb-modal-overlay" onClick={() => setCancelTarget(null)}>
           <div className="mb-modal" onClick={e => e.stopPropagation()}>
@@ -317,7 +313,6 @@ export default function MyBookingsPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -1,0 +1,47 @@
+.review-form{
+  margin-top: 48px;
+  padding: 36px;
+  background: #faf8f3;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 24px;
+}
+
+.review-form h2{
+  font-size: 32px;
+  margin-bottom: 8px;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.review-form p{
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.review-form input,
+.review-form textarea,
+.review-form select{
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 14px;
+  background: white;
+  font-size: 15px;
+  margin-bottom: 14px;
+  outline: none;
+}
+
+.review-form textarea{
+  min-height: 140px;
+  resize: vertical;
+}
+
+.review-form button{
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 999px;
+  background: #111;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}

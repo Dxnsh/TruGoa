@@ -1,0 +1,361 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+/* ══════════════════════════════════════════════
+   NAVBAR BASE
+══════════════════════════════════════════════ */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  height: 64px;
+  background: rgba(250, 250, 247, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0 clamp(20px, 4vw, 64px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+.navbar-scrolled {
+  background: rgba(250, 250, 247, 0.96);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.07), 0 4px 24px rgba(0,0,0,0.04);
+}
+
+/* ══════════════════════════════════════════════
+   LOGO
+══════════════════════════════════════════════ */
+.navbar-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.logo-tru { color: #2D6A4F; }
+.logo-goa { color: #F0B429; }
+
+/* ══════════════════════════════════════════════
+   DESKTOP NAV LINKS
+══════════════════════════════════════════════ */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-link {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  font-family: 'Instrument Sans', sans-serif;
+  border-radius: 8px;
+  transition: color 0.2s ease, background 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.1px;
+}
+
+.nav-link:hover {
+  color: #1A1F1C;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nav-link.active {
+  color: #1A1F1C;
+  font-weight: 600;
+}
+
+/* Active indicator — thin gold underline dot */
+.nav-active-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: #F0B429;
+  border-radius: 1px;
+}
+
+/* ══════════════════════════════════════════════
+   RIGHT SIDE
+══════════════════════════════════════════════ */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════
+   MOBILE QUICK ICONS
+══════════════════════════════════════════════ */
+.mobile-icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mobile-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  opacity: 0.6;
+}
+
+.mobile-icon-btn:hover { background: rgba(0,0,0,0.06); opacity: 1; }
+.mobile-icon-btn.active {
+  background: rgba(240, 180, 41, 0.12);
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════
+   SIGN IN BUTTON
+══════════════════════════════════════════════ */
+.signin-btn {
+  background: #1A1F1C;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: 'Instrument Sans', sans-serif;
+  transition: background 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.signin-btn:hover {
+  background: #2D6A4F;
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════════════════
+   PROFILE BUTTON
+══════════════════════════════════════════════ */
+.profile-wrap {
+  position: relative;
+}
+
+.profile-btn {
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 50px;
+  padding: 4px 12px 4px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+.profile-btn:hover {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.18);
+}
+
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2D6A4F, #1A5C38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-initial {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+}
+
+.profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A1F1C;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-chevron {
+  font-size: 16px;
+  color: rgba(0,0,0,0.35);
+  display: inline-block;
+  transition: transform 0.25s ease;
+  line-height: 1;
+  transform: rotate(90deg);
+}
+
+.profile-chevron.flipped {
+  transform: rotate(-90deg);
+}
+
+/* ══════════════════════════════════════════════
+   DROPDOWN
+══════════════════════════════════════════════ */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 6px rgba(0,0,0,0.04),
+    0 12px 40px rgba(0,0,0,0.10),
+    0 0 0 0.5px rgba(0,0,0,0.04);
+  overflow: hidden;
+  animation: dropdown-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 300;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* User header */
+.dropdown-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #F7F3EC;
+}
+
+.dropdown-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2D6A4F, #1A5C38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: white;
+}
+
+.dropdown-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dropdown-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1A1F1C;
+  font-family: 'Instrument Sans', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-email {
+  font-size: 11px;
+  color: rgba(0,0,0,0.38);
+  font-family: 'Instrument Sans', sans-serif;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-rule {
+  height: 1px;
+  background: rgba(0,0,0,0.06);
+  margin: 4px 0;
+}
+
+/* Dropdown items */
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(0,0,0,0.72);
+  font-family: 'Instrument Sans', sans-serif;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(0,0,0,0.04);
+  color: #1A1F1C;
+}
+
+.dropdown-item-icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.dropdown-signout {
+  color: rgba(168, 50, 50, 0.8);
+}
+
+.dropdown-signout:hover {
+  background: #FDE8E8;
+  color: #A83232;
+}

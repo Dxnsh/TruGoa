@@ -7,7 +7,7 @@ import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import { PrimaryButton, LoadingState, EmptyState } from "../../Theme";
 
-const FILTERS = ["All", "Restaurants", "Cafes", "Hotels & Stay", "Activities", "Markets", "Beaches", "Verified Only"];
+const FILTERS = ["All", "Restaurant", "Cafes", "Hotels & Stay", "Activities", "Markets", "Beaches", "Verified Only"];
 
 const ListingPage = () => {
   const [businesses, setBusinesses] = useState([]);
@@ -45,7 +45,16 @@ const ListingPage = () => {
   }, []);
 
   // ✅ matchFilter is INSIDE the component, used inside filtered
-  const filtered = businesses.filter(b => {
+  const categoryMap = {
+  Restaurant: "restaurant",
+  Cafes: "cafe",
+  "Hotels & Stay": ["hotel", "stay"],
+  Activities: "activity",
+  Markets: "market",
+  Beaches: "beach",
+};
+
+  const filtered = businesses.filter((b) => {
     const matchSearch =
       !search ||
       b.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,13 +63,17 @@ const ListingPage = () => {
     const matchFilter =
       activeFilter === "All" ||
       (activeFilter === "Verified Only" && b.trust === "verified") ||
-      b.category?.toLowerCase().includes(
-        activeFilter
-          .replace(/s$/, "")
-          .replace("é", "e")
-          .replace(" & stay", "")
-          .toLowerCase()
-      );
+      (() => {
+        const map = categoryMap[activeFilter];
+
+        if (!map) return false;
+
+        if (Array.isArray(map)) {
+          return map.includes(b.category?.toLowerCase());
+        }
+
+        return b.category?.toLowerCase() === map;
+      })();
 
     return matchSearch && matchFilter;
   });
@@ -73,7 +86,8 @@ const ListingPage = () => {
         background: `linear-gradient(135deg, ${theme.colors.secondary} 0%, ${theme.colors.secondaryDark} 100%)`,
         padding: isMobile ? "24px 16px" : `clamp(32px,5vh,56px) ${theme.spacing.pagePadding}`,
       }}>
-        <button
+        
+        {/* <button
           onClick={() => navigate("/")}
           style={{
             background: "rgba(255,255,255,0.15)",
@@ -87,7 +101,7 @@ const ListingPage = () => {
           onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
         >
           ← Back
-        </button>
+        </button> */}
 
         <h1 style={{
           fontFamily: theme.typography.fontDisplay,

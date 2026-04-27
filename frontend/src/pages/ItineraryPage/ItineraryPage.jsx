@@ -1,6 +1,29 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useIsMobile from "../../hooks/useIsMobile";
+import {
+  Waves,
+  Landmark,
+  Map,
+  Music4,
+  Heart,
+  Compass,
+  UtensilsCrossed,
+  Palmtree,
+  Coffee,
+  ShoppingBag,
+  Trees,
+  Sailboat,
+  Sparkles,
+  Moon,
+  Camera,
+  Backpack,
+  Users,
+  Baby,
+  Printer,
+  MapPin,
+  Lightbulb
+} from "lucide-react";
 import "./ItineraryPage.css";
 
 /* ─── constants ─────────────────────────────────────────── */
@@ -20,32 +43,32 @@ const BUDGETS = [
 ];
 
 const VIBES = [
-  { value: "beach",     emoji: "🌊", label: "Beach & Chill",     desc: "Sunsets, shacks, hammocks, the sea" },
-  { value: "heritage",  emoji: "🏛️", label: "Heritage & Culture",desc: "Latin Quarter, spice farms, old churches" },
-  { value: "hidden",    emoji: "🗺️", label: "Off the Map",       desc: "Beaches only locals swim at, secret cafés" },
-  { value: "party",     emoji: "🎶", label: "Party & Nightlife", desc: "Sunburn, Tito's, rooftop clubs, beach raves" },
-  { value: "romantic",  emoji: "🌹", label: "Romantic",          desc: "Private dinners, sunset cruises, boutique villas" },
-  { value: "adventure", emoji: "🏄", label: "Adventure",         desc: "Water sports, trekking, kayaking, paragliding" },
+  { value: "beach",     icon: Waves, label: "Beach & Chill",     desc: "Sunsets, shacks, hammocks, the sea" },
+  { value: "heritage",  icon: Landmark, label: "Heritage & Culture",desc: "Latin Quarter, spice farms, old churches" },
+  { value: "hidden",    icon: Map, label: "Off the Map",       desc: "Beaches only locals swim at, secret cafés" },
+  { value: "party",     icon: Music4, label: "Party & Nightlife", desc: "Sunburn, Tito's, rooftop clubs, beach raves" },
+  { value: "romantic",  icon: Heart, label: "Romantic",          desc: "Private dinners, sunset cruises, boutique villas" },
+  { value: "adventure", icon: Compass, label: "Adventure",         desc: "Water sports, trekking, kayaking, paragliding" },
 ];
 
 const INTERESTS = [
-  { value: "food",       emoji: "🍽️", label: "Food & Dining" },
-  { value: "beaches",    emoji: "🏖️", label: "Beaches" },
-  { value: "cafes",      emoji: "☕",  label: "Cafés & Coffee" },
-  { value: "markets",    emoji: "🛍️", label: "Flea Markets" },
-  { value: "heritage",   emoji: "🕌",  label: "Heritage & History" },
-  { value: "nature",     emoji: "🌿",  label: "Nature & Spice Farms" },
-  { value: "watersports",emoji: "🤿",  label: "Water Sports" },
-  { value: "yoga",       emoji: "🧘",  label: "Yoga & Wellness" },
-  { value: "nightlife",  emoji: "🌙",  label: "Nightlife" },
-  { value: "photo",      emoji: "📷",  label: "Photography Spots" },
+  { value: "food",       icon:UtensilsCrossed, label: "Food & Dining" },
+  { value: "beaches",    icon: Palmtree,   label: "Beaches" },
+  { value: "cafes",      icon:Coffee,      label: "Cafés & Coffee" },
+  { value: "markets",    icon:ShoppingBag, label: "Flea Markets" },
+  { value: "heritage",   icon:Landmark,  label: "Heritage & History" },
+  { value: "nature",     icon:Trees,  label: "Nature & Spice Farms" },
+  { value: "watersports", icon: Sailboat, label: "Water Sports" },
+  { value: "yoga",        icon:Sparkles,  label: "Yoga & Wellness" },
+  { value: "nightlife",   icon: Moon,  label: "Nightlife" },
+  { value: "photo",      icon:Camera,  label: "Photography Spots" },
 ];
 
 const TRAVEL_STYLES = [
-  { value: "solo",    emoji: "🎒",    label: "Solo",    desc: "Independent, flexible, meet new people" },
-  { value: "couple",  emoji: "💑",    label: "Couple",  desc: "Romantic evenings, private moments" },
-  { value: "friends", emoji: "👥",    label: "Friends", desc: "Group activities, shared nights out" },
-  { value: "family",  emoji: "👨‍👩‍👧",  label: "Family",  desc: "Kid-friendly, safe areas, easy pace" },
+  { value: "solo",    icon: Backpack,    label: "Solo",    desc: "Independent, flexible, meet new people" },
+  { value: "couple",  icon: Heart,    label: "Couple",  desc: "Romantic evenings, private moments" },
+  { value: "friends", icon: Users,    label: "Friends", desc: "Group activities, shared nights out" },
+  { value: "family",  icon: Baby,  label: "Family",  desc: "Kid-friendly, safe areas, easy pace" },
 ];
 
 const PERIOD_COLORS = { Morning: "#B86A00", Afternoon: "#1A5C38", Evening: "#4A2882" };
@@ -198,14 +221,6 @@ export default function ItineraryPage() {
   ══════════════════════════════════════════════════════ */
   if (step === "form") return (
     <div className="itin-form-page">
-
-      <div className="itin-topbar" style={{ padding: isMobile ? "0 24px" : "0 clamp(48px,8vw,140px)" }}>
-        <span className="itin-logo" onClick={() => navigate("/")}>
-          <span style={{ color: "#2D6A4F" }}>Tru</span><span style={{ color: "#F0B429" }}>Goa</span>
-        </span>
-        <span className="itin-topbar-label">ITINERARY BUILDER</span>
-      </div>
-
       <div className="itin-form-inner"
         style={{ padding: isMobile ? "40px 24px 120px" : "64px clamp(48px,8vw,140px) 120px" }}>
 
@@ -277,7 +292,9 @@ export default function ItineraryPage() {
                 <button key={v.value}
                   className={`vibe-btn ${form.vibe === v.value ? "active" : ""}`}
                   onClick={() => setForm(f => ({ ...f, vibe: v.value }))}>
-                  <span className="vibe-emoji">{v.emoji}</span>
+                <span className="vibe-emoji">
+                  <v.icon size={22} strokeWidth={1.8} />
+                </span>
                   <span className="vibe-label">{v.label}</span>
                   <span className="vibe-desc">{v.desc}</span>
                 </button>
@@ -304,7 +321,7 @@ export default function ItineraryPage() {
                   <button key={int.value}
                     className={`interest-chip ${sel ? "active" : ""} ${capped ? "capped" : ""}`}
                     onClick={() => toggleInterest(int.value)}>
-                    <span>{int.emoji}</span><span>{int.label}</span>
+                    <int.icon size={16} strokeWidth={1.8} /><span>{int.label}</span>
                   </button>
                 );
               })}
@@ -325,13 +342,15 @@ export default function ItineraryPage() {
                 <button key={s.value}
                   className={`style-btn ${form.style === s.value ? "active" : ""}`}
                   onClick={() => setForm(f => ({ ...f, style: s.value }))}>
-                  <span className="style-emoji">{s.emoji}</span>
+                 <span className="style-emoji">
+                    <s.icon size={20} strokeWidth={1.8} />
+                  </span>
                   <span className="style-label">{s.label}</span>
                   <span className="style-desc">{s.desc}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </div>  
         </section>
 
         {error && <p className="itin-error">{error}</p>}
@@ -544,12 +563,12 @@ export default function ItineraryPage() {
                   <div className="tl-content">
                     <span className="tl-type">{slot.type}</span>
                     <h3 className="tl-place">{slot.place}</h3>
-                    <span className="tl-area">📍 {slot.area}</span>
+                    <span className="tl-area"><MapPin /></span>
                     <p className="tl-desc">{slot.description}</p>
                     <div className="tl-footer">
                       {slot.insiderTip && (
                         <div className="tl-tip">
-                          <span className="tl-tip-icon">💡</span>
+                          <span className="tl-tip-icon"><Lightbulb /></span>
                           <span className="tl-tip-text">{slot.insiderTip}</span>
                         </div>
                       )}
@@ -583,7 +602,7 @@ export default function ItineraryPage() {
             Tips are real. This is Goa as the locals live it.
           </p>
           <div className="end-actions">
-            <button className="btn-gold" onClick={() => window.print()}>🖨 Print Itinerary</button>
+            <button className="btn-gold" onClick={() => window.print()}> <Printer /></button>
             <button className="btn-outline-dark" onClick={() => { setStep("form"); window.scrollTo(0,0); }}>↻ Build Another</button>
             <button className="btn-outline-dark" onClick={() => navigate("/listings")}>Explore Listings →</button>
           </div>

@@ -3,23 +3,36 @@ import { useNavigate } from "react-router-dom";
 import { uploadBusinessImages, createBusiness } from "../../services/api"; // ✅ single import
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
+import {
+  UtensilsCrossed,
+  Coffee,
+  Hotel,
+  Home,
+  Compass,
+  Umbrella,
+  ShoppingBag,
+  MapPin,
+  ShieldCheck,
+  Rocket,
+  Store
+} from "lucide-react";
 
 const CATEGORIES = [
-  { value: "restaurant", label: "Restaurant",   icon: "🍽️" },
-  { value: "cafe",       label: "Café",          icon: "☕" },
-  { value: "hotel",      label: "Hotel",         icon: "🏨" },
-  { value: "stay",       label: "Stay / Resort", icon: "🏡" },
-  { value: "activity",   label: "Activity",      icon: "🎯" },
-  { value: "beach",      label: "Beach Shack",   icon: "🏖️" },
-  { value: "market",     label: "Market / Shop", icon: "🛍️" },
-  { value: "general",    label: "Other",         icon: "📍" },
+  { value: "restaurant", label: "Restaurant",   icon: <UtensilsCrossed size={18} />  },
+  { value: "cafe",       label: "Café",          icon: <Coffee size={18} /> },
+  { value: "hotel",      label: "Hotel",         icon: <Hotel size={18} /> },
+  { value: "stay",       label: "Stay / Resort", icon: <Home size={18} /> },
+  { value: "activity",   label: "Activity",      icon: <Compass size={18} /> },
+  { value: "beach",      label: "Beach Shack",   icon: <Umbrella size={18} /> },
+  { value: "market",     label: "Market / Shop", icon: <ShoppingBag size={18} /> },
+  { value: "general",    label: "Other",         icon: <MapPin size={18} />},
 ];
 
 const PRICE_RANGES = [
-  { value: "budget",  label: "Budget Friendly", sub: "Under ₹500 per person",     icon: "💚" },
-  { value: "mid",     label: "Mid Range",        sub: "₹500 – ₹1500 per person",  icon: "💛" },
-  { value: "premium", label: "Premium",          sub: "₹1500 – ₹4000 per person", icon: "🧡" },
-  { value: "luxury",  label: "Luxury",           sub: "₹4000+ per person",        icon: "💎" },
+  { value: "budget",  label: "Budget Friendly", sub: "Under ₹500 per person",      },
+  { value: "mid",     label: "Mid Range",        sub: "₹500 – ₹1500 per person",  },
+  { value: "premium", label: "Premium",          sub: "₹1500 – ₹4000 per person", },
+  { value: "luxury",  label: "Luxury",           sub: "₹4000+ per person",  },
 ];
 
 const STEPS = ["Business Info", "Category & Pricing", "Review & Submit"];
@@ -163,7 +176,7 @@ const AddBusiness = () => {
         </p>
         <div style={{ display: "flex", gap: 12, flexDirection: "column" }}>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             style={{
               background: theme.colors.primary, color: theme.colors.textPrimary,
               border: "none", borderRadius: theme.radii.pill,
@@ -172,7 +185,7 @@ const AddBusiness = () => {
               fontFamily: theme.typography.fontBody, cursor: "pointer",
             }}
           >
-            Back to Home
+            Return to dashboard
           </button>
           <button
             onClick={() => {
@@ -202,7 +215,7 @@ const AddBusiness = () => {
         padding: `clamp(32px,5vh,48px) ${theme.spacing.pagePadding}`,
       }}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           style={{
             background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)",
             color: "white", borderRadius: theme.radii.pill, padding: "8px 18px",
@@ -219,7 +232,7 @@ const AddBusiness = () => {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 26, flexShrink: 0,
           }}>
-            🏪
+            <Store size={26} />
           </div>
           <div>
             <h1 style={{
@@ -748,7 +761,7 @@ const AddBusiness = () => {
               >
                 {submitting
                   ? uploadingImages ? "Uploading photos..." : "Submitting..."
-                  : "🚀 Submit Listing"
+                  : " Submit Listing"
                   }
 
            

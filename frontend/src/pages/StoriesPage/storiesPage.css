@@ -1,0 +1,659 @@
+/* ===================================================
+   STORIES PAGE — LUXURY EDITORIAL CSS
+   TruGoa Premium Experience
+=================================================== */
+
+.sp-root{
+  background:#f7f3ec;
+  color:#111;
+  overflow:hidden;
+}
+
+/* ======================
+   GLOBAL
+====================== */
+.reveal-up{
+  opacity:0;
+  transform:translateY(40px);
+  transition:all .9s cubic-bezier(.2,.8,.2,1);
+}
+.reveal-up.visible{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.sp-btn-gold{
+  background:#c7a15a;
+  color:#111;
+  border:none;
+  padding:14px 28px;
+  border-radius:999px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.3s ease;
+}
+.sp-btn-gold:hover{
+  transform:translateY(-2px);
+}
+
+.sp-btn-ghost{
+  background:transparent;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.25);
+  padding:14px 28px;
+  border-radius:999px;
+  font-size:14px;
+  cursor:pointer;
+  transition:.3s ease;
+}
+.sp-btn-ghost:hover{
+  background:rgba(255,255,255,.08);
+}
+
+/* ======================
+   HERO
+====================== */
+.sp-hero{
+  position:relative;
+  min-height:100vh;
+  display:flex;
+  align-items:flex-end;
+  padding:70px clamp(24px,6vw,90px);
+}
+
+.sp-hero-img{
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: scale(1);
+  filter: none;
+}
+
+.sp-hero-veil{
+  position:absolute;
+  inset:0;
+ 
+}
+
+.sp-grain{
+  position:absolute;
+  inset:0;
+  opacity:.07;
+  background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+}
+
+.sp-hero-meta{
+  position:absolute;
+  top:34px;
+  left:clamp(24px,6vw,90px);
+  right:clamp(24px,6vw,90px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  z-index:5;
+}
+
+.sp-back-btn{
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+  padding:10px 16px;
+  border-radius:999px;
+  cursor:pointer;
+  backdrop-filter:blur(12px);
+}
+
+.sp-hero-meta-label{
+  color:#fff;
+  letter-spacing:2px;
+  font-size:12px;
+  text-transform:uppercase;
+}
+
+.sp-hero-content{
+  position:relative;
+  z-index:4;
+  max-width:620px;
+}
+
+.sp-hero-eyebrow{
+  display:flex;
+  gap:14px;
+  align-items:center;
+  margin-bottom:28px;
+  color:#f3e7d1;
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+.sp-eyebrow-rule{
+  width:44px;
+  height:1px;
+  background:#d7b980;
+}
+
+.sp-hero-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:clamp(58px,9vw,122px);
+  line-height:.92;
+  letter-spacing:-2px;
+  color:#fff;
+  margin-bottom:22px;
+}
+
+.sp-hero-desc{
+  font-size:22px;
+  line-height:1.8;
+  color:rgba(255,255,255,.88);
+  max-width:720px;
+}
+
+.sp-scroll-cue{
+  margin-top:46px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.sp-scroll-text{
+  color:#fff;
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+.sp-scroll-line{
+  width:70px;
+  height:1px;
+  background:rgba(255,255,255,.35);
+}
+
+/* ======================
+   OPENING QUOTE
+====================== */
+.sp-opening{
+  padding:90px clamp(24px,6vw,90px);
+  background:#f7f3ec;
+}
+
+.sp-opening-inner{
+  max-width:1200px;
+  margin:auto;
+  text-align:center;
+}
+
+.sp-opening-rule{
+  width:80px;
+  height:1px;
+  background:#d0c5b5;
+  margin:0 auto 30px;
+}
+
+.sp-opening-quote{
+  font-family:"Cormorant Garamond", serif;
+  font-size:clamp(34px,5vw,66px);
+  line-height:1.15;
+  font-style:italic;
+  color:#111;
+  margin-bottom:30px;
+}
+
+/* ======================
+   MANIFESTO
+====================== */
+.sp-manifesto{
+  padding:20px clamp(24px,6vw,90px) 210px;
+}
+
+.sp-manifesto-grid{
+  max-width:1380px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:90px;
+}
+
+.sp-eyebrow-dark{
+  
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#8d7350;
+  margin-bottom:24px;
+}
+
+.sp-manifesto-body{
+  font-size:21px;
+  line-height:1.95;
+  color:#4d4d4d;
+}
+
+.sp-stat{
+  padding:20px 0;
+}
+
+.sp-stat-rule{
+  height:1px;
+  background:#e2d8c9;
+  margin-bottom:18px;
+}
+
+.sp-stat-num{
+  font-family:"Cormorant Garamond", serif;
+  font-size:60px;
+  line-height:1;
+  margin-bottom:8px;
+}
+
+.sp-stat-label{
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#777;
+}
+
+/* ======================
+   DIVIDER IMAGE
+====================== */
+.sp-divider-img-wrap{
+  padding:0 clamp(24px,6vw,90px) 120px;
+}
+
+.sp-divider-img{
+  height:70vh;
+  border-radius:26px;
+  background-size:cover;
+  background-position:center;
+}
+
+.sp-divider-caption{
+  margin-top:14px;
+  font-size:12px;
+  color:#777;
+  letter-spacing:1px;
+}
+
+/* ======================
+   GRID HEADER
+====================== */
+.sp-grid-section{
+  padding:0 clamp(24px,6vw,90px) 120px;
+}
+
+.sp-grid-header{
+  margin-bottom:48px;
+}
+
+.sp-grid-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:clamp(46px,6vw,78px);
+  line-height:1;
+  margin:12px 0 18px;
+}
+
+.sp-grid-sub{
+  font-size:18px;
+  color:#666;
+}
+
+/* ======================
+   STORY GRID
+====================== */
+.sp-story-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:28px;
+}
+
+.sp-card{
+  background:#fff;
+  border-radius:24px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:all .45s ease;
+  box-shadow:0 15px 30px rgba(0,0,0,.04);
+}
+
+.sp-card:hover{
+  transform:translateY(-8px);
+  box-shadow:0 24px 50px rgba(0,0,0,.08);
+}
+
+.sp-card-dimmed{
+  opacity:.55;
+}
+
+.sp-card-img-wrap{
+  position:relative;
+  overflow:hidden;
+}
+
+.sp-card-img{
+  height:270px;
+  background-size:cover;
+  background-position:center;
+  transition:transform .7s ease;
+}
+
+.sp-card:hover .sp-card-img{
+  transform:scale(1.08);
+}
+
+.sp-card-tag{
+  position:absolute;
+  top:18px;
+  left:18px;
+  background:rgba(255,255,255,.88);
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:10px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+.sp-card-hover-overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.55), transparent);
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-start;
+  padding:24px;
+  opacity:0;
+  transition:.35s ease;
+}
+
+.sp-card:hover .sp-card-hover-overlay{
+  opacity:1;
+}
+
+.sp-card-read-btn{
+  color:#fff;
+  font-size:13px;
+  letter-spacing:1px;
+}
+
+.sp-card-body{
+  padding:26px;
+}
+
+.sp-card-meta{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:14px;
+  font-size:12px;
+  color:#777;
+}
+
+.sp-card-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:38px;
+  line-height:1.08;
+  margin-bottom:12px;
+}
+
+.sp-card-excerpt{
+  font-size:16px;
+  color:#666;
+  line-height:1.8;
+}
+
+.sp-card-footer{
+  margin-top:22px;
+  font-size:14px;
+  color:#111;
+  font-weight:600;
+}
+
+/* ======================
+   EMPTY
+====================== */
+.sp-empty{
+  background:#fff;
+  padding:70px 30px;
+  border-radius:24px;
+  text-align:center;
+}
+
+.sp-empty-icon{
+  font-size:46px;
+}
+
+.sp-empty-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:46px;
+  margin:14px 0;
+}
+
+.sp-empty-sub{
+  color:#666;
+}
+
+/* ======================
+   CLOSER
+====================== */
+.sp-closer{
+  position:relative;
+  padding:130px clamp(24px,6vw,90px);
+  background:#111;
+  color:#fff;
+}
+
+.sp-closer-bg{
+  position:absolute;
+  inset:0;
+  opacity:.16;
+  background-image:url("/images/goa-night.jpg");
+  background-size:cover;
+  background-position:center;
+}
+
+.sp-closer-grain{
+  position:absolute;
+  inset:0;
+  opacity:.06;
+  background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+}
+
+.sp-closer-content{
+  position:relative;
+  z-index:2;
+  max-width:920px;
+}
+
+.sp-closer-eyebrow{
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#d8c39c;
+  margin-bottom:24px;
+}
+
+.sp-closer-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:clamp(48px,7vw,96px);
+  line-height:.98;
+  margin-bottom:26px;
+}
+
+.sp-closer-title em{
+  font-style:italic;
+}
+
+.sp-closer-sub{
+  font-size:20px;
+  line-height:1.9;
+  color:rgba(255,255,255,.78);
+  margin-bottom:42px;
+}
+
+.sp-closer-actions{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+/* ======================
+   NOT FOUND
+====================== */
+.sp-notfound{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  background:#f7f3ec;
+  padding:30px;
+}
+
+.sp-notfound-inner{
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+
+.sp-notfound-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:72px;
+  margin-bottom:16px;
+}
+
+.sp-notfound-sub{
+  color:#666;
+  margin-bottom:26px;
+}
+
+/* ======================
+   MOBILE
+====================== */
+@media(max-width:980px){
+
+.sp-manifesto-grid{
+  grid-template-columns:1fr;
+  gap:50px;
+}
+
+.sp-hero{
+  min-height:82vh;
+}
+
+.sp-hero-title{
+  font-size:62px;
+}
+
+.sp-opening-quote{
+  font-size:42px;
+}
+
+.sp-card-title{
+  font-size:32px;
+}
+
+.sp-divider-img{
+  height:46vh;
+}
+
+.sp-closer-title{
+  font-size:56px;
+}
+
+.sp-closer-sub{
+  font-size:18px;
+}
+
+}
+
+@media(max-width:640px){
+
+.sp-hero-title{
+  font-size:48px;
+}
+
+.sp-hero-desc{
+  font-size:18px;
+}
+
+.sp-opening-quote{
+  font-size:34px;
+}
+
+.sp-grid-title{
+  font-size:48px;
+}
+
+.sp-card-title{
+  font-size:28px;
+}
+
+.sp-closer-title{
+  font-size:44px;
+}
+
+.sp-btn-gold,
+.sp-btn-ghost{
+  width:100%;
+}
+
+}
+
+/* ======================
+   MISSING CLASSES FIX
+====================== */
+
+.sp-notfound-grain{
+  position:absolute;
+  inset:0;
+  opacity:.05;
+  background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+  pointer-events:none;
+}
+
+.sp-notfound-eyebrow{
+  font-size:12px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:#8d7350;
+  margin-bottom:14px;
+}
+
+.sp-read-time{
+  opacity:.85;
+}
+
+.sp-card-num{
+  font-weight:700;
+  color:#111;
+}
+
+.sp-card-readtime{
+  color:#777;
+}
+
+.sp-card-pull{
+  margin-top:18px;
+  padding:14px 16px;
+  background:#f7f3ec;
+  border-radius:16px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.sp-card-pull-mark{
+  font-family:"Cormorant Garamond", serif;
+  font-size:34px;
+  line-height:1;
+  color:#b08a4d;
+}
+
+.sp-card-pull-text{
+  font-size:14px;
+  line-height:1.7;
+  color:#555;
+}
+
+.sp-card-cta{
+  letter-spacing:.5px;
+}

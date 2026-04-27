@@ -6,7 +6,8 @@ const bookingSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tourist",
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
 
@@ -22,7 +23,8 @@ const bookingSchema = new mongoose.Schema(
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Owner",
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
 
@@ -114,6 +116,6 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.index({ business: 1, bookingDate: 1 });
 bookingSchema.index({ owner: 1, status: 1 });
-bookingSchema.index({ user: 1, createdAt: -1 });
+bookingSchema.index({ user: 1, createdAt: -1 }, { sparse: true });
 
 export default mongoose.model("Booking", bookingSchema);

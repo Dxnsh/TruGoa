@@ -1,21 +1,21 @@
-import jwt from "jsonwebtoken";
+import express from "express";
+import {
+  createBooking,
+  getMyBookings,
+  getBookingById,
+  cancelBooking,
+} from "../controllers/bookingController.js";
+import { protectTourist, optionalTourist } from "../middleware/authMiddleware.js";
 
-const touristAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+const router = express.Router();
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Not authorized. Please log in." });
-  }
+// POST — optionalTourist links booking to account if logged in
+// BUG FIX: was two router.post("/") lines — second one was never reached
+router.post("/",            optionalTourist, createBooking);
 
-  const token = authHeader.split(" ")[1];
+// /my must be before /:id — otherwise "my" is treated as a mongo id
+router.get("/my",           protectTourist,  getMyBookings);
+router.get("/:id",          protectTourist,  getBookingById);
+router.patch("/:id/cancel", protectTourist,  cancelBooking);
 
-  try {
-    const decoded = jwt.verify(token, process.env.TOURIST_JWT_SECRET);
-    req.touristId = decoded.id;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: "Invalid or expired token." });
-  }
-};
-
-export default touristAuth;
+export default router;

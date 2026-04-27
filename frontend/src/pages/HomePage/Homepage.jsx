@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import BizCard from "../../components/BizCard/BizCard";
 import { getBusinesses } from "../../services/api";
 import { mapBusiness } from "../../services/mapper.jsx";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { CATEGORIES, REVIEWS } from "../../Data/businesses";
+import { editorialData } from "../../Data/editorialData.js";
+import { storiesData } from "../../Data/storiesData.js";
 import StarRating from "../../components/StarRating/StarRating";
 import useIsMobile from "../../hooks/useIsMobile";
 import "./homepage.css";
@@ -36,13 +39,12 @@ const useScrollReveal = (threshold = 0.1) => {
 // Per-category atmospheric gradients + accent colours
 const CAT_STYLE = {
   "All":         { bg: "linear-gradient(150deg,#0C1E17,#1D3A28)", accent: "#F0B429" },
-  "Restaurants": { bg: "linear-gradient(150deg,#2A1508,#4A2218)", accent: "#E8956D" },
+  "Restaurant": { bg: "linear-gradient(150deg,#2A1508,#4A2218)", accent: "#E8956D" },
   "Beaches":     { bg: "linear-gradient(150deg,#08182A,#0F2E4A)", accent: "#7EC8E3" },
   "Cafés":       { bg: "linear-gradient(150deg,#1E1208,#38240E)", accent: "#C8A876" },
   "Hotels":      { bg: "linear-gradient(150deg,#12101E,#22203A)", accent: "#B8A8D4" },
   "Activities":  { bg: "linear-gradient(150deg,#0A180A,#162E16)", accent: "#7EBC78" },
   "Markets":     { bg: "linear-gradient(150deg,#2E1608,#4A2A08)", accent: "#F0C849" },
-  "Nightlife":   { bg: "linear-gradient(150deg,#180A2E,#2A1248)", accent: "#E878B0" },
 };
 const getCatStyle = (label) => CAT_STYLE[label] || CAT_STYLE["All"];
 
@@ -62,6 +64,13 @@ const iconMap = {
 const Homepage = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
+  const token = localStorage.getItem("trugoa_tourist_token");
+  const user = localStorage.getItem("trugoa_tourist");
+
+  const isLoggedIn = token && user;
+
+ 
+    // localStorage.getItem("trugoa_admin_token");
   const isMobile = useIsMobile();
 
   const [editorialRef, editorialVisible] = useScrollReveal();
@@ -73,12 +82,25 @@ const Homepage = () => {
   const [businesses, setBusinesses] = useState([]);
   const [bizLoading, setBizLoading]  = useState(true);
 
-  const filtered = activeCategory === "All"
+
+ const categoryMap = {
+  All: null,
+  Restaurant: "restaurant",
+  Cafés: "cafe",
+  Hotels: "hotel",
+  "Hotels & Stay": ["hotel", "stay"],
+  Activities: "activity",
+  Beaches: "beach",
+  Markets: "market",
+  "Water Sports": "watersports"
+};
+
+  const filtered =
+  activeCategory === "All"
     ? businesses
-    : businesses.filter(b =>
-        b.category?.toLowerCase().includes(
-          activeCategory.replace(/s$/, "").toLowerCase()
-        )
+    : businesses.filter(
+        (b) =>
+          b.category?.toLowerCase() === categoryMap[activeCategory]
       );
 
   useEffect(() => {
@@ -173,8 +195,8 @@ const Homepage = () => {
           <span className="locbar-label">EXPLORE</span>
           <span className="locbar-rule" />
           {(isMobile
-            ? ["North Goa", "South Goa", "Beaches", "Hidden Gems"]
-            : ["North Goa", "South Goa", "Panaji", "Beaches", "Hidden Gems", "Heritage", "Restaurants", "Cafés"]
+            ? ["North Goa", "South Goa", "Beaches","Restaurant", ]
+            : ["North Goa", "South Goa", "Panaji", "Beaches", "Restaurant", "Cafés"]
           ).map(loc => (
             <span
               key={loc}
@@ -207,54 +229,60 @@ const Homepage = () => {
       {/* ══════════════════════════════════════════
           EDITORIAL OPENING — manifesto, not "how it works"
       ══════════════════════════════════════════ */}
-      <section
+       <section
         ref={editorialRef}
         className="editorial-section"
-        style={{ padding: isMobile ? "80px 24px" : "120px clamp(48px,7vw,120px)" }}
+        style={{ padding: isMobile ? "80px 24px" : "110px clamp(48px,7vw,120px)" }}
       >
-        <div
-          className={`editorial-inner reveal ${editorialVisible ? "visible" : ""}`}
-          style={{ flexDirection: isMobile ? "column" : "row" }}
+      <div className={`reveal ${editorialVisible ? "visible" : ""}`}>
+
+        {/* Header */}
+        <div className="editorial-topbar">
+        <h2 className="editorial-heading"> Where Goa Begins</h2>
+
+      <div className="editorial-nav">
+      <span
+          onClick={() =>
+            document
+              .querySelector(".editorial-scroll")
+              .scrollBy({ left: -420, behavior: "smooth" })
+          }
         >
-          {/* Left — the big editorial quote */}
-          <div className="editorial-left">
-            <p className="editorial-eyebrow">Our Promise</p>
+          <ChevronLeft size={50} strokeWidth={2} />
+        </span>
 
-            <blockquote className="editorial-quote">
-              "The beaches most tourists never find. The shacks with no signage.
-              The café where old Goa still breathes.
-              <br /><br />
-              That's the Goa we're here to help you discover."
-            </blockquote>
+      <span
+          onClick={() =>
+            document
+              .querySelector(".editorial-scroll")
+              .scrollBy({ left: 420, behavior: "smooth" })
+          }
+        >
+          <ChevronRight size={50} strokeWidth={2} />
+        </span>
+      </div>
+      </div>
 
-            <p className="editorial-body">
-              Every place on TruGoa has been physically visited. Every price is what
-              locals actually pay. We're not a booking engine —
-              we're your most trusted friend in Goa.
-            </p>
-          </div>
+        {/* Cards */}
+        <div className="editorial-scroll">
+         {editorialData.map((item) => (
+          <article
+            key={item.id}
+            className="editorial-card"
+            onClick={() => navigate(`/stories/${item.slug}`)}
+            style={{ cursor: "pointer" }}
+          >
+            <img src={item.img} alt={item.title} className="editorial-image" />
+            <p className="editorial-cat">{item.cat}</p>
+            <h3 className="editorial-title">{item.title}</h3>
+            <div className="editorial-line" />
+            <p className="editorial-desc">{item.desc}</p>
+          </article>
+        ))}
 
-          {/* Vertical divider (desktop) */}
-          {!isMobile && <div className="editorial-vdivider" />}
-
-          {/* Right — precision stats */}
-          <div className="editorial-stats">
-            {[
-              { num: "500+", label: "Places personally verified" },
-              { num: "₹0",   label: "Paid to rank any business" },
-              { num: "4.8★", label: "Average listing trust score" },
-            ].map((s, i) => (
-              <div key={i} className="editorial-stat">
-                <div className="editorial-stat-rule" />
-                <div className="editorial-stat-num">{s.num}</div>
-                <div className="editorial-stat-label">{s.label}</div>
-              </div>
-            ))}
-            <div className="editorial-stat-rule" />
-          </div>
         </div>
+      </div>
       </section>
-
 
       {/* ══════════════════════════════════════════
           CATEGORIES — atmospheric editorial cards
@@ -291,11 +319,18 @@ const Homepage = () => {
           {CATEGORIES.map((c, i) => {
             const isActive = activeCategory === c.label;
             const cs = getCatStyle(c.label);
-            const count = businesses.filter(b =>
-              c.label === "All" || b.category?.toLowerCase().includes(
-                c.label.replace(/s$/, "").toLowerCase()
-              )
-            ).length;
+            const count =
+              c.label === "All"
+                ? businesses.length
+                : businesses.filter(b => {
+                    const map = categoryMap[c.label];
+
+                    if (Array.isArray(map)) {
+                      return map.includes(b.category?.toLowerCase());
+                    }
+
+                    return b.category?.toLowerCase() === map;
+                  }).length;
             return (
               <div
                 key={c.label}
@@ -312,20 +347,20 @@ const Homepage = () => {
                   <div className="cat-card-dot" style={{ background: cs.accent }} />
                 )}
                <div className="cat-card-icon">
-  {(() => {
-    const Icon = iconMap[c.icon?.toLowerCase()];
-    return Icon ? (
-      <Icon size={28} stroke={isActive ? cs.accent : "#ffffff"} />
-    ) : (
-      c.icon
-    );
-  })()}
-</div>
+                  {(() => {
+                    const Icon = iconMap[c.icon?.toLowerCase()];
+                    return Icon ? (
+                      <Icon size={28} stroke={isActive ? cs.accent : "#ffffff"} />
+                    ) : (
+                      c.icon
+                    );
+                  })()}
+                </div>
                 <div className="cat-card-name"
                   style={{ color: isActive ? cs.accent : "rgba(255,255,255,0.88)" }}>
                   {c.label}
                 </div>
-                <div className="cat-card-count">{count} places</div>
+                <div className="cat-card-count">{count} curated spots</div>
               </div>
             );
           })}
@@ -356,9 +391,16 @@ const Homepage = () => {
                 Personally verified by locals
               </h2>
             </div>
-            <button className="btn-dark-solid" onClick={() => navigate("/listings")}>
-              View all →
-            </button>
+            
+              {filtered.length > 5 && (
+                <button
+                  className="btn-dark-solid"
+                  onClick={() => navigate("/listings")}
+                >
+                  View all →
+                </button>
+              )}
+                      
           </div>
         </div>
 
@@ -374,9 +416,9 @@ const Homepage = () => {
             gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))",
             gap: isMobile ? 18 : 28,
           }}>
-            {filtered.map((b, i) => (
+            {filtered.slice(0,5).map((b, i) => (
               <div
-                key={b.id}
+                key={b.id || b.id}
                 className={`reveal biz-card-wrap delay-${Math.min(i+1,5)} ${listVisible ? "visible" : ""}`}
               >
                 <BizCard biz={b} />
@@ -390,7 +432,7 @@ const Homepage = () => {
             <p className="empty-body">We're still verifying places in this category. Check back soon.</p>
             <button className="btn-green-solid" onClick={() => setActiveCategory("All")}>
               Show all places
-            </button>
+            </button>        
           </div>
         )}
       </section>
@@ -562,6 +604,7 @@ const Homepage = () => {
       {/* ══════════════════════════════════════════
           CTA STRIP
       ══════════════════════════════════════════ */}
+      {!isLoggedIn && (
       <div
         className="cta-strip"
         style={{ padding: isMobile ? "48px 24px" : `64px clamp(48px,7vw,120px)` }}
@@ -572,15 +615,12 @@ const Homepage = () => {
           </h3>
           <p className="cta-sub">List it free. Reach thousands of tourists every month.</p>
         </div>
-        <button className="btn-dark-solid cta-btn" onClick={() => navigate("/add-business")}>
+        <button className="btn-dark-solid cta-btn" onClick={() => navigate("/auth")}>
           List Your Business →
         </button>
       </div>
+      )}
 
-
-      {/* ══════════════════════════════════════════
-          FOOTER — magazine masthead style
-      ══════════════════════════════════════════ */}
       <footer
         className="footer"
         style={{ padding: isMobile ? "40px 24px" : `48px clamp(48px,7vw,120px)` }}
@@ -593,9 +633,26 @@ const Homepage = () => {
             </div>
             <div className="footer-issue">Issue 01 · Goa, India · Est. 2026</div>
           </div>
+
           <div className="footer-links">
-            {[["Explore", "/listings"], ["AI Guide", "/goaguide"], ["List Business", "/add-business"]].map(([label, path]) => (
-              <span key={label} className="footer-link" onClick={() => navigate(path)}>
+            {[
+              ["Explore", "/listings"],
+              ["AI Guide", "/goaguide"],
+              ...(!isLoggedIn ? [["List your Business", "/auth"]] : [])    
+            ].map(([label, path]) => (
+              <span 
+              key={label} 
+              className="footer-link" 
+              onClick={() => navigate(path)}
+              style={{
+                cursor:"pointer",
+                fontWeight:
+                 label === "List your  Business"
+                  ? 600
+                  : 400
+              }}
+              
+              >
                 {label}
               </span>
             ))}
@@ -603,8 +660,8 @@ const Homepage = () => {
         </div>
         <div className="footer-rule" />
         <div className="footer-bottom">
-          <span>© 2026 TruGoa · Made with ❤️ in Goa</span>
-          <span>Protecting tourists since day one</span>
+          <span>© 2026 TruGoa · Curating the soul of Goa</span>
+          <span>Trusted journeys begin here</span>
         </div>
       </footer>
 

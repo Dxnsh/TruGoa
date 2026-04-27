@@ -1,0 +1,717 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+/* ═══════════════════════════════════════════════
+   ROOT
+═══════════════════════════════════════════════ */
+.gg-root {
+  font-family: 'Instrument Sans', sans-serif;
+  background: #F7F3EC;
+  min-height: 100svh;
+  color: #1A1F1C;
+  overflow-x: hidden;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.035; pointer-events: none; z-index: 2;
+}
+
+/* ═══════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════ */
+.gg-hero {
+  position: relative;
+  min-height: 52svh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.gg-hero-bg {
+  position: absolute; inset: 0;
+  background: url("/images/Hero-img.jpg") center 60% / cover no-repeat;
+}
+.gg-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(4,10,7,0.96) 0%,
+    rgba(4,10,7,0.65) 40%,
+    rgba(4,10,7,0.2) 75%,
+    transparent 100%
+  );
+}
+.gg-hero-content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  padding-bottom: 56px;
+}
+.gg-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: #F0B429;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 16px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-hero-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.5; transform:scale(0.8); }
+}
+.gg-hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: white;
+  line-height: 0.88;
+  letter-spacing: -3px;
+  margin: 0;
+  display: block;
+}
+.gg-hero-italic {
+  font-style: italic;
+  color: #F0B429;
+  margin-bottom: 24px !important;
+}
+.gg-hero-sub {
+  font-size: 15px;
+  color: rgba(255,255,255,0.48);
+  line-height: 1.75;
+  margin: 0;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   TAB BAR
+═══════════════════════════════════════════════ */
+.gg-tabs {
+  display: flex;
+  background: #0C1A10;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto;
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+  padding: 0 clamp(16px,3vw,40px);
+  gap: 0;
+}
+.gg-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 16px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Instrument Sans', sans-serif;
+  letter-spacing: 0.5px;
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.gg-tab:hover { color: rgba(255,255,255,0.75); }
+.gg-tab.active {
+  color: #F0B429;
+  border-bottom-color: #F0B429;
+}
+.gg-tab-icon { font-size: 14px; }
+
+/* ═══════════════════════════════════════════════
+   CHAT
+═══════════════════════════════════════════════ */
+.gg-chat-wrap {
+  display: flex;
+  flex-direction: column;
+  height: calc(100svh - 64px - 56px - 50px);
+  background: #F7F3EC;
+}
+.gg-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px clamp(16px,4vw,56px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.gg-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.gg-msg-ai  { justify-content: flex-start; }
+.gg-msg-user { justify-content: flex-end; }
+.gg-msg-avatar {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: #F0B429;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.gg-bubble {
+  max-width: 72%;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.78;
+  border-radius: 18px;
+  font-family: 'Instrument Sans', sans-serif;
+  white-space: pre-wrap;
+}
+.gg-bubble-ai {
+  background: white;
+  border: 1px solid rgba(0,0,0,0.08);
+  color: #1A1F1C;
+  border-radius: 4px 18px 18px 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.gg-bubble-user {
+  background: #1A1F1C;
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+}
+.gg-typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 16px 20px;
+}
+.gg-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #F0B429;
+  display: block;
+  animation: dot-wave 1.3s ease-in-out infinite;
+}
+@keyframes dot-wave {
+  0%,60%,100% { transform: translateY(0); opacity: 0.5; }
+  30%          { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Starters */
+.gg-starters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px clamp(16px,4vw,56px);
+  background: white;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.gg-starter {
+  background: #F7F3EC;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #1A1F1C;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'Instrument Sans', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.gg-starter:hover {
+  background: #EEF5F1;
+  border-color: rgba(45,106,79,0.3);
+  color: #2D6A4F;
+}
+
+/* Input bar */
+.gg-input-bar {
+  display: flex;
+  gap: 10px;
+  padding: 14px clamp(16px,4vw,56px) 20px;
+  background: white;
+  border-top: 1px solid rgba(0,0,0,0.07);
+}
+.gg-input {
+  flex: 1;
+  height: 48px;
+  padding: 0 18px;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Instrument Sans', sans-serif;
+  color: #1A1F1C;
+  background: #F7F3EC;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.gg-input:focus { border-color: #2D6A4F; background: white; }
+.gg-send {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.3);
+  font-size: 26px;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.gg-send.ready {
+  background: #1A1F1C;
+  color: white;
+  cursor: pointer;
+}
+.gg-send.ready:hover { background: #2D6A4F; }
+
+/* ═══════════════════════════════════════════════
+   CONTENT SECTIONS
+═══════════════════════════════════════════════ */
+.gg-content { max-width: 1200px; margin: 0 auto; }
+.gg-dark-content {
+  background: linear-gradient(160deg,#07140C,#112210,#081810);
+  max-width: none;
+}
+
+.gg-section-head { margin-bottom: 48px; }
+.gg-eyebrow {
+  font-size: 10px; color: #2D6A4F; letter-spacing: 3px;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 12px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-eyebrow-light {
+  font-size: 10px; color: #F0B429; letter-spacing: 3px;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 12px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600; color: #1A1F1C;
+  line-height: 0.95; letter-spacing: -1.5px; margin: 0 0 16px;
+}
+.gg-section-title-light {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600; color: white;
+  line-height: 0.95; letter-spacing: -1.5px; margin: 0 0 16px;
+}
+.gg-section-sub {
+  font-size: 15px; color: rgba(0,0,0,0.52); line-height: 1.75;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-section-sub-light {
+  font-size: 15px; color: rgba(255,255,255,0.45); line-height: 1.75;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-sub-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px; font-weight: 600; color: #1A1F1C;
+  margin: 0 0 24px; letter-spacing: -0.5px;
+}
+
+/* ═══════════════════════════════════════════════
+   PLACE CARDS
+═══════════════════════════════════════════════ */
+.gg-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+.gg-place-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 20px; padding: 28px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s;
+}
+.gg-place-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+}
+.gg-place-top {
+  display: flex; justify-content: space-between;
+  align-items: flex-start; gap: 12px; margin-bottom: 12px;
+}
+.gg-place-meta {
+  font-size: 10px; color: rgba(0,0,0,0.35); letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 6px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px; font-weight: 600; color: #1A1F1C; line-height: 1.1; margin: 0;
+}
+.gg-place-rating {
+  background: #FEF8ED; border: 1px solid rgba(240,180,41,0.25);
+  border-radius: 6px; padding: 6px 12px;
+  font-size: 13px; font-weight: 700; color: #B86A00;
+  flex-shrink: 0; font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-budget {
+  font-size: 12px; color: #2D6A4F; font-weight: 600;
+  background: #EEF5F1; padding: 5px 12px; border-radius: 4px;
+  display: inline-block; margin-bottom: 10px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-hours {
+  font-size: 11px; color: rgba(0,0,0,0.38); margin-bottom: 14px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-tip {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: #FEF8ED; border-left: 2px solid #F0B429;
+  border-radius: 0 8px 8px 0; padding: 12px 14px; margin-bottom: 12px;
+}
+.gg-tip-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.gg-place-tip span:last-child {
+  font-size: 13px; color: rgba(0,0,0,0.65); line-height: 1.7;
+  font-style: italic; font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-must {
+  font-size: 12px; color: rgba(0,0,0,0.55);
+  font-family: 'Instrument Sans', sans-serif; line-height: 1.6;
+}
+.gg-must-label {
+  display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: rgba(0,0,0,0.3);
+  margin-right: 6px; font-family: 'Instrument Sans', sans-serif;
+}
+.gg-place-avoid {
+  font-size: 12px; color: #A83232; margin-top: 10px;
+  padding: 8px 12px; background: #FDE8E8; border-radius: 6px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   BEACH CARDS
+═══════════════════════════════════════════════ */
+.gg-beach-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 20px; padding: 28px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.gg-beach-card:hover { transform: translateY(-5px); }
+.gg-beach-header {
+  display: flex; justify-content: space-between;
+  align-items: flex-start; gap: 12px; margin-bottom: 14px;
+}
+.gg-beach-type {
+  font-size: 11px; color: rgba(0,0,0,0.38); margin-top: 4px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-crowd-pill {
+  background: #EEF5F1; color: #2D6A4F;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; padding: 5px 12px; border-radius: 4px;
+  white-space: nowrap; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0;
+}
+.gg-beach-best {
+  font-size: 12px; color: rgba(0,0,0,0.42); margin-bottom: 14px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-hidden-angle {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: #EEF5F1; border-left: 2px solid #2D6A4F;
+  border-radius: 0 8px 8px 0; padding: 12px 14px; margin: 12px 0;
+  font-size: 13px; color: rgba(0,0,0,0.65); line-height: 1.7;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-hidden-icon { font-size: 14px; flex-shrink: 0; }
+.gg-activities {
+  font-size: 12px; color: rgba(0,0,0,0.55);
+  font-family: 'Instrument Sans', sans-serif; margin-top: 10px;
+}
+
+/* ═══════════════════════════════════════════════
+   HIDDEN GEMS
+═══════════════════════════════════════════════ */
+.gg-gems-list { display: flex; flex-direction: column; gap: 0; }
+.gg-gem-card {
+  display: flex; gap: 32px; align-items: flex-start;
+  padding: 36px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.gg-gem-card:last-child { border-bottom: none; }
+.gg-gem-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 72px; font-weight: 700;
+  color: rgba(240,180,41,0.15); line-height: 1;
+  flex-shrink: 0; width: 88px; padding-top: 4px;
+  user-select: none;
+}
+.gg-gem-body { flex: 1; }
+.gg-gem-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px; font-weight: 600; color: white;
+  line-height: 1.05; margin-bottom: 8px; letter-spacing: -0.5px;
+}
+.gg-gem-area {
+  font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 8px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-gem-how {
+  font-size: 12px; color: rgba(255,255,255,0.42); margin-bottom: 14px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-gem-desc {
+  font-size: 15px; color: rgba(255,255,255,0.65); line-height: 1.82;
+  font-family: 'Instrument Sans', sans-serif; margin-bottom: 12px;
+}
+.gg-gem-best {
+  font-size: 11px; color: #F0B429; letter-spacing: 1px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   PRICE TABLE
+═══════════════════════════════════════════════ */
+.gg-price-alert {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: #FEF3E0; border: 1px solid rgba(240,180,41,0.3);
+  border-radius: 12px; padding: 18px 20px; margin-bottom: 32px;
+}
+.gg-price-alert-icon {
+  font-size: 18px; color: #B86A00; flex-shrink: 0; margin-top: 1px;
+}
+.gg-price-alert-title {
+  font-size: 14px; font-weight: 700; color: #B86A00; margin-bottom: 4px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-price-alert-sub {
+  font-size: 12px; color: rgba(0,0,0,0.52); font-family: 'Instrument Sans', sans-serif;
+}
+.gg-price-table { display: flex; flex-direction: column; gap: 12px; }
+.gg-price-row {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 14px; padding: 20px 24px;
+  display: grid; grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 8px; align-items: start;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.gg-price-route { grid-column: 1; }
+.gg-price-amount {
+  grid-column: 2; grid-row: 1 / 3;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 700; color: #2D6A4F;
+  align-self: center; white-space: nowrap;
+}
+.gg-price-from, .gg-price-to {
+  font-size: 14px; font-weight: 600; color: #1A1F1C;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-price-arrow {
+  font-size: 11px; color: rgba(0,0,0,0.25); padding: 2px 0;
+}
+.gg-price-time {
+  font-size: 11px; color: rgba(0,0,0,0.38); margin-top: 4px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-price-tip {
+  grid-column: 1 / 3; font-size: 12px; color: rgba(0,0,0,0.45);
+  font-style: italic; font-family: 'Instrument Sans', sans-serif;
+  padding-top: 4px; border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Budget cards */
+.gg-budget-grid { display: grid; gap: 20px; }
+.gg-budget-card {
+  border-radius: 20px; padding: 28px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.gg-budget-backpacker { background: #EEF5F1; }
+.gg-budget-comfortable { background: #FEF8ED; }
+.gg-budget-luxury      { background: #F0EBF8; }
+.gg-budget-label {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  font-weight: 700; color: rgba(0,0,0,0.35); margin-bottom: 6px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-budget-amount {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px; font-weight: 700; color: #1A1F1C; margin-bottom: 20px; line-height: 1;
+}
+.gg-budget-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.gg-budget-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: rgba(0,0,0,0.65); font-family: 'Instrument Sans', sans-serif;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.gg-budget-row span:last-child { font-weight: 600; color: #1A1F1C; }
+.gg-budget-tips { display: flex; flex-direction: column; gap: 6px; }
+.gg-budget-tip {
+  font-size: 12px; color: rgba(0,0,0,0.52); line-height: 1.55;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   FOOD GUIDE
+═══════════════════════════════════════════════ */
+.gg-must-eat-grid { display: grid; gap: 16px; }
+.gg-food-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px; padding: 22px 24px;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+.gg-food-card:hover { transform: translateY(-3px); }
+.gg-food-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 10px;
+}
+.gg-food-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 600; color: #1A1F1C; margin: 0;
+}
+.gg-food-price {
+  font-size: 12px; font-weight: 700; color: #2D6A4F;
+  background: #EEF5F1; padding: 4px 10px; border-radius: 4px;
+  white-space: nowrap; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0;
+}
+.gg-food-desc {
+  font-size: 13px; color: rgba(0,0,0,0.58); line-height: 1.72;
+  font-family: 'Instrument Sans', sans-serif; margin: 0;
+}
+.gg-market-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px; padding: 22px 24px; margin-bottom: 14px;
+}
+.gg-market-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 8px;
+}
+.gg-market-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 600; color: #1A1F1C; margin: 0;
+}
+.gg-market-timing {
+  font-size: 11px; font-weight: 600; color: #B86A00;
+  background: #FEF3E0; padding: 4px 10px; border-radius: 4px;
+  white-space: nowrap; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0;
+}
+.gg-market-desc {
+  font-size: 13px; color: rgba(0,0,0,0.58); line-height: 1.72;
+  font-family: 'Instrument Sans', sans-serif; margin: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   SEASONAL
+═══════════════════════════════════════════════ */
+.gg-season-list { display: flex; flex-direction: column; gap: 0; }
+.gg-season-card { padding: 32px 0; }
+.gg-season-rule {
+  width: 100%; height: 1px;
+  background: rgba(255,255,255,0.08); margin-bottom: 28px;
+}
+.gg-season-month {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px; font-weight: 600; color: white;
+  margin-bottom: 6px; line-height: 1; letter-spacing: -0.5px;
+}
+.gg-season-vibe {
+  font-size: 14px; color: #F0B429; font-weight: 600; margin-bottom: 20px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-season-crowd, .gg-season-weather, .gg-season-best {
+  display: flex; gap: 16px; font-size: 14px; color: rgba(255,255,255,0.6);
+  margin-bottom: 10px; font-family: 'Instrument Sans', sans-serif; line-height: 1.7;
+}
+.gg-season-label {
+  font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 600; flex-shrink: 0;
+  width: 80px; padding-top: 3px; font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   SCAM ALERTS
+═══════════════════════════════════════════════ */
+.gg-scam-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 48px; }
+.gg-scam-card {
+  background: white; border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 18px; padding: 24px 28px;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+.gg-scam-card:hover { transform: translateY(-3px); }
+.gg-scam-header {
+  display: flex; justify-content: space-between;
+  align-items: flex-start; gap: 12px; margin-bottom: 12px;
+}
+.gg-scam-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px; font-weight: 600; color: #1A1F1C; margin: 0;
+}
+.gg-severity {
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 5px 12px; border-radius: 4px;
+  white-space: nowrap; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0;
+}
+.gg-severity-high { background: #FDE8E8; color: #A83232; }
+.gg-severity-mid  { background: #FEF3E0; color: #B86A00; }
+.gg-scam-desc {
+  font-size: 14px; color: rgba(0,0,0,0.62); line-height: 1.75;
+  margin-bottom: 16px; font-family: 'Instrument Sans', sans-serif;
+}
+.gg-scam-fix {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: #EEF5F1; border-left: 2px solid #2D6A4F;
+  border-radius: 0 8px 8px 0; padding: 12px 16px;
+}
+.gg-fix-icon {
+  font-size: 14px; color: #2D6A4F; font-weight: 700;
+  flex-shrink: 0; margin-top: 1px;
+}
+.gg-scam-fix span:last-child {
+  font-size: 13px; color: rgba(0,0,0,0.65); line-height: 1.7;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* Emergency */
+.gg-emergency {
+  background: #0C1A10; border-radius: 20px; padding: 32px;
+}
+.gg-emergency-grid { display: grid; gap: 14px; margin-top: 20px; }
+.gg-emergency-card {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 16px 18px;
+}
+.gg-emergency-service {
+  font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 6px;
+  font-family: 'Instrument Sans', sans-serif;
+}
+.gg-emergency-number {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px; font-weight: 700; color: #F0B429; line-height: 1; margin-bottom: 4px;
+}
+.gg-emergency-note {
+  font-size: 11px; color: rgba(255,255,255,0.35);
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .gg-cards { grid-template-columns: 1fr; }
+  .gg-gem-card { gap: 16px; }
+  .gg-gem-num { font-size: 48px; width: 56px; }
+  .gg-gem-name { font-size: 26px; }
+  .gg-price-row { grid-template-columns: 1fr auto; }
+  .gg-price-amount { font-size: 22px; }
+  .gg-season-crowd, .gg-season-weather, .gg-season-best { flex-direction: column; gap: 4px; }
+  .gg-season-label { width: auto; padding-top: 0; }
+  .gg-chat-wrap { height: calc(100svh - 64px - 52svh - 50px); }
+  .gg-bubble { max-width: 88%; }
+}

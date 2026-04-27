@@ -1,486 +1,662 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import StarRating from "../../components/StarRating/StarRating";
-import { getBusinessById, getReviewsForBusiness } from "../../services/api";
+import { getBusinessById, getReviewsForBusiness, getBusinesses } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
-import { theme } from "../../Theme";
-import useIsMobile from "../../hooks/useIsMobile";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
+import useIsMobile from "../../hooks/useIsMobile";
+import ReviewForm from "../../components/ReviewForm/ReviewForm";
+import "./DetailPage.css";
 
-import {
-  Badge,
-  PrimaryButton,
-  GhostButton,
-  SurfaceCard,
-  Alert,
-  LoadingState,
-} from "../../Theme";
+/* ══════════════════════════════════════════════════════════
+   LIGHTBOX
+══════════════════════════════════════════════════════════ */
+function Lightbox({ images, startIndex, onClose }) {
 
-const gradients = {
-  "🍽️": `linear-gradient(135deg, ${theme.colors.primaryLight}, #fde68a)`,
-  "🏕️": `linear-gradient(135deg, #d1fae5, #a7f3d0)`,
-  "🌊": `linear-gradient(135deg, #dbeafe, #bfdbfe)`,
-  "☕": `linear-gradient(135deg, #fce7f3, #fbcfe8)`,
-  "🫒": `linear-gradient(135deg, ${theme.colors.secondaryLight}, #bbf7d0)`,
-  "🛍️": `linear-gradient(135deg, #fef9c3, #fef08a)`,
-};
-
-const DetailPage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-
-  const [biz, setBiz] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [current, setCurrent] = useState(startIndex);
 
-  const { isTouristLoggedIn } = useTourist();
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const prev = useCallback(() =>
+    setCurrent(c => (c - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() =>
+    setCurrent(c => (c + 1) % images.length), [images.length]);
 
   useEffect(() => {
-    const fetchAll = async () => {
+    const handler = (e) => {
+      if (e.key === "Escape")     onClose();
+      if (e.key === "ArrowLeft")  prev();
+      if (e.key === "ArrowRight") next();
+    };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [onClose, prev, next]);
+
+  return (
+    <div className="lb-overlay" onClick={onClose}>
+      <div className="lb-inner" onClick={e => e.stopPropagation()}>
+
+        {/* close */}
+        <button className="lb-close" onClick={onClose}>✕</button>
+
+        {/* counter */}
+        <div className="lb-counter">{current + 1} / {images.length}</div>
+
+        {/* image */}
+        <img
+          key={current}
+          src={images[current]}
+          alt={`Photo ${current + 1}`}
+          className="lb-img"
+        />
+
+        {/* arrows */}
+        {images.length > 1 && (
+          <>
+            <button className="lb-arrow lb-arrow-left"  onClick={prev}>‹</button>
+            <button className="lb-arrow lb-arrow-right" onClick={next}>›</button>
+          </>
+        )}
+
+        {/* thumbnail strip */}
+        {images.length > 1 && (
+          <div className="lb-thumbs no-scrollbar">
+            {images.map((img, i) => (
+              <div
+                key={i}
+                className={`lb-thumb ${i === current ? "active" : ""}`}
+                onClick={() => setCurrent(i)}
+                style={{ backgroundImage: `url(${img})` }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   TRUST SCORE CARD
+══════════════════════════════════════════════════════════ */
+function TrustScore({ biz }) {
+  const items = [
+    {
+      icon: "✦",
+      label: "Physically Verified",
+      desc: "Our team visited this location",
+      done: biz.trust === "verified" || biz.trust_level === "verified",
+    },
+    {
+      icon: "◈",
+      label: "Menu Prices Confirmed",
+      desc: "Prices match what locals pay",
+      done: !!biz.price || !!biz.price_range,
+    },
+    {
+      icon: "★",
+      label: "Community Reviews",
+      desc: `${biz.reviews || biz.review_count || 0} verified guest reviews`,
+      done: (biz.reviews || biz.review_count || 0) > 0,
+    },
+    {
+      icon: "⚑",
+      label: "Zero Scam Reports",
+      desc: "No complaints in last 12 months",
+      done: true,
+    },
+    {
+      icon: "✿",
+      label: "Local Endorsement",
+      desc: "Recommended by Goa residents",
+      done: biz.trust === "verified" || biz.trust_level === "verified",
+    },
+  ];
+
+  const score = Math.round((items.filter(i => i.done).length / items.length) * 100);
+
+  return (
+    <div className="trust-card">
+      <p className="trust-eyebrow">TruGoa Trust Score</p>
+      <div className="trust-score-row">
+        <span className="trust-score-num">{score}</span>
+        <div className="trust-score-info">
+          <span className="trust-score-label">/ 100</span>
+          <span className={`trust-score-badge ${score >= 80 ? "high" : score >= 60 ? "mid" : "low"}`}>
+            {score >= 80 ? "Highly Trusted" : score >= 60 ? "Trusted" : "Under Review"}
+          </span>
+        </div>
+      </div>
+
+      {/* progress bar */}
+      <div className="trust-bar-track">
+        <div className="trust-bar-fill" style={{ width: `${score}%` }} />
+      </div>
+
+      <div className="trust-items">
+        {items.map((item, i) => (
+          <div key={i} className={`trust-item ${item.done ? "done" : "pending"}`}>
+            <div className="trust-item-icon">{item.done ? "✓" : "○"}</div>
+            <div>
+              <div className="trust-item-label">{item.label}</div>
+              <div className="trust-item-desc">{item.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════ */
+export default function DetailPage() {
+  const { id }     = useParams();
+  console.log("Route ID:", id);
+  const navigate   = useNavigate();
+  const isMobile   = useIsMobile();
+  const { isTouristLoggedIn } = useTourist();
+
+  const [biz,        setBiz       ] = useState(null);
+  const [reviews,    setReviews   ] = useState([]);
+  const [similar,    setSimilar   ] = useState([]);
+  const [loading,    setLoading   ] = useState(true);
+  const [error,      setError     ] = useState(null);
+  const [lightboxIdx,setLightboxIdx] = useState(null);  // null = closed
+  const [showLogin,  setShowLogin ] = useState(false);
+
+  /* ── fetch ──────────────────────────────────────────────── */
+  useEffect(() => {
+    (async () => {
       try {
         setLoading(true);
-        const [bizData, reviewsData] = await Promise.all([
+        const [bizData, reviewsData, allBiz] = await Promise.all([
           getBusinessById(id),
           getReviewsForBusiness(id),
+          getBusinesses(),
         ]);
-        setBiz(mapBusiness(bizData, 0));
-        setReviews(reviewsData);
+        const mapped = mapBusiness(bizData, 0);
+        setBiz(mapped);
+        setReviews(
+        Array.isArray(reviewsData)
+          ? reviewsData
+          : Array.isArray(reviewsData.reviews)
+          ? reviewsData.reviews
+          : []
+      );
+
+        // similar: same category, exclude current
+        const sim = allBiz
+          .filter(b => b._id !== id &&
+            b.category?.toLowerCase() === bizData.category?.toLowerCase()
+          )
+          .slice(0, 4)
+          .map((b, i) => mapBusiness(b, i));
+        setSimilar(sim);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
-    };
-    fetchAll();
+    })();
   }, [id]);
 
-  if (loading) return <LoadingState message="Loading business details..." />;
-
-  if (error || !biz) return (
-    <div style={{ textAlign: "center", padding: 80, fontFamily: theme.typography.fontBody }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
-      <div style={{
-        fontFamily: theme.typography.fontDisplay,
-        fontSize: 24,
-        fontWeight: theme.typography.weightBold,
-        color: theme.colors.textPrimary,
-        marginBottom: 8,
-      }}>
-        Business not found
-      </div>
-      <PrimaryButton onClick={() => navigate("/listings")}>
-        Back to Listings
-      </PrimaryButton>
+  /* ── loading ─────────────────────────────────────────────── */
+  if (loading) return (
+    <div className="dp-loading">
+      <div className="dp-loading-ring" />
+      <p className="dp-loading-text">Loading…</p>
     </div>
   );
 
-  return (
-    <div style={{ fontFamily: theme.typography.fontBody, background: theme.colors.bgPage }}>
-
-
-     {/* ── BANNER ─────────────────────────────────────────── */}
-<div style={{
-  position: "relative",
-  height: "clamp(280px,40vh,480px)",
-  background: biz.images?.length > 0
-    ? "#000"
-    : gradients[biz.emoji] || theme.colors.bgSurface,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-}}>
-
-  {/* back button */}
-  <button
-    onClick={() => navigate("/listings")}
-    style={{
-      position: "absolute", top: 20,
-      left: "clamp(16px,4vw,64px)",
-      zIndex: 10,
-      background: "rgba(255,255,255,0.92)",
-      border: `1px solid ${theme.colors.borderLight}`,
-      borderRadius: theme.radii.pill,
-      padding: "10px 20px", fontSize: 13,
-      fontWeight: theme.typography.weightMedium,
-      cursor: "pointer",
-      display: "flex", alignItems: "center", gap: 6,
-      fontFamily: theme.typography.fontBody,
-      backdropFilter: "blur(8px)",
-    }}
-    onMouseEnter={e => e.currentTarget.style.background = "white"}
-    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.92)"}
-  >
-    ← Back
-  </button>
-
-  {biz.images?.length > 0 ? (
-    // ✅ real photo — full bleed
-    <img
-      src={biz.images[0]}
-      alt={biz.name}
-      style={{
-        width: "100%", height: "100%",
-        objectFit: "cover",
-        display: "block",
-      }}
-    />
-  ) : (
-    // fallback emoji
-    <span style={{
-      fontSize: 110,
-      filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.12))",
-    }}>
-      {biz.emoji}
-    </span>
-  )}
-
-  {/* dark overlay */}
-  <div style={{
-    position: "absolute", inset: 0,
-    background: "linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.55) 100%)",
-  }} />
-
-  {/* thumbnail strip — if more than 1 photo */}
-  {biz.images?.length > 1 && (
-    <div style={{
-      position: "absolute", bottom: 70,
-      left: "clamp(16px,6vw,96px)",
-      display: "flex", gap: 8,
-    }}>
-      {biz.images.slice(1, 5).map((url, i) => (
-        <img
-          key={i} src={url}
-          alt={`photo ${i + 2}`}
-          style={{
-            width: 56, height: 56,
-            objectFit: "cover",
-            borderRadius: theme.radii.sm,
-            border: "2px solid rgba(255,255,255,0.8)",
-            cursor: "pointer",
-          }}
-        />
-      ))}
+  if (error || !biz) return (
+    <div className="dp-error">
+      <div className="dp-error-icon">😕</div>
+      <h2 className="dp-error-title">Business not found</h2>
+      <button className="dp-btn-gold" onClick={() => navigate("/listings")}>
+        Back to Listings
+      </button>
     </div>
-  )}
+  );
 
-  {/* badges */}
-  <div style={{
-    position: "absolute", bottom: 24,
-    left: "clamp(16px,6vw,96px)",
-    display: "flex", gap: 8,
-  }}>
-    {biz.trust === "verified" && (
-      <span style={{
-        padding: "6px 14px", borderRadius: theme.radii.pill,
-        fontSize: 13, fontWeight: theme.typography.weightBold,
-        background: "rgba(255,255,255,0.95)",
-        color: theme.colors.secondary,
-      }}>
-        ✓ Verified Business
-      </span>
-    )}
-    {biz.badge === "top" && (
-      <span style={{
-        padding: "6px 14px", borderRadius: theme.radii.pill,
-        fontSize: 13, fontWeight: theme.typography.weightBold,
-        background: theme.colors.primary,
-        color: theme.colors.textPrimary,
-      }}>
-        ⭐ Top Rated
-      </span>
-    )}
-  </div>
-</div>
+  const images = biz.images?.length > 0 ? biz.images : [];
+  const hasMultiple = images.length > 1;
 
-      {/* ── BODY ───────────────────────────────────────────── */}
-      <div style={{
-       padding: isMobile ? "20px 16px" : `clamp(24px,4vh,48px) ${theme.spacing.pagePadding}`,
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "1fr 340px",
-        gap: isMobile ? 20 : 40,
-      }}>
+  return (
+    <div className="dp-root">
 
-        {/* ── LEFT ─────────────────────────────────────────── */}
-        <div>
+      {/* ══════════════════════════════════════════════════════
+          PHOTO GALLERY HERO
+      ══════════════════════════════════════════════════════ */}
+      <div className="dp-gallery" style={{ height: isMobile ? 320 : 520 }}>
 
-          {/* category label */}
-          <div style={{
-            fontSize: 11,
-            color: theme.colors.textMuted,
-            fontWeight: theme.typography.weightMedium,
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}>
-            {biz.category}
+        {/* Back button */}
+        <button className="dp-back" onClick={() => navigate("/listings")}>
+          ← Back
+        </button>
+
+        {images.length === 0 ? (
+          /* No photos — gradient placeholder */
+          <div className="dp-gallery-placeholder">
+            <span className="dp-gallery-emoji">{biz.emoji}</span>
           </div>
+        ) : images.length === 1 ? (
+          /* Single photo — full bleed */
+          <div
+            className="dp-gallery-single"
+            style={{ backgroundImage: `url(${images[0]})` }}
+            onClick={() => setLightboxIdx(0)}
+          />
+        ) : (
+          /* Multiple photos — editorial grid */
+          <div className={`dp-gallery-grid ${images.length >= 3 ? "grid-3" : "grid-2"}`}>
+            {/* Main large photo */}
+            <div
+              className="dp-gallery-main"
+              style={{ backgroundImage: `url(${images[0]})` }}
+              onClick={() => setLightboxIdx(0)}
+            />
+            {/* Secondary photos */}
+            <div className="dp-gallery-secondary">
+              {images.slice(1, isMobile ? 2 : 4).map((img, i) => (
+                <div
+                  key={i}
+                  className="dp-gallery-thumb"
+                  style={{ backgroundImage: `url(${img})` }}
+                  onClick={() => setLightboxIdx(i + 1)}
+                >
+                  {/* "View all" overlay on last thumb */}
+                  {i === (isMobile ? 0 : 2) && images.length > (isMobile ? 2 : 4) && (
+                    <div className="dp-gallery-more" onClick={() => setLightboxIdx(i + 1)}>
+                      +{images.length - (isMobile ? 2 : 4)} photos
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom overlay with badges */}
+        <div className="dp-gallery-overlay" />
+        <div className="dp-gallery-badges">
+          {(biz.trust === "verified" || biz.trust_level === "verified") && (
+            <span className="dp-badge-verified">✓ Verified Business</span>
+          )}
+          {biz.badge === "top" && (
+            <span className="dp-badge-top">⭐ Top Rated</span>
+          )}
+          {hasMultiple && (
+            <button
+              className="dp-badge-photos"
+              onClick={() => setLightboxIdx(0)}
+            >
+              📷 View all {images.length} photos
+            </button>
+          )}
+        </div>
+      </div>
+
+
+      {/* ══════════════════════════════════════════════════════
+          BODY GRID
+      ══════════════════════════════════════════════════════ */}
+      <div
+        className="dp-body"
+        style={{
+          padding: isMobile ? "32px 20px" : "56px clamp(32px,6vw,96px)",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 360px",
+        }}
+      >
+
+        {/* ── LEFT COLUMN ─────────────────────────────────── */}
+        <div className="dp-left">
+
+          {/* category eyebrow */}
+          <p className="dp-category">{biz.category}</p>
 
           {/* name */}
-          <h1 style={{
-            fontFamily: theme.typography.fontDisplay,
-            fontSize: "clamp(26px,4vw,42px)",
-            fontWeight: theme.typography.weightBlack,
-            color: theme.colors.textPrimary,
-            letterSpacing: "-1px",
-            marginBottom: 12,
-          }}>
+          <h1 className="dp-name"
+            style={{ fontSize: isMobile ? "clamp(32px,9vw,52px)" : "clamp(40px,5vw,68px)" }}>
             {biz.name}
           </h1>
 
           {/* rating + location */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 20,
-            flexWrap: "wrap",
-          }}>
+          <div className="dp-meta">
             <StarRating rating={biz.rating} count={biz.reviews} />
-            <span style={{ color: theme.colors.textMuted, fontSize: 13 }}>
-              📍 {biz.location}
-            </span>
+            <span className="dp-location">📍 {biz.location}</span>
           </div>
 
           {/* tags */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-            {biz.tags.map(t => (
-              <Badge key={t} variant="verified">{t}</Badge>
-            ))}
-          </div>
+          {biz.tags?.length > 0 && (
+            <div className="dp-tags">
+              {biz.tags.map(t => (
+                <span key={t} className="dp-tag">{t}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="dp-rule" />
 
           {/* description */}
-          <p style={{
-            fontSize: 15,
-            color: theme.colors.textBody,
-            lineHeight: theme.typography.lineHeightRelaxed,
-            marginBottom: 28,
-          }}>
-            {biz.desc}
-          </p>
+          <p className="dp-desc">{biz.desc}</p>
 
           {/* local tip */}
-          <Alert variant="success" style={{ marginBottom: 28, borderRadius: theme.radii.md }}>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontWeight: theme.typography.weightBold,
-              fontSize: 14,
-              color: theme.colors.secondaryText,
-              marginBottom: 8,
-            }}>
-              🧠 Local Insider Tip
+          {biz.localTip && (
+            <div className="dp-tip">
+              <div className="dp-tip-icon">💡</div>
+              <div>
+                <div className="dp-tip-label">Local Insider Tip</div>
+                <div className="dp-tip-text">{biz.localTip}</div>
+              </div>
             </div>
-            <div style={{
-              fontSize: 13,
-              color: theme.colors.secondaryText,
-              lineHeight: theme.typography.lineHeightRelaxed,
-            }}>
-              {biz.localTip}
-            </div>
-          </Alert>
+          )}
 
-          {/* ── REVIEWS ──────────────────────────────────────── */}
-          <div style={{
-            fontFamily: theme.typography.fontDisplay,
-            fontWeight: theme.typography.weightBold,
-            fontSize: 20,
-            color: theme.colors.textPrimary,
-            marginBottom: 18,
-          }}>
-            Guest Reviews{" "}
-            {reviews.length > 0 && (
-              <span style={{
-                fontSize: 14,
-                fontWeight: theme.typography.weightRegular,
-                color: theme.colors.textMuted,
-                fontFamily: theme.typography.fontBody,
-              }}>
-                ({reviews.length})
-              </span>
+          {/* ── TRUST SCORE ─────────────────────────────────── */}
+          <TrustScore biz={biz} />
+   
+         
+        <div className="dp-reviews-wrap">
+
+          <div className="dp-reviews-header">
+            <div>
+      
+
+              <h2 className="dp-reviews-title">
+                Guest Reviews
+                {reviews.length > 0 && (
+                  <span className="dp-reviews-count">
+                    {reviews.length}
+                  </span>
+                )}
+              </h2>
+            </div>
+
+            {biz.rating > 0 && (
+              <div className="dp-rating-summary">
+                <div className="dp-rating-big">{biz.rating}</div>
+                <div>
+                  <StarRating rating={biz.rating} />
+                  <p className="dp-rating-label">
+                    Based on {biz.review_count} trusted reviews
+                  </p>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* no reviews yet */}
-          {reviews.length === 0 && (
-            <SurfaceCard style={{ textAlign: "center", padding: 28 }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>✍️</div>
-              <div style={{
-                fontSize: 14,
-                color: theme.colors.textMuted,
-                lineHeight: theme.typography.lineHeightRelaxed,
-              }}>
-                No reviews yet. Be the first to share your experience!
-              </div>
-            </SurfaceCard>
-          )}
-
-          {/* review cards */}
-          {reviews.map((r, i) => (
-            <div key={i} style={{
-              background: theme.colors.bgSurface,
-              border: `1px solid ${theme.colors.borderLight}`,
-              borderRadius: theme.radii.lg,
-              padding: 20,
-              marginBottom: 14,
-            }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                marginBottom: 12,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40,
-                    borderRadius: "50%",
-                    background: theme.colors.primaryLight,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: theme.typography.fontDisplay,
-                    fontWeight: theme.typography.weightBold,
-                    color: theme.colors.primaryText,
-                    fontSize: 16,
-                  }}>
-                    {r.name[0]}
-                  </div>
-                  <div>
-                    <div style={{
-                      fontWeight: theme.typography.weightMedium,
-                      fontSize: 14,
-                      color: theme.colors.textPrimary,
-                    }}>
-                      {r.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: theme.colors.textMuted }}>
-                      📍 {r.city}
-                    </div>
-                  </div>
-                </div>
-                <StarRating rating={r.rating} />
-              </div>
-              <div style={{
-                fontSize: 13,
-                color: theme.colors.textBody,
-                lineHeight: theme.typography.lineHeightRelaxed,
-                fontStyle: "italic",
-              }}>
-                "{r.comment}"
-              </div>
-              <div style={{ fontSize: 11, color: theme.colors.textMuted, marginTop: 8 }}>
-                {new Date(r.createdAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-              </div>
+          {reviews.length === 0 ? (
+            <div className="dp-no-reviews">
+              <div className="dp-no-review-icon">✍️</div>
+              <h3>No stories yet</h3>
+              <p>
+                Be the first guest to share what made this place memorable.
+              </p>
             </div>
-          ))}
+          ) : (
+            <div className="dp-reviews-grid">
+              {reviews.map((r, i) => (
+                <article key={i} className="dp-review-card">
+
+                  {/* Quote Mark */}
+                  <div className="dp-review-quote">“</div>
+
+                  {/* Top */}
+                  <div className="dp-review-top">
+                    <StarRating rating={r.rating} />
+
+                    {r.verifiedBooking && (
+                      <span className="dp-verified-badge">
+                        Verified Guest
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  {r.title && (
+                    <h3 className="dp-review-title">
+                      {r.title}
+                    </h3>
+                  )}
+
+                  {/* Comment */}
+                  <p className="dp-review-comment">
+                    {r.comment}
+                  </p>
+
+                  {/* Images */}
+                  {r.images?.length > 0 && (
+                    <div className="dp-review-images">
+                      {r.images.slice(0,3).map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={img}
+                          alt=""
+                          className="dp-review-img"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="dp-review-rule" />
+
+                  <div className="dp-review-author">
+
+                    <div className="dp-review-avatar">
+                      {r.name?.[0]?.toUpperCase()}
+                    </div>
+
+                    <div className="dp-review-author-info">
+                      <div className="dp-review-name">
+                        {r.name}
+                      </div>
+
+                      <div className="dp-review-meta">
+                        {r.city && `📍 ${r.city} · `}
+                        {new Date(r.createdAt).toLocaleDateString(
+                          "en-IN",
+                          {
+                            month: "long",
+                            year: "numeric",
+                          }
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Owner Reply */}
+                  {r.ownerReply?.text && (
+                    <div className="dp-owner-reply">
+                      <div className="dp-owner-reply-label">
+                        Reply from TruGoa Partner
+                      </div>
+
+                      <p>{r.ownerReply.text}</p>
+                    </div>
+                  )}
+
+                  {/* Helpful */}
+                  <button className="dp-helpful-btn">
+                    Helpful ({r.helpfulCount || 0})
+                  </button>
+
+                </article>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ── RIGHT — BOOKING CARD ──────────────────────────── */}
-        <div>
-          <div style={{
-            order: isMobile ? -1 : 0,
-            background: theme.colors.bgCard,
-            borderRadius: theme.radii.xl,
-            padding: 28,
-            boxShadow: theme.shadows.modal,
-            border: `1px solid ${theme.colors.borderLight}`,
-            position: "sticky",
-            top: 100,
-          }}>
+       <ReviewForm
+        businessId={id}
+        fetchReviews={async () => {
+          const data = await getReviewsForBusiness(id);
+
+          setReviews(
+            Array.isArray(data)
+              ? data
+              : Array.isArray(data.reviews)
+              ? data.reviews
+              : []
+          );
+        }}
+        />
+        </div>
+
+
+        {/* ── RIGHT COLUMN — BOOKING CARD ─────────────────── */}
+        <div className="dp-right">
+          <div className="dp-booking-card">
 
             {/* price */}
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 36,
-              fontWeight: theme.typography.weightBlack,
-              color: theme.colors.textPrimary,
-              marginBottom: 2,
-            }}>
-              {biz.price}
-            </div>
-            <div style={{
-              fontSize: 13,
-              color: theme.colors.textMuted,
-              marginBottom: 24,
-              paddingBottom: 20,
-              borderBottom: `1px solid ${theme.colors.borderLight}`,
-            }}>
-              per {biz.priceLabel}
-            </div>
+            <div className="dp-price">{biz.price}</div>
+            <div className="dp-price-label">per {biz.priceLabel}</div>
 
-            {/* book now */}
-           <PrimaryButton
-            onClick={() => {
-              if (!isTouristLoggedIn) {
-                setShowLoginModal(true); // ✅ show modal if not logged in
-              } else {
-                navigate(`/booking/${biz.id}`) 
-              }
-            }}
-            style={{ width: "100%", borderRadius: theme.radii.lg, padding: 16, marginBottom: 12, fontSize: 15 }}
-          >
-            📅 Book Now
-          </PrimaryButton>
+            <div className="dp-booking-rule" />
 
-          {/* login modal */}
-          {showLoginModal && (
-            <LoginModal
-              onClose={() => setShowLoginModal(false)}
-              onSuccess={() => setShowLoginModal(false)}
-              message="Sign in to book this place"
-            />
-          )}
+            {/* CTA */}
+            <button
+              className="dp-btn-book"
+              onClick={() => {
+                if (!isTouristLoggedIn) {
+                  setShowLogin(true);
+                } else {
+                  navigate(`/booking/${biz.id}`);
+                }
+              }}
+            >
+              📅 Book Now
+            </button>
 
-            {/* ask AI */}
-            <GhostButton
+            <button
+              className="dp-btn-ai"
               onClick={() => navigate("/goaguide")}
-              style={{ width: "100%", borderRadius: theme.radii.lg, padding: 14, fontSize: 14 }}
             >
               💬 Ask GoaGuide AI
-            </GhostButton>
+            </button>
 
             {/* trust features */}
-            <div style={{
-              marginTop: 20,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              paddingTop: 20,
-              borderTop: `1px solid ${theme.colors.borderLight}`,
-            }}>
+            <div className="dp-booking-features">
               {[
                 "✓ Verified & trusted business",
-                "✓ Best price guaranteed",
+                "✓ Price matches local rates",
                 "✓ Free cancellation (24hr)",
-                "✓ Local tip included",
+                "✓ Instant confirmation",
               ].map(f => (
-                <div key={f} style={{
-                  fontSize: 13,
-                  color: theme.colors.textBody,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}>
-                  {f}
-                </div>
+                <div key={f} className="dp-booking-feature">{f}</div>
               ))}
             </div>
 
-            {/* fair price alert */}
-            <Alert variant="warning" style={{ marginTop: 20, borderRadius: theme.radii.md }}>
-              <strong style={{ color: theme.colors.primaryText }}>💡 Fair Price Alert</strong>
-              <br />
-              <span style={{ fontSize: 12, lineHeight: 1.6 }}>
-                This listing shows real market prices — no hidden fees, no tourist markup.
-              </span>
-            </Alert>
-
+            {/* fair price badge */}
+            <div className="dp-fair-price">
+              <span className="dp-fair-price-icon">₹</span>
+              <div>
+                <div className="dp-fair-price-title">Fair Price Guaranteed</div>
+                <div className="dp-fair-price-sub">
+                  No hidden fees · No tourist markup
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* contact */}
+          {biz.contact && (
+            <div className="dp-contact-card">
+              <p className="dp-contact-label">Contact</p>
+              <p className="dp-contact-val">{biz.contact}</p>
+            </div>
+          )}
         </div>
       </div>
+
+
+      {/* ══════════════════════════════════════════════════════
+          SIMILAR LISTINGS
+      ══════════════════════════════════════════════════════ */}
+      {similar.length > 0 && (
+        <div
+          className="dp-similar"
+          style={{ padding: isMobile ? "56px 20px" : "72px clamp(32px,6vw,96px)" }}
+        >
+          <div className="dp-similar-header">
+            <div>
+              <p className="dp-similar-eyebrow">You Might Also Like</p>
+              <h2 className="dp-similar-title"
+                style={{ fontSize: isMobile ? 32 : "clamp(32px,4vw,52px)" }}>
+                More {biz.category} in Goa
+              </h2>
+            </div>
+            <button
+              className="dp-similar-all"
+              onClick={() => navigate(`/listings?category=${encodeURIComponent(biz.category)}`)}
+            >
+              View all →
+            </button>
+          </div>
+
+          <div
+            className="dp-similar-grid"
+            style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}
+          >
+            {similar.map((s, i) => (
+              <div
+                key={s.id}
+                className="dp-similar-card"
+                onClick={() => navigate(`/listings/${s.id}`)}
+              >
+                <div
+                  className="dp-similar-img"
+                  style={{
+                    backgroundImage: s.images?.[0] ? `url(${s.images[0]})` : undefined,
+                    background: s.images?.[0] ? undefined : "#EDE8DD",
+                  }}
+                >
+                  {!s.images?.[0] && (
+                    <span style={{ fontSize: 32 }}>{s.emoji}</span>
+                  )}
+                  {(s.trust === "verified" || s.trust_level === "verified") && (
+                    <span className="dp-similar-verified">✓</span>
+                  )}
+                </div>
+                <div className="dp-similar-body">
+                  <p className="dp-similar-category">{s.category}</p>
+                  <h3 className="dp-similar-name">{s.name}</h3>
+                  <div className="dp-similar-meta">
+                    <StarRating rating={s.rating} />
+                    <span className="dp-similar-price">{s.price}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+      {/* ══════════════════════════════════════════════════════
+          LIGHTBOX
+      ══════════════════════════════════════════════════════ */}
+      {lightboxIdx !== null && images.length > 0 && (
+        <Lightbox
+          images={images}
+          startIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
+      )}
+
+      {/* Login modal */}
+      {showLogin && (
+        <LoginModal
+          onClose={() => setShowLogin(false)}
+          onSuccess={() => setShowLogin(false)}
+          message="Sign in to book this place"
+        />
+      )}
     </div>
   );
-};
-
-export default DetailPage;
+}

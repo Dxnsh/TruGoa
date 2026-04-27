@@ -33,8 +33,8 @@ const AuthPage = () => {
       } else {
         result = await loginOwner({ email: form.email, password: form.password });
       }
-      login(result.token, result.owner); // ✅ save to context + localStorage
-      navigate("/add-business");          // ✅ redirect to listing page
+     login(result.token, result.owner);
+      navigate("/dashboard", { replace: true });          // ✅ redirect to listing page
     } catch (err) {
       setError(err.message);
     } finally {

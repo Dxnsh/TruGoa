@@ -8,11 +8,16 @@ import {
 } from "../../services/api";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
+import { Hourglass, } from "lucide-react";
 
 const TABS = ["pending", "approved", "rejected"];
 
 const TAB_LABELS = {
-  pending:  "⏳ Pending",
+  pending: (
+    <>
+      <Hourglass/>Pending
+    </>
+  ),
   approved: "✅ Approved",
   rejected: "❌ Rejected",
 };

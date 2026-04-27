@@ -52,9 +52,30 @@ export const uploadBusinessImages = async (files) => {
 
 // GET reviews for a business
 export const getReviewsForBusiness = async (businessId) => {
-  const res = await fetch(`http://localhost:5000/api/reviews?business_id=${businessId}`);
+  const res = await fetch(`http://localhost:5000/api/reviews?business_id=${businessId}&t=${Date.now()}`)
   if (!res.ok) throw new Error("Failed to fetch reviews");
   return res.json();
+};
+
+export const createReview = async (payload) => {
+  const token = localStorage.getItem("trugoa_tourist_token");
+
+  const res = await fetch("http://localhost:5000/api/reviews", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to submit review");
+  }
+
+  return data;
 };
 
 // POST to our backend which proxies to Anthropic
@@ -64,7 +85,12 @@ export const sendChatMessage = async (messages) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
   });
-  if (!res.ok) throw new Error("Failed to get response from GoaGuide AI");
+ 
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to get response from GoaGuide AI");
+  }
+ 
   return res.json(); // returns { reply: "..." }
 };
 
@@ -168,12 +194,14 @@ export const touristGoogleAuth = async (googleId, name, email, avatar) => {
 // ── Booking API ──────────────────────────────────────────────
 
 const authHeader = () => {
-  const token = localStorage.getItem("touristToken");
+  const token = localStorage.getItem("trugoa_tourist_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+
 export const createBooking = async (payload) => {
-  const res = await fetch("/api/bookings", {
+  console.log("token:", localStorage.getItem("trugoa_tourist_token"))
+  const res = await fetch("http://localhost:5000/api/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify(payload),
@@ -184,21 +212,25 @@ export const createBooking = async (payload) => {
 };
 
 export const getMyBookings = async () => {
-  const res = await fetch("/api/bookings/my", { headers: authHeader() });
+  const res = await fetch("http://localhost:5000/api/bookings/my", {
+    headers: authHeader(),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to load bookings");
   return data.bookings;
 };
 
 export const getBookingById = async (id) => {
-  const res = await fetch(`/api/bookings/${id}`, { headers: authHeader() });
+  const res = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+    headers: authHeader(),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to load booking");
   return data.booking;
 };
 
 export const cancelBooking = async (id, reason = "") => {
-  const res = await fetch(`/api/bookings/${id}/cancel`, {
+  const res = await fetch(`http://localhost:5000/api/bookings/${id}/cancel`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify({ reason }),
@@ -208,19 +240,49 @@ export const cancelBooking = async (id, reason = "") => {
   return data;
 };
 
-// Fetch a single business by ID (no auth needed — public route)
-export const getBusiness = async (id) => {
-  const res = await fetch(`/api/businesses/${id}`);
-  
-  // Log raw response for debugging
-  const text = await res.text();
-  console.log("getBusiness raw response:", res.status, text);
-  
-  if (!res.ok) throw new Error(`Business fetch failed: ${res.status} — ${text.slice(0, 100)}`);
-  
-  const data = JSON.parse(text);
-  
-  // Handle every shape your backend might return:
-  // { _id, name, ... }  OR  { business: {...} }  OR  { data: {...} }  OR  { success, business: {...} }
-  return data?.business ?? data?.data ?? data;
+//owner dashboarad
+// ── Owner API — 
+
+const ownerHeader = () => {
+  const token = localStorage.getItem("trugoa_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const getOwnerDashboard = async () => {
+  const res = await fetch("http://localhost:5000/api/owner/dashboard", {
+    headers: ownerHeader(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to load dashboard");
+  return data.stats;
+};
+
+export const getOwnerBusinesses = async () => {
+  const res = await fetch("http://localhost:5000/api/owner/businesses", {
+    headers: ownerHeader(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to load listings");
+  return data.businesses;
+};
+
+export const getOwnerBookings = async (status = "all") => {
+  const res = await fetch(
+    `http://localhost:5000/api/owner/bookings${status !== "all" ? `?status=${status}` : ""}`,
+    { headers: ownerHeader() }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to load bookings");
+  return data.bookings;
+};
+
+export const updateOwnerBookingStatus = async (id, status, internalNote = "") => {
+  const res = await fetch(`http://localhost:5000/api/owner/bookings/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...ownerHeader() },
+    body: JSON.stringify({ status, internalNote }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to update booking");
+  return data;
 };

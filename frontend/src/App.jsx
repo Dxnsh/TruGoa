@@ -12,6 +12,8 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ItineraryPage from "./pages/ItineraryPage/ItineraryPage";
 import BookingPage from "./pages/BookingPage/BookingPage";
 import MyBookingsPage from "./pages/MyBookingPage/MyBookingPage";
+import OwnerDashboard from "./pages/Ownerdashboard/Ownerdashboard";
+import StoriesPage from "./pages/StoriesPage/StoriesPage";
 
 // ✅ protects routes that need login
 const ProtectedRoute = ({ children }) => {
@@ -27,7 +29,8 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/"             element={<Homepage />} />
-        <Route path="/listings"     element={<ListingPage />} />
+        <Route path="/listings"     element={<ListingPage/>}/>
+          
         <Route path="/listings/:id" element={<DetailPage />} />
         <Route path="/goaguide"     element={<GoaGuide />} />
         <Route path="/auth"         element={<AuthPage />} />
@@ -36,6 +39,8 @@ function App() {
         <Route path="/itinerary"   element={<ItineraryPage />} />
         <Route path="/booking/:id" element={<BookingPage/>}/>
         <Route path="/my-bookings" element={<MyBookingsPage />} />
+        <Route path="/dashboard"  element={<OwnerDashboard />} />
+        <Route path="/stories/:slug" element={<StoriesPage />} />
 
         <Route path="/add-business" element={
           <ProtectedRoute>       {/* ✅ protected */}
