@@ -138,7 +138,7 @@
 .gg-chat-wrap {
   display: flex;
   flex-direction: column;
-  height: calc(100svh - 64px - 56px - 50px);
+  height: calc(100svh - 64px - 56px);
   background: #F7F3EC;
 }
 .gg-messages {
@@ -186,6 +186,26 @@
   background: #1A1F1C;
   color: white;
   border-radius: 18px 18px 4px 18px;
+}
+.gg-itinerary-cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #F0B429;
+  color: #1A1F1C;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s ease;
+}
+.gg-itinerary-cta:hover {
+  filter: brightness(0.95);
 }
 .gg-typing {
   display: flex;
@@ -295,7 +315,7 @@
 }
 .gg-eyebrow-light {
   font-size: 10px; color: #F0B429; letter-spacing: 3px;
-  text-transform: uppercase; font-weight: 600; margin-bottom: 12px;
+  text-transform: uppercase; font-weight: 600; margin: 0 0 12px;
   font-family: 'Instrument Sans', sans-serif;
 }
 .gg-section-title {
@@ -634,49 +654,6 @@
   width: 80px; padding-top: 3px; font-family: 'Instrument Sans', sans-serif;
 }
 
-/* ═══════════════════════════════════════════════
-   SCAM ALERTS
-═══════════════════════════════════════════════ */
-.gg-scam-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 48px; }
-.gg-scam-card {
-  background: white; border: 1px solid rgba(0,0,0,0.07);
-  border-radius: 18px; padding: 24px 28px;
-  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
-}
-.gg-scam-card:hover { transform: translateY(-3px); }
-.gg-scam-header {
-  display: flex; justify-content: space-between;
-  align-items: flex-start; gap: 12px; margin-bottom: 12px;
-}
-.gg-scam-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 24px; font-weight: 600; color: #1A1F1C; margin: 0;
-}
-.gg-severity {
-  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
-  text-transform: uppercase; padding: 5px 12px; border-radius: 4px;
-  white-space: nowrap; font-family: 'Instrument Sans', sans-serif; flex-shrink: 0;
-}
-.gg-severity-high { background: #FDE8E8; color: #A83232; }
-.gg-severity-mid  { background: #FEF3E0; color: #B86A00; }
-.gg-scam-desc {
-  font-size: 14px; color: rgba(0,0,0,0.62); line-height: 1.75;
-  margin-bottom: 16px; font-family: 'Instrument Sans', sans-serif;
-}
-.gg-scam-fix {
-  display: flex; gap: 10px; align-items: flex-start;
-  background: #EEF5F1; border-left: 2px solid #2D6A4F;
-  border-radius: 0 8px 8px 0; padding: 12px 16px;
-}
-.gg-fix-icon {
-  font-size: 14px; color: #2D6A4F; font-weight: 700;
-  flex-shrink: 0; margin-top: 1px;
-}
-.gg-scam-fix span:last-child {
-  font-size: 13px; color: rgba(0,0,0,0.65); line-height: 1.7;
-  font-family: 'Instrument Sans', sans-serif;
-}
-
 /* Emergency */
 .gg-emergency {
   background: #0C1A10; border-radius: 20px; padding: 32px;
@@ -712,6 +689,5 @@
   .gg-price-amount { font-size: 22px; }
   .gg-season-crowd, .gg-season-weather, .gg-season-best { flex-direction: column; gap: 4px; }
   .gg-season-label { width: auto; padding-top: 0; }
-  .gg-chat-wrap { height: calc(100svh - 64px - 52svh - 50px); }
   .gg-bubble { max-width: 88%; }
 }

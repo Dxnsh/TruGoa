@@ -6,13 +6,32 @@ export const storiesData = [
     title: "Where Goa Still Breathes",
     desc: "Quiet coastlines, timeless villages and soulful roads.",
     image: "/images/destination.jpg",
-    manifestoTitle: "Why this Matters",
+    manifestoTitle: "Some place do not enter your life loudly. They arrive softly...and stay forever",
      manifestoText1:
-        "Some places are not discovered through maps, but through the feeling they leave behind. Goa still lives in quiet coastlines, old villages, and roads that ask you to slow down.",
+        
+           `The real Goa begins where the crowds disappear.
+
+          It lives in silent coastal roads where the only sound is the wind moving through coconut trees. "
+          In tiny villages painted with fading colours and old memories.
+          In homes where grandparents still sit outside at sunset, watching life pass slowly as if time itself forgot this place exists.`,
 
     manifestoText2:
-        "These stories are for travellers seeking depth, and for locals who know Goa is more than what is shown first.",
-    stories: [
+       ` Early mornings here feel sacred.
+
+        The sky turns soft blue over empty beaches.
+        Fishermen return with tired eyes and peaceful hearts.
+        The smell of fresh bread escapes from small bakeries before the town wakes up.
+        Church bells echo gently through the air while rainwater still rests on old red roads from the night before.
+
+        And for a moment… everything feels still.
+
+        No pressure.
+        No rush.
+        No need to become someone else.
+
+        Just you, the sea, and the feeling of finally breathing deeply again.`,
+    
+        stories: [
       {
         slug: "quiet-beaches-tourists-miss",
         title: "7 Quiet Beaches Tourists Rarely Find",

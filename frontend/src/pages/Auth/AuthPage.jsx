@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { registerOwner, loginOwner } from "../../services/api";
+import SEO from "../../components/SEO/SEO";
 import { theme } from "../../Theme";
 
 const AuthPage = () => {
@@ -34,7 +35,7 @@ const AuthPage = () => {
         result = await loginOwner({ email: form.email, password: form.password });
       }
      login(result.token, result.owner);
-      navigate("/dashboard", { replace: true });          // ✅ redirect to listing page
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,6 +53,7 @@ const AuthPage = () => {
       justifyContent: "center",
       padding: `${theme.spacing.lg} ${theme.spacing.pagePadding}`,
     }}>
+      <SEO path="/auth" title="Sign In" noindex />
       <div style={{ width: "100%", maxWidth: 440 }}>
 
         {/* logo */}
@@ -139,8 +141,8 @@ const AuthPage = () => {
               </h2>
               <p style={{ fontSize: 13, color: theme.colors.textMuted }}>
                 {mode === "login"
-                  ? "Log in to manage your business listing."
-                  : "Create an account to list your business."}
+                  ? "Log in to your business owner account."
+                  : "Create a business owner account. Listing management is coming soon — for now, places are added by the TruGoa team."}
               </p>
             </div>
 

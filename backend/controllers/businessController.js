@@ -1,92 +1,57 @@
 import Business from "../models/Business.js";
-import cloudinary from "../config/cloudinary.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { sendSuccess } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
-// POST
-export const createBusiness = asyncHandler(async (req, res) => {
-  try {
-    console.log("=== CREATE BUSINESS ===");
-    console.log("body:", JSON.stringify(req.body, null, 2)); // ✅
-    
-    const { name, location, price_range, trust_level, category, description, contact, images } = req.body;
-
-    if (!name.trim() || !location.trim()) {
-      return res.status(400).json({ error: "Name and location required" });
-    }
-
-    const business = await Business.create({
-      name,
-      location,
-      price_range,
-      trust_level,
-      category,
-      description,
-      contact,
-      images: images || [],
-      owner: req.ownerId,
-      status: "pending",
-    });
-
-    res.status(201).json(business);
-  } catch (error) {
-    console.log("=== ERROR ===");
-    console.log(error.message); // ✅
-    console.log(error.stack);   // ✅
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET ALL
+// GET /businesses — public, returns approved businesses (all statuses shown in dev)
 export const getBusinesses = asyncHandler(async (req, res) => {
-  const data = await Business.find({ status: "approved" });
-  res.json(data);
-  
-});
+  const { category, area, priceLevel, featured, search } = req.query;
 
-// GET single business by ID
-export const getBusinessById = asyncHandler(async (req, res) => {
-  try {
-    const business = await Business.findById(req.params.id);
+  const filter = {};
 
-    if (!business) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    res.json(business);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  if (process.env.NODE_ENV !== "development") {
+    filter.status = "approved";
   }
+
+  if (category) filter.category = { $regex: `^${category}$`, $options: "i" };
+  if (area) filter.area = { $regex: `^${area}$`, $options: "i" };
+  if (priceLevel) filter.priceLevel = priceLevel;
+  if (featured) filter.featured = true;
+
+  if (search) {
+    filter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { location: { $regex: search, $options: "i" } },
+      { category: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { area: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const businesses = await Business.find(filter).sort({
+    editorPick: -1,
+    featured: -1,
+    createdAt: -1,
+  });
+
+  sendSuccess(res, { data: businesses });
 });
 
-// UPLOAD IMAGES
-    export const uploadImages = asyncHandler(async (req, res) => {
-      try {
-        console.log("files received:", req.files.length); 
-        console.log("files:", req.files.map(f => f.originalname)); 
-        if (!req.files || req.files.length === 0) {
-          return res.status(400).json({ error: "No images uploaded" });
-        }
+// GET /businesses/slug/:slug — public
+export const getBusinessBySlug = asyncHandler(async (req, res) => {
+  const filter = { slug: req.params.slug };
+  if (process.env.NODE_ENV !== "development") filter.status = "approved";
 
-        // upload each file buffer to Cloudinary manually
-        const uploadPromises = req.files.map(file => {
-          return new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              {
-                folder: "trugoa_businesses",
-                transformation: [{ width: 1200, height: 800, crop: "limit", quality: "auto" }],
-              },
-              (error, result) => {
-                if (error) reject(error);
-                else resolve(result.secure_url); // ✅ get the https URL
-              }
-            );
-            stream.end(file.buffer); // ✅ push the buffer into the stream
-          });
-        });
+  const business = await Business.findOne(filter);
+  if (!business) throw new ApiError(404, "Business not found");
 
-        const urls = await Promise.all(uploadPromises);
-        res.json({ urls });
-      } catch (error) {
-        res.status(500).json({ error: error.message });
-      }
-    });
+  sendSuccess(res, { data: business });
+});
+
+// GET /businesses/:id — public
+export const getBusinessById = asyncHandler(async (req, res) => {
+  const business = await Business.findById(req.params.id);
+  if (!business) throw new ApiError(404, "Business not found");
+
+  sendSuccess(res, { data: business });
+});

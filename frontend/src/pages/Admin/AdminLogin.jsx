@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminLogin } from "../../services/api";
+import SEO from "../../components/SEO/SEO";
 import { theme } from "../../Theme";
 
 const AdminLogin = () => {
@@ -33,6 +34,7 @@ const AdminLogin = () => {
       fontFamily: theme.typography.fontBody,
       padding: 20,
     }}>
+      <SEO path="/admin" title="Admin Login" noindex />
       <div style={{ width: "100%", maxWidth: 400 }}>
 
         {/* logo */}

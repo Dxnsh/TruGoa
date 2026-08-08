@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendChatMessage } from "../../services/api";
+import { useTourist } from "../../context/TouristContext";
+import LoginModal from "../../components/LoginModal/LoginModal";
+import SEO from "../../components/SEO/SEO";
 import useIsMobile from "../../hooks/useIsMobile";
 import "./GoaGuide.css";
 
-/* ══════════════════════════════════════════════════════════
-   DEEP GOA KNOWLEDGE DATABASE
-══════════════════════════════════════════════════════════ */
+
 const GOA = {
   taxi: [
     { from: "Airport (Dabolim)", to: "Panaji",           price: "₹600–₹800",   time: "45 min", tip: "Use the pre-paid counter inside — never the touts outside." },
@@ -174,7 +175,7 @@ const GOA = {
       name: "Palolem Beach",
       area: "Canacona, South Goa",
       type: "Crescent bay / Swimming",
-      crowd: "Moderate (manageable even in peak season)",
+      crowd: "Moderate — manageable even in peak season",
       bestTime: "6 AM – 9 AM for empty beach. December–February for best weather.",
       localTip: "Goa's most photogenic beach. The crescent shape means calm, swimmable water. Kayak to the small island at the south end — ₹400/hour.",
       hiddenAngle: "Walk 30 min south to Patnem Beach — quieter, same beautiful water, half the crowd.",
@@ -229,7 +230,7 @@ const GOA = {
       name: "Vagator & Little Vagator",
       area: "Bardez, North Goa",
       type: "Dramatic cliffs / Party adjacent",
-      crowd: "Moderate in day, busy at night",
+      crowd: "Moderate — busy at night",
       bestTime: "October–March. Sunset is extraordinary from Chapora Fort above.",
       localTip: "Two distinct beaches separated by rocky headland. Little Vagator (Ozran) is the beautiful crescent cove below the cliff. Climb the red laterite cliff for the Dilwale Dulhania Le Jayenge view.",
       hiddenAngle: "The rock pools at the north end at low tide are full of sea life. Completely missed by most tourists.",
@@ -280,57 +281,6 @@ const GOA = {
       howToGet: "5-min walk from Vagator. Scooter recommended.",
       desc: "Known to tourists for its sunset. Unknown: at 5:45 AM, before any other soul arrives, this fort gives you uninterrupted views of the Chapora river snaking to the sea. The light is pink and the silence is total.",
       bestTime: "One hour before sunrise. Bring a jacket.",
-    },
-  ],
-
-  scams: [
-    {
-      title: "Airport Taxi Overcharge",
-      severity: "Very Common",
-      desc: "Touts outside the terminal quote ₹2,000–₹3,500 for rides costing ₹600–₹1,100. They're aggressive and professional.",
-      fix: "Use the Government Pre-Paid Taxi counter inside the arrivals hall. Fixed rates displayed on board. Non-negotiable. Show them this screen.",
-    },
-    {
-      title: "Beach Shack Price Ambush",
-      severity: "Common",
-      desc: "Unlisted drink prices on some beach shacks. You order what seems like ₹150 drinks and get a bill for ₹600+. Especially common on Baga and Calangute.",
-      fix: "Ask for the menu with prices before ordering. If there are no prices listed, ask 'kitna hai?' (how much?) before ordering. A shack refusing to give prices is a shack to walk away from.",
-    },
-    {
-      title: "Fake Tour Operators",
-      severity: "Common",
-      desc: "Touts near tourist spots sell 'exclusive' Spice Farm, Dudhsagar, and waterfall packages at 3–4× the official rate with sub-standard transport.",
-      fix: "Book spice farms directly. Dudhsagar requires a government jeep from Mollem check post only — any other operator is unofficial. Never book tours from someone who approaches you on the street.",
-    },
-    {
-      title: "Drug Approach on Beaches",
-      severity: "Serious",
-      desc: "Beach drug peddlers specifically target tourists, particularly at Anjuna, Arambol and Vagator. Possession in India carries serious criminal penalties.",
-      fix: "Firm 'no'. Do not engage. Goa Police actively patrols — tourists have been arrested. The risk is not worth any benefit.",
-    },
-    {
-      title: "Fake Flea Market Antiques",
-      severity: "Common",
-      desc: "Anjuna and Mapusa flea markets have sellers claiming items are 'genuine antique' — bronze idols, coins, old cameras. Almost universally fake.",
-      fix: "Buy as décor at a fair price (₹100–₹500 range). Never pay 'antique prices' (₹2,000+). Export of genuine antiques over 100 years old is illegal in India anyway.",
-    },
-    {
-      title: "ATM Skimming",
-      severity: "Occasional",
-      desc: "Card skimming devices reported on standalone ATMs in tourist areas, especially Baga, Calangute, and Anjuna.",
-      fix: "Use ATMs inside bank branches only. HDFC, SBI and Axis ATMs inside their premises are consistently safe. Avoid standalone kiosk ATMs.",
-    },
-    {
-      title: "Restaurant Double Billing",
-      severity: "Occasional",
-      desc: "Some tourist-heavy restaurants add 10–20% 'service charge' and 'Goa tourism levy' not mentioned on the menu.",
-      fix: "GST (18% on restaurants with AC, 5% without) is legitimate. 'Service charge' is optional and you can refuse it. Ask before ordering if you're concerned.",
-    },
-    {
-      title: "Scooter Rental Damage Claims",
-      severity: "Common",
-      desc: "Some rental shops photograph pre-existing scratches poorly, then claim 'new damage' when you return.",
-      fix: "Before taking any scooter: photograph every scratch, dent and scuff from all angles. WhatsApp the photos to the shop owner immediately so there's a timestamp. Reputable shops won't object.",
     },
   ],
 
@@ -409,18 +359,17 @@ const TABS = [
   { id: "prices",    label: "Fair Prices",    icon: "₹"  },
   { id: "food",      label: "Goa Food Guide", icon: "🥘" },
   { id: "season",    label: "When to Visit",  icon: "📅" },
-  { id: "scams",     label: "Scam Alerts",    icon: "⚠️" },
 ];
 
 const STARTERS = [
   "What's the fair taxi price from the airport to Baga?",
   "Give me a 3-day itinerary under ₹8,000 total",
-  "What are the most common tourist scams in Goa?",
   "Best hidden beaches that most tourists miss?",
   "Where do locals eat in Panaji?",
   "Is Goa worth visiting in monsoon?",
   "Best time to visit for fewer crowds?",
   "What should I absolutely eat in Goa?",
+  "Tell me about a side of Goa most tourists never see",
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -429,14 +378,16 @@ const STARTERS = [
 export default function GoaGuide() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { isTouristLoggedIn } = useTourist();
 
   const [tab,     setTab    ] = useState("chat");
   const [input,   setInput  ] = useState("");
   const [msgs,    setMsgs   ] = useState([{
     role: "assistant",
-    content: "Namaskaar. 🌴\n\nI'm GoaGuide — your deeply trained local companion for Goa. I know every fair taxi price, every hidden beach, every restaurant worth your time, and every scam you need to avoid.\n\nWhat would you like to know?",
+    content: "Namaskaar. 🌴\n\nI'm GoaGuide — your deeply trained local companion for Goa. I know every fair taxi price, every hidden beach, every restaurant worth your time, and the true, authentic side of this place.\n\nWhat would you like to know?",
   }]);
   const [loading, setLoading] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -446,21 +397,34 @@ export default function GoaGuide() {
   const send = useCallback(async (text) => {
     const q = text || input.trim();
     if (!q || loading) return;
+    if (!isTouristLoggedIn) {
+      setShowLogin(true);
+      return;
+    }
     setInput("");
     setMsgs(prev => [...prev, { role: "user", content: q }]);
     setLoading(true);
     try {
       const history = [...msgs.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "user", content: q }];
-      const { reply } = await sendChatMessage(history);
-      setMsgs(prev => [...prev, { role: "assistant", content: reply }]);
+      const { reply, action, redirectUrl } = await sendChatMessage(history);
+      setMsgs(prev => [...prev, {
+        role: "assistant",
+        content: reply,
+        redirectUrl: action === "REDIRECT_ITINERARY" ? redirectUrl : undefined,
+      }]);
     } catch {
       setMsgs(prev => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
     }
     setLoading(false);
-  }, [input, msgs, loading]);
+  }, [input, msgs, loading, isTouristLoggedIn]);
 
   return (
     <div className="gg-root">
+      <SEO
+        path="/goaguide"
+        title="Goa Guide — Ask Our AI Local"
+        description="Ask TruGoa's AI guide anything about Goa — beaches, food, safety, itineraries — and get honest, locally-informed answers instantly."
+      />
 
       {/* ── HERO ────────────────────────────────────────────
       <div className="gg-hero">
@@ -483,7 +447,7 @@ export default function GoaGuide() {
           </h1>
           <p className="gg-hero-sub">
             Trained on 500+ verified places, real taxi prices,<br />
-            hidden beaches and every scam to avoid.
+            hidden beaches and the true, authentic side of Goa.
           </p>
         </div>
       </div> */}
@@ -517,6 +481,14 @@ export default function GoaGuide() {
                 )}
                 <div className={`gg-bubble gg-bubble-${m.role === "assistant" ? "ai" : "user"}`}>
                   {m.content}
+                  {m.redirectUrl && (
+                    <button
+                      className="gg-itinerary-cta"
+                      onClick={() => navigate(m.redirectUrl)}
+                    >
+                      Open Itinerary Planner →
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -555,6 +527,14 @@ export default function GoaGuide() {
               ›
             </button>
           </div>
+
+          {showLogin && (
+            <LoginModal
+              onClose={() => setShowLogin(false)}
+              onSuccess={() => setShowLogin(false)}
+              message="Sign up to chat with GoaGuide"
+            />
+          )}
         </div>
       )}
 
@@ -679,7 +659,7 @@ export default function GoaGuide() {
       ══════════════════════════════════════════════════ */}
       {tab === "gems" && (
         <div className="gg-content gg-dark-content">
-          <div style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
             <div className="gg-section-head">
               <p className="gg-eyebrow-light">The Goa Most Tourists Miss</p>
               <h2 className="gg-section-title-light"
@@ -723,10 +703,10 @@ export default function GoaGuide() {
           </div>
 
           <div className="gg-price-alert">
-            <span className="gg-price-alert-icon">⚠</span>
+            <span className="gg-price-alert-icon">💡</span>
             <div>
-              <div className="gg-price-alert-title">Always use the pre-paid counter inside Goa Airport</div>
-              <div className="gg-price-alert-sub">Outside touts quote 2–3× the fair price. Show this screen if needed.</div>
+              <div className="gg-price-alert-title">Use the pre-paid counter inside Goa Airport</div>
+              <div className="gg-price-alert-sub">Fixed, fair rates — no negotiation needed.</div>
             </div>
           </div>
 
@@ -818,7 +798,7 @@ export default function GoaGuide() {
       ══════════════════════════════════════════════════ */}
       {tab === "season" && (
         <div className="gg-content gg-dark-content">
-          <div style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
             <div className="gg-section-head">
               <p className="gg-eyebrow-light">Seasonal Guide</p>
               <h2 className="gg-section-title-light"
@@ -847,55 +827,20 @@ export default function GoaGuide() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ══════════════════════════════════════════════════
-          TAB: SCAMS
-      ══════════════════════════════════════════════════ */}
-      {tab === "scams" && (
-        <div className="gg-content"
-          style={{ padding: isMobile ? "40px 20px" : "56px clamp(40px,6vw,96px)" }}>
-          <div className="gg-section-head">
-            <p className="gg-eyebrow" style={{ color: "#A83232" }}>Stay Safe</p>
-            <h2 className="gg-section-title"
-              style={{ fontSize: isMobile ? 34 : "clamp(36px,4vw,56px)" }}>
-              Tourist scams in Goa —<br />
-              <em style={{ color: "#2D6A4F" }}>and how to beat them</em>
-            </h2>
-          </div>
-
-          <div className="gg-scam-list">
-            {GOA.scams.map((s, i) => (
-              <div key={i} className="gg-scam-card">
-                <div className="gg-scam-header">
-                  <h3 className="gg-scam-title">{s.title}</h3>
-                  <span className={`gg-severity gg-severity-${s.severity === "Very Common" || s.severity === "Serious" ? "high" : "mid"}`}>
-                    {s.severity}
-                  </span>
-                </div>
-                <p className="gg-scam-desc">{s.desc}</p>
-                <div className="gg-scam-fix">
-                  <span className="gg-fix-icon">✓</span>
-                  <span>{s.fix}</span>
-                </div>
+            {/* Emergency numbers */}
+            <div className="gg-emergency">
+              <h3 className="gg-sub-heading" style={{ color: "white" }}>Emergency Numbers</h3>
+              <div className="gg-emergency-grid"
+                style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
+                {GOA.emergencies.map((e, i) => (
+                  <div key={i} className="gg-emergency-card">
+                    <div className="gg-emergency-service">{e.service}</div>
+                    <div className="gg-emergency-number">{e.number}</div>
+                    {e.note && <div className="gg-emergency-note">{e.note}</div>}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          {/* Emergency numbers */}
-          <div className="gg-emergency">
-            <h3 className="gg-sub-heading" style={{ color: "white" }}>Emergency Numbers</h3>
-            <div className="gg-emergency-grid"
-              style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
-              {GOA.emergencies.map((e, i) => (
-                <div key={i} className="gg-emergency-card">
-                  <div className="gg-emergency-service">{e.service}</div>
-                  <div className="gg-emergency-number">{e.number}</div>
-                  {e.note && <div className="gg-emergency-note">{e.note}</div>}
-                </div>
-              ))}
             </div>
           </div>
         </div>

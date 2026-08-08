@@ -1,61 +1,66 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  adminGetBusinesses,
-  adminGetStats,
-  adminApproveBusiness,
-  adminRejectBusiness,
-} from "../../services/api";
+import { adminGetBusinesses, adminDeleteBusiness } from "../../services/api";
+import SEO from "../../components/SEO/SEO";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
-import { Hourglass, } from "lucide-react";
+import BusinessForm from "./BusinessForm";
+import StoriesManager from "./StoriesManager";
+import BeachForm from "./forms/BeachForm";
+import FoodForm from "./forms/FoodForm";
+import StayForm from "./forms/StayForm";
+import HiddenGoaForm from "./forms/HiddenGoaForm";
+import NightlifeForm from "./forms/NightlifeForm";
 
-const TABS = ["pending", "approved", "rejected"];
+const SECTIONS = ["businesses", "stories"];
+const SECTION_LABELS = { businesses: "Businesses", stories: "Stories" };
 
-const TAB_LABELS = {
-  pending: (
-    <>
-      <Hourglass/>Pending
-    </>
-  ),
-  approved: "✅ Approved",
-  rejected: "❌ Rejected",
-};
+// which clean, category-specific form to open for each listing type
+const FORM_TYPES = [
+  { key: "beaches",   label: "Beach",        Component: BeachForm },
+  { key: "food",      label: "Food & Drink", Component: FoodForm },
+  { key: "stays",     label: "Stay",         Component: StayForm },
+  { key: "hidden",    label: "Hidden Goa",   Component: HiddenGoaForm },
+  { key: "nightlife", label: "Nightlife",    Component: NightlifeForm },
+];
 
-const STATUS_COLORS = {
-  pending:  { bg: theme.colors.warningBg,  color: theme.colors.warning,  label: "Pending Review" },
-  approved: { bg: theme.colors.successBg,  color: theme.colors.success,  label: "Approved" },
-  rejected: { bg: theme.colors.dangerBg,   color: theme.colors.danger,   label: "Rejected" },
+// existing listings that don't fit one of the 5 clean forms (e.g. activity, market, heritage)
+// keep opening in the original full-field form so nothing becomes uneditable
+const resolveFormType = (biz) => {
+  if (!biz) return null;
+  if (biz.tags?.includes("hidden")) return "hidden";
+  if (biz.category === "beach") return "beaches";
+  if (["restaurant", "cafe"].includes(biz.category)) return "food";
+  if (["hotel", "stay"].includes(biz.category)) return "stays";
+  if (biz.category === "nightlife") return "nightlife";
+  return "other";
 };
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [businesses, setBusinesses] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
-  const [activeTab, setActiveTab] = useState("pending");
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(null); // id of business being actioned
   const isMobile = useIsMobile();
-  
+  const [section, setSection] = useState("businesses");
+  const [businesses, setBusinesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+  const [editingBusiness, setEditingBusiness] = useState(null); // null = create mode
+  const [activeFormType, setActiveFormType] = useState(null); // one of FORM_TYPES keys, or "other", or null = closed
+  const [showAddMenu, setShowAddMenu] = useState(false);
+
   useEffect(() => {
-    // check admin token
     const token = localStorage.getItem("trugoa_admin_token");
     if (!token) {
       navigate("/admin");
       return;
     }
-    fetchAll();
+    fetchBusinesses();
   }, []);
 
-  const fetchAll = async () => {
+  const fetchBusinesses = async () => {
     try {
       setLoading(true);
-      const [bizData, statsData] = await Promise.all([
-        adminGetBusinesses(),
-        adminGetStats(),
-      ]);
-      setBusinesses(bizData);
-      setStats(statsData);
+      setBusinesses(await adminGetBusinesses());
     } catch (err) {
       if (err.message.includes("401")) navigate("/admin");
     } finally {
@@ -63,398 +68,361 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApprove = async (id) => {
-    setActionLoading(id);
+  const handleDelete = async (biz) => {
+    if (!window.confirm(`Delete "${biz.name}"? This cannot be undone.`)) return;
+    setDeletingId(biz._id);
     try {
-      const updated = await adminApproveBusiness(id);
-      setBusinesses(prev => prev.map(b => b._id === id ? updated : b));
-      setStats(prev => ({
-        ...prev,
-        pending:  prev.pending - 1,
-        approved: prev.approved + 1,
-      }));
-    } catch (err) {
-      alert("Failed to approve. Please try again.");
+      await adminDeleteBusiness(biz._id);
+      setBusinesses(prev => prev.filter(b => b._id !== biz._id));
+    } catch {
+      alert("Failed to delete. Please try again.");
     } finally {
-      setActionLoading(null);
+      setDeletingId(null);
     }
   };
 
-  const handleReject = async (id) => {
-    setActionLoading(id);
-    try {
-      const updated = await adminRejectBusiness(id);
-      setBusinesses(prev => prev.map(b => b._id === id ? updated : b));
-      setStats(prev => ({
-        ...prev,
-        pending:  prev.pending - 1,
-        rejected: prev.rejected + 1,
-      }));
-    } catch (err) {
-      alert("Failed to reject. Please try again.");
-    } finally {
-      setActionLoading(null);
-    }
+  const openCreateBusiness = (formType) => {
+    setEditingBusiness(null);
+    setActiveFormType(formType);
+    setShowAddMenu(false);
   };
+  const openEditBusiness = (biz) => {
+    setEditingBusiness(biz);
+    setActiveFormType(resolveFormType(biz));
+  };
+  const closeBusinessForm = () => setActiveFormType(null);
+  const handleBusinessSaved = () => fetchBusinesses();
 
   const handleLogout = () => {
     localStorage.removeItem("trugoa_admin_token");
     navigate("/admin");
   };
 
-  const filtered = businesses.filter(b => b.status === activeTab);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return businesses;
+    return businesses.filter(b =>
+      b.name?.toLowerCase().includes(q) ||
+      b.location?.toLowerCase().includes(q) ||
+      b.category?.toLowerCase().includes(q)
+    );
+  }, [businesses, search]);
 
   return (
     <div style={{
+      display: "flex",
       minHeight: "100vh",
       background: theme.colors.bgPage,
       fontFamily: theme.typography.fontBody,
     }}>
+      <SEO path="/admin/dashboard" title="Admin Dashboard" noindex />
 
-      {/* ── HEADER ─────────────────────────────────────── */}
-      <div style={{
-        background: theme.colors.bgDark,
-        padding: `20px ${theme.spacing.pagePadding}`,
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap", gap: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: theme.radii.md,
-            background: theme.colors.primary,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18,
-          }}>
-            🛡️
+      {/* ── SIDEBAR ───────────────────────────────────── */}
+      <div
+        style={{
+          width: 240,
+          background: theme.colors.bgDark,
+          color: "white",
+          padding: "28px 18px",
+          display: isMobile ? "none" : "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          position: "sticky",
+          top: 0,
+        }}
+      >
+        <div style={{ marginBottom: 44, padding: "0 6px" }}>
+          <div style={{ fontFamily: theme.typography.fontDisplay, fontSize: 22, fontWeight: 800 }}>
+            TruGoa Admin
           </div>
-          <div>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 18, fontWeight: theme.typography.weightBlack,
-              color: "white",
-            }}>
-              TruGoa Admin
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-              Business Listings Dashboard
-            </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+            Content Dashboard
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.7)",
-            borderRadius: theme.radii.pill,
-            padding: "8px 18px", fontSize: 13,
-            fontFamily: theme.typography.fontBody,
-            cursor: "pointer",
-          }}
-        >
-          Log Out
-        </button>
-      </div>
 
-      <div style={{ padding: isMobile ? "16px" : `28px ${theme.spacing.pagePadding}` }}>
-
-        {/* ── STATS ROW ────────────────────────────────── */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: 16, marginBottom: 28,
-        }}>
-          {[
-            { label: "Total",    value: stats.total,    icon: "📋", color: theme.colors.textPrimary },
-            { label: "Pending",  value: stats.pending,  icon: "⏳", color: theme.colors.warning },
-            { label: "Approved", value: stats.approved, icon: "✅", color: theme.colors.success },
-            { label: "Rejected", value: stats.rejected, icon: "❌", color: theme.colors.danger },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              background: theme.colors.bgCard,
-              border: `1px solid ${theme.colors.borderLight}`,
-              borderRadius: theme.radii.lg,
-              padding: "20px",
-              boxShadow: theme.shadows.card,
-            }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{stat.icon}</div>
-              <div style={{
-                fontFamily: theme.typography.fontDisplay,
-                fontSize: 28, fontWeight: theme.typography.weightBlack,
-                color: stat.color, marginBottom: 4,
-              }}>
-                {stat.value}
-              </div>
-              <div style={{ fontSize: 13, color: theme.colors.textMuted }}>
-                {stat.label} Listings
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── TABS ─────────────────────────────────────── */}
-        <div style={{
-          display: "flex", gap: 8,
-          marginBottom: 24,
-          borderBottom: `1px solid ${theme.colors.borderLight}`,
-          paddingBottom: 0,
-        }}>
-          {TABS.map(tab => {
-            const isActive = activeTab === tab;
-            const count = businesses.filter(b => b.status === tab).length;
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {SECTIONS.map((s) => {
+            const active = section === s;
             return (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={s}
+                onClick={() => setSection(s)}
                 style={{
-                  background: "none", border: "none",
-                  borderBottom: isActive
-                    ? `2px solid ${theme.colors.primary}`
-                    : "2px solid transparent",
-                  padding: "10px 20px",
-                  fontSize: 14,
-                  fontWeight: isActive
-                    ? theme.typography.weightBold
-                    : theme.typography.weightRegular,
-                  color: isActive ? theme.colors.textPrimary : theme.colors.textMuted,
+                  border: "none",
+                  background: active ? theme.colors.primary : "transparent",
+                  color: active ? "white" : "rgba(255,255,255,0.65)",
+                  padding: "13px 16px",
+                  borderRadius: 10,
                   cursor: "pointer",
-                  fontFamily: theme.typography.fontBody,
-                  display: "flex", alignItems: "center", gap: 8,
-                  marginBottom: -1,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textAlign: "left",
+                  transition: theme.transitions.fast,
                 }}
               >
-                {TAB_LABELS[tab]}
-                <span style={{
-                  background: isActive ? theme.colors.primaryLight : theme.colors.bgSurface,
-                  color: isActive ? theme.colors.primaryText : theme.colors.textMuted,
-                  borderRadius: theme.radii.pill,
-                  padding: "1px 8px", fontSize: 12,
-                  fontWeight: theme.typography.weightBold,
-                }}>
-                  {count}
-                </span>
+                {SECTION_LABELS[s]}
               </button>
             );
           })}
         </div>
 
-        {/* ── CONTENT ──────────────────────────────────── */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🌿</div>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 18, fontWeight: theme.typography.weightBold,
-              color: theme.colors.secondary,
-            }}>
-              Loading listings...
-            </div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>
-              {activeTab === "pending" ? "🎉" : activeTab === "approved" ? "📋" : "🗑️"}
-            </div>
-            <div style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: 18, fontWeight: theme.typography.weightBold,
-              color: theme.colors.textPrimary, marginBottom: 6,
-            }}>
-              No {activeTab} listings
-            </div>
-            <div style={{ fontSize: 14, color: theme.colors.textMuted }}>
-              {activeTab === "pending" ? "All caught up! No listings waiting for review." : `No ${activeTab} listings yet.`}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {filtered.map(biz => (
-              <div key={biz._id} style={{
-                background: theme.colors.bgCard,
-                border: `1px solid ${theme.colors.borderLight}`,
-                borderRadius: theme.radii.lg,
-                padding: 20,
-                boxShadow: theme.shadows.card,
-               display: "flex",
-               flexDirection: isMobile ? "column" : "row",
-               gap: isMobile ? 12 : 16,
-               alignItems: "flex-start",
-              }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            marginTop: "auto",
+            border: "none",
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.75)",
+            padding: "13px 16px",
+            borderRadius: 10,
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          Logout
+        </button>
+      </div>
 
-                {/* photo or emoji */}
-                <div style={{
-                  width: 80, height: 80, flexShrink: 0,
-                  borderRadius: theme.radii.md,
-                  overflow: "hidden",
-                  background: theme.colors.bgSurface,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 32,
-                }}>
-                  {biz.images?.length > 0 ? (
-                    <img
-                      src={biz.images[0]}
-                      alt={biz.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : "🏪"}
-                </div>
+      <div style={{ padding: isMobile ? "20px 16px" : `32px ${theme.spacing.pagePadding}`, flex: 1, minWidth: 0 }}>
 
-                {/* info */}
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <span style={{
-                      fontFamily: theme.typography.fontDisplay,
-                      fontSize: 16, fontWeight: theme.typography.weightBold,
-                      color: theme.colors.textPrimary,
-                    }}>
-                      {biz.name}
-                    </span>
-                    <span style={{
-                      background: STATUS_COLORS[biz.status].bg,
-                      color: STATUS_COLORS[biz.status].color,
-                      borderRadius: theme.radii.pill,
-                      padding: "2px 10px", fontSize: 11,
-                      fontWeight: theme.typography.weightBold,
-                    }}>
-                      {STATUS_COLORS[biz.status].label}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, color: theme.colors.textMuted }}>
-                      📍 {biz.location}
-                    </span>
-                    {biz.category && (
-                      <span style={{ fontSize: 13, color: theme.colors.textMuted }}>
-                        🏷️ {biz.category}
-                      </span>
-                    )}
-                    {biz.price_range && (
-                      <span style={{ fontSize: 13, color: theme.colors.textMuted }}>
-                        💰 {biz.price_range}
-                      </span>
-                    )}
-                  </div>
-
-                  {biz.description && (
-                    <div style={{
-                      fontSize: 13, color: theme.colors.textBody,
-                      lineHeight: 1.5, marginBottom: 8,
-                      maxWidth: 500,
-                    }}>
-                      {biz.description}
-                    </div>
-                  )}
-
-                  {biz.contact && (
-                    <div style={{ fontSize: 12, color: theme.colors.textMuted }}>
-                      📞 {biz.contact}
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: 11, color: theme.colors.textMuted, marginTop: 6 }}>
-                    Submitted {new Date(biz.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "short", year: "numeric",
-                    })}
-                  </div>
-                </div>
-
-                {/* action buttons — only show on pending */}
-                {biz.status === "pending" && (
-                 <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto", flexShrink: 0 }}>
-                    <button
-                      onClick={() => handleApprove(biz._id)}
-                      disabled={actionLoading === biz._id}
-                      style={{
-                        background: actionLoading === biz._id
-                          ? theme.colors.borderLight
-                          : theme.colors.successBg,
-                        color: actionLoading === biz._id
-                          ? theme.colors.textMuted
-                          : theme.colors.success,
-                        border: `1.5px solid ${theme.colors.success}40`,
-                        borderRadius: theme.radii.md,
-                        padding: "10px 20px",
-                        fontSize: 13,
-                        fontWeight: theme.typography.weightBold,
-                        fontFamily: theme.typography.fontBody,
-                        cursor: actionLoading === biz._id ? "not-allowed" : "pointer",
-                        transition: theme.transitions.fast,
-                      }}
-                      onMouseEnter={e => {
-                        if (actionLoading !== biz._id) {
-                          e.currentTarget.style.background = theme.colors.success;
-                          e.currentTarget.style.color = "white";
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (actionLoading !== biz._id) {
-                          e.currentTarget.style.background = theme.colors.successBg;
-                          e.currentTarget.style.color = theme.colors.success;
-                        }
-                      }}
-                    >
-                      {actionLoading === biz._id ? "..." : "✅ Approve"}
-                    </button>
-
-                    <button
-                      onClick={() => handleReject(biz._id)}
-                      disabled={actionLoading === biz._id}
-                      style={{
-                        background: theme.colors.dangerBg,
-                        color: theme.colors.danger,
-                        border: `1.5px solid ${theme.colors.danger}40`,
-                        borderRadius: theme.radii.md,
-                        padding: "10px 20px",
-                        fontSize: 13,
-                        fontWeight: theme.typography.weightBold,
-                        fontFamily: theme.typography.fontBody,
-                        cursor: actionLoading === biz._id ? "not-allowed" : "pointer",
-                        transition: theme.transitions.fast,
-                      }}
-                      onMouseEnter={e => {
-                        if (actionLoading !== biz._id) {
-                          e.currentTarget.style.background = theme.colors.danger;
-                          e.currentTarget.style.color = "white";
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (actionLoading !== biz._id) {
-                          e.currentTarget.style.background = theme.colors.dangerBg;
-                          e.currentTarget.style.color = theme.colors.danger;
-                        }
-                      }}
-                    >
-                      {actionLoading === biz._id ? "..." : "❌ Reject"}
-                    </button>
-                  </div>
-                )}
-
-                {/* re-review button for approved/rejected */}
-                {biz.status !== "pending" && (
-                  <button
-                    onClick={() => handleApprove(biz._id)}
-                    style={{
-                      background: "none",
-                      border: `1px solid ${theme.colors.borderLight}`,
-                      borderRadius: theme.radii.md,
-                      padding: "8px 16px",
-                      fontSize: 12,
-                      color: theme.colors.textMuted,
-                      fontFamily: theme.typography.fontBody,
-                      cursor: "pointer",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ↩ Re-approve
-                  </button>
-                )}
-              </div>
+        {/* mobile section switcher — sidebar is hidden below desktop width */}
+        {isMobile && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            {SECTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setSection(s)}
+                style={{
+                  border: "none",
+                  background: section === s ? theme.colors.primary : theme.colors.bgSurface,
+                  color: section === s ? "white" : theme.colors.textBody,
+                  padding: "10px 16px", borderRadius: theme.radii.pill,
+                  cursor: "pointer", fontSize: 13, fontWeight: 700,
+                }}
+              >
+                {SECTION_LABELS[s]}
+              </button>
             ))}
           </div>
         )}
+
+        {section === "stories" ? (
+          <StoriesManager isMobile={isMobile} />
+        ) : (
+        <>
+          {/* ── HEADER ─────────────────────────────────── */}
+          <div style={{
+            display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
+            gap: 16, marginBottom: 28,
+          }}>
+            <div>
+              <div style={{
+                fontFamily: theme.typography.fontDisplay, fontSize: 26,
+                fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary,
+              }}>
+                Businesses
+              </div>
+              <div style={{ fontSize: 13, color: theme.colors.textMuted, marginTop: 2 }}>
+                {businesses.length} listing{businesses.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, flex: isMobile ? "1 1 100%" : "0 0 auto" }}>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, location or category..."
+                style={{
+                  flex: 1, minWidth: isMobile ? 0 : 260,
+                  padding: "11px 16px", border: `1.5px solid ${theme.colors.borderLight}`,
+                  borderRadius: theme.radii.md, fontSize: 14,
+                  fontFamily: theme.typography.fontBody, color: theme.colors.textPrimary,
+                  background: "white",
+                }}
+              />
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  onClick={() => setShowAddMenu(v => !v)}
+                  style={{
+                    background: theme.colors.primary, color: "white", border: "none",
+                    borderRadius: theme.radii.md, padding: "11px 22px", fontSize: 14,
+                    fontWeight: theme.typography.weightBold, cursor: "pointer",
+                    fontFamily: theme.typography.fontBody, whiteSpace: "nowrap",
+                  }}
+                >
+                  + Add Business
+                </button>
+
+                {showAddMenu && (
+                  <>
+                    <div onClick={() => setShowAddMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 899 }} />
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 900,
+                      background: "white", border: `1px solid ${theme.colors.borderLight}`,
+                      borderRadius: theme.radii.md, boxShadow: theme.shadows.card,
+                      minWidth: 180, overflow: "hidden",
+                    }}>
+                      {FORM_TYPES.map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => openCreateBusiness(key)}
+                          style={{
+                            display: "block", width: "100%", textAlign: "left",
+                            background: "none", border: "none", cursor: "pointer",
+                            padding: "11px 16px", fontSize: 14, color: theme.colors.textPrimary,
+                            fontFamily: theme.typography.fontBody,
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── CONTENT ────────────────────────────────── */}
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "60px 0" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🌿</div>
+              <div style={{
+                fontFamily: theme.typography.fontDisplay, fontSize: 18,
+                fontWeight: theme.typography.weightBold, color: theme.colors.secondary,
+              }}>
+                Loading listings...
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "60px 0" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>{businesses.length === 0 ? "🏝️" : "🔍"}</div>
+              <div style={{
+                fontFamily: theme.typography.fontDisplay, fontSize: 18,
+                fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary, marginBottom: 6,
+              }}>
+                {businesses.length === 0 ? "No businesses yet" : "No matches"}
+              </div>
+              <div style={{ fontSize: 14, color: theme.colors.textMuted }}>
+                {businesses.length === 0 ? "Add your first listing to get started." : "Try a different search term."}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 20,
+            }}>
+              {filtered.map(biz => (
+                <div key={biz._id} style={{
+                  background: theme.colors.bgCard,
+                  border: `1px solid ${theme.colors.borderLight}`,
+                  borderRadius: theme.radii.lg,
+                  overflow: "hidden",
+                  boxShadow: theme.shadows.card,
+                  display: "flex", flexDirection: "column",
+                }}>
+                  <div style={{
+                    aspectRatio: "16 / 10", background: theme.colors.bgSurface,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32,
+                  }}>
+                    {biz.heroImage || biz.gallery?.length > 0 ? (
+                      <img
+                        src={biz.heroImage || biz.gallery[0]}
+                        alt={biz.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : "🏪"}
+                  </div>
+
+                  <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{
+                        fontFamily: theme.typography.fontDisplay, fontSize: 17,
+                        fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary, lineHeight: 1.25,
+                      }}>
+                        {biz.name}
+                      </span>
+                      {biz.category && (
+                        <span style={{
+                          background: theme.colors.primaryLight, color: theme.colors.primaryText,
+                          borderRadius: theme.radii.pill, padding: "2px 10px", fontSize: 10.5,
+                          fontWeight: theme.typography.weightBold, textTransform: "uppercase",
+                          whiteSpace: "nowrap", flexShrink: 0,
+                        }}>
+                          {biz.category}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: 13, color: theme.colors.textMuted }}>📍 {biz.location}</div>
+                    {biz.priceRange && (
+                      <div style={{ fontSize: 13, color: theme.colors.textMuted }}>💰 {biz.priceRange}</div>
+                    )}
+                    {biz.description && (
+                      <div style={{
+                        fontSize: 13, color: theme.colors.textBody, lineHeight: 1.55,
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                        marginTop: 2,
+                      }}>
+                        {biz.description}
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 12 }}>
+                      <button
+                        onClick={() => openEditBusiness(biz)}
+                        style={{
+                          flex: 1, background: theme.colors.bgSurface, color: theme.colors.textBody,
+                          border: `1.5px solid ${theme.colors.borderLight}`, borderRadius: theme.radii.md,
+                          padding: "9px 0", fontSize: 13, fontWeight: theme.typography.weightBold,
+                          fontFamily: theme.typography.fontBody, cursor: "pointer",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(biz)}
+                        disabled={deletingId === biz._id}
+                        style={{
+                          flex: 1, background: theme.colors.dangerBg, color: theme.colors.danger,
+                          border: `1.5px solid ${theme.colors.danger}40`, borderRadius: theme.radii.md,
+                          padding: "9px 0", fontSize: 13, fontWeight: theme.typography.weightBold,
+                          fontFamily: theme.typography.fontBody,
+                          cursor: deletingId === biz._id ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {deletingId === biz._id ? "..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+        )}
       </div>
+
+      {activeFormType && activeFormType !== "other" && (() => {
+        const { Component } = FORM_TYPES.find(t => t.key === activeFormType);
+        return (
+          <Component
+            business={editingBusiness}
+            onClose={closeBusinessForm}
+            onSaved={handleBusinessSaved}
+          />
+        );
+      })()}
+
+      {activeFormType === "other" && (
+        <BusinessForm
+          business={editingBusiness}
+          onClose={closeBusinessForm}
+          onSaved={handleBusinessSaved}
+        />
+      )}
     </div>
   );
 };

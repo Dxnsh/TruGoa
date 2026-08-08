@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useIsMobile from "../../hooks/useIsMobile";
+import { useTourist } from "../../context/TouristContext";
+import { generateItinerary, getMyItinerary, saveMyItinerary } from "../../services/api";
+import LoginModal from "../../components/LoginModal/LoginModal";
+import SEO from "../../components/SEO/SEO";
 import {
   Waves,
   Landmark,
@@ -154,12 +158,14 @@ export default function ItineraryPage() {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
   const resultRef = useRef(null);
+  const { isTouristLoggedIn, touristLoading } = useTourist();
 
-  const [step, setStep]           = useState("form");
+  const [step, setStep]           = useState("checking");
   const [error, setError]         = useState(null);
   const [itinerary, setItinerary] = useState(null);
   const [loadingLine, setLoadingLine] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const [form, setForm] = useState({
     duration: "", budget: "", vibe: "", interests: [], style: "",
@@ -167,6 +173,42 @@ export default function ItineraryPage() {
 
   const isComplete = form.duration && form.budget && form.vibe
                   && form.interests.length > 0 && form.style;
+
+  // The Itinerary Planner is account-only: signed-out tourists see a lock
+  // screen instead of the form. Signing in restores their last saved
+  // itinerary (if any); signing out resets everything back to the lock
+  // screen rather than leaving old data visible.
+  useEffect(() => {
+    if (touristLoading) return;
+
+    if (!isTouristLoggedIn) {
+      setStep("locked");
+      setItinerary(null);
+      setForm({ duration: "", budget: "", vibe: "", interests: [], style: "" });
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setStep("checking");
+      try {
+        const saved = await getMyItinerary();
+        if (cancelled) return;
+        if (saved?.form && saved?.data) {
+          setForm(saved.form);
+          setItinerary(saved.data);
+          setActiveDay(0);
+          setStep("result");
+        } else {
+          setStep("form");
+        }
+      } catch (e) {
+        console.error("Failed to fetch saved itinerary", e);
+        if (!cancelled) setStep("form");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [touristLoading, isTouristLoggedIn]);
 
   useEffect(() => {
     if (step !== "loading") return;
@@ -190,31 +232,86 @@ export default function ItineraryPage() {
 
   /* ── generate ──────────────────────────────────────────── */
   const generate = async () => {
-    if (!isComplete) return;
-    setStep("loading"); setError(null);
-    try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [{ role: "user", content: buildPrompt(form) }] }),
-      });
-      if (!res.ok) throw new Error("API " + res.status);
-      const data = await res.json();
+  if (!isComplete) return;
 
-      const raw   = data?.content?.find?.(b => b.type === "text")?.text
-                 || data?.content?.[0]?.text || "";
-      const clean = raw.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
+  setStep("loading");
+  setError(null);
 
-      setItinerary(parsed);
-      setActiveDay(0);
-      setStep("result");
-    } catch (e) {
-      console.error(e);
-      setError("Something went wrong. Please try again.");
-      setStep("form");
-    }
-  };
+  try {
+    const data = await generateItinerary(form);
+
+    setItinerary(data);
+    setActiveDay(0);
+    setStep("result");
+
+    // Persist to the account so the tourist sees this same itinerary next
+    // time instead of it being lost or having to regenerate one.
+    saveMyItinerary(form, data).catch(e =>
+      console.error("Failed to save itinerary to account", e)
+    );
+  } catch (e) {
+    console.error(e);
+    setError(
+      "Something went wrong. Please try again."
+    );
+    setStep("form");
+  }
+};
+
+  /* ══════════════════════════════════════════════════════
+     STEP: CHECKING (brief, while we look for a saved itinerary)
+  ══════════════════════════════════════════════════════ */
+  if (step === "checking") return (
+    <div className="itin-form-page" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <SEO path="/itinerary" title="Plan Your Itinerary" noindex />
+    </div>
+  );
+
+  /* ══════════════════════════════════════════════════════
+     STEP: LOCKED (signed-out tourist)
+  ══════════════════════════════════════════════════════ */
+  if (step === "locked") return (
+    <div className="itin-form-page">
+      <div
+        style={{
+          minHeight: "100svh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: isMobile ? "40px 24px" : "64px 48px",
+        }}
+      >
+        <div style={{ maxWidth: 560 }}>
+          <p className="itin-eyebrow">Your Goa, Your Way</p>
+          <h1
+            className="itin-form-title"
+            style={{ fontSize: isMobile ? "clamp(36px,10vw,56px)" : "clamp(52px,6vw,80px)" }}
+          >
+            Sign in to plan<br /><em>your</em> Goa trip.
+          </h1>
+          <p className="itin-form-sub" style={{ margin: "0 auto 40px" }}>
+            The Itinerary Planner lives on your account, so your trip is saved and waiting
+            for you next time you visit — sign in to get started.
+          </p>
+          <button
+            className="generate-btn ready"
+            style={{ maxWidth: 320, margin: "0 auto" }}
+            onClick={() => setShowLoginModal(true)}
+          >
+            Sign In to Continue →
+          </button>
+        </div>
+      </div>
+
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          message="Sign in to plan your Goa trip"
+        />
+      )}
+    </div>
+  );
 
   /* ══════════════════════════════════════════════════════
      STEP: FORM
@@ -603,8 +700,8 @@ export default function ItineraryPage() {
           </p>
           <div className="end-actions">
             <button className="btn-gold" onClick={() => window.print()}> <Printer /></button>
-            <button className="btn-outline-dark" onClick={() => { setStep("form"); window.scrollTo(0,0); }}>↻ Build Another</button>
-            <button className="btn-outline-dark" onClick={() => navigate("/listings")}>Explore Listings →</button>
+            <button className="btn-outline-itin" onClick={() => { setStep("form"); window.scrollTo(0,0); }}>↻ Build Another</button>
+            <button className="btn-outline-itin" onClick={() => navigate("/explore")}>Explore Listings →</button>
           </div>
         </div>
 

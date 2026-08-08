@@ -1,55 +1,45 @@
 import { useState } from "react";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../LoginModal/LoginModal";
-import "./ReviewForm.css" 
+import "./ReviewForm.css";
 import { createReview } from "../../services/api";
 
 export default function ReviewForm({ businessId, fetchReviews }) {
-  const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
-  const { isTouristLoggedIn } = useTourist();
+  const { isTouristLoggedIn, tourist } = useTourist();
   const [showLogin, setShowLogin] = useState(false);
 
   const submit = async () => {
-
-    if (!name.trim() || !comment.trim()) {
-      alert("Please enter name and comment");
+    if (!isTouristLoggedIn) {
+      setShowLogin(true);
       return;
     }
 
-    if (!isTouristLoggedIn) {
-        setShowLogin(true);
-        return;
+    if (!comment.trim() || comment.trim().length < 10) {
+      alert("Please write at least a short sentence about your experience.");
+      return;
     }
 
     try {
-        setLoading(true);
+      setLoading(true);
 
       await createReview({
-            business_id: businessId,
-            name,
-            city,
-            rating,
-            comment
-            });
+        business_id: businessId,
+        city,
+        rating,
+        comment,
+      });
 
-        if (!name || !comment.trim()) {
-        alert("Please fill all fields");
-        return;
-      }
-
-      setName("");
       setCity("");
       setComment("");
       setRating(5);
 
       fetchReviews();
-
     } catch (err) {
-      alert("Failed to submit review");
+      alert(err.message || "Failed to submit review");
     } finally {
       setLoading(false);
     }
@@ -59,11 +49,9 @@ export default function ReviewForm({ businessId, fetchReviews }) {
     <div className="review-form">
       <h2>Share Your Experience</h2>
 
-      <input
-        placeholder="Your name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      {isTouristLoggedIn && (
+        <p className="review-form-signed-in">Posting as <strong>{tourist.name}</strong></p>
+      )}
 
       <input
         placeholder="Your city"
@@ -72,7 +60,7 @@ export default function ReviewForm({ businessId, fetchReviews }) {
       />
 
       <textarea
-        style={{margin:"10px"}}
+        style={{ margin: "10px" }}
         placeholder="What made this place memorable?"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
@@ -89,20 +77,17 @@ export default function ReviewForm({ businessId, fetchReviews }) {
         <option value={1}>1 Star</option>
       </select>
 
-      <button onClick={submit}>
+      <button onClick={submit} disabled={loading}>
         {loading ? "Submitting..." : "Submit Review"}
       </button>
 
       {showLogin && (
         <LoginModal
-            onClose={() => setShowLogin(false)}
-            onSuccess={() => setShowLogin(false)}
-            message="Sign in to write a review"
+          onClose={() => setShowLogin(false)}
+          onSuccess={() => setShowLogin(false)}
+          message="Sign in to write a review"
         />
-        )}
-
-
-        
+      )}
     </div>
   );
 }

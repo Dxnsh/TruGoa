@@ -1,22 +1,28 @@
 import express from "express";
-import { cacheResponse } from "../middleware/cacheMiddleware.js";
 import {
-  createBusiness,
   getBusinesses,
+  getBusinessBySlug,
   getBusinessById,
-  uploadImages,
 } from "../controllers/businessController.js";
-import upload        from "../middleware/upload.js";
-import authMiddleware from "../middleware/auth.js";
+import {
+  listBusinessesRules,
+  businessIdParamRules,
+  businessSlugParamRules,
+} from "../validators/businessValidators.js";
+import { validate } from "../middleware/validate.js";
 
 const router = express.Router();
 
-// BUG FIX: GET / must come before GET /:id
-// otherwise Express could match "/" with /:id = ""
-router.get("/", getBusinesses);
-router.get("/:id", cacheResponse(600), getBusinessById);
+// GET /api/v1/businesses
+// Optional query params: ?category=restaurant&area=north-goa&priceLevel=budget&featured=true&search=britto
+router.get("/", listBusinessesRules, validate, getBusinesses);
 
-router.post("/",        authMiddleware,              createBusiness);
-router.post("/upload", authMiddleware, upload.array("images",5), uploadImages);
+// GET /api/v1/businesses/slug/:slug — clean-URL lookup
+router.get("/slug/:slug", businessSlugParamRules, validate, getBusinessBySlug);
+
+// GET /api/v1/businesses/:id — MongoDB ID lookup
+router.get("/:id", businessIdParamRules, validate, getBusinessById);
+
+// Business creation is admin-curated only — see POST /api/v1/admin/businesses.
 
 export default router;

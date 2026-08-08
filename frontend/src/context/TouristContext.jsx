@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
-export const TouristContext = createContext(null); // ✅ export the context directly
+export const TouristContext= createContext(null);// ✅ export the context directly
 
 export const TouristProvider = ({ children }) => {
   const [tourist, setTourist] = useState(null);

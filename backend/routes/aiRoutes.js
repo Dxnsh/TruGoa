@@ -1,11 +1,11 @@
 import express from "express";
 import { chat } from "../controllers/aiController.js";
 import { aiLimiter } from "../middleware/rateLimiter.js";
+import { chatRules } from "../validators/aiValidators.js";
+import { validate } from "../middleware/validate.js";
 
 const router = express.Router();
 
-// POST /api/ai/chat
-// Rate limited — 20 requests per hour per IP (Claude API costs money)
-router.post("/chat", aiLimiter, chat);
+router.post("/chat", aiLimiter, chatRules, validate, chat);
 
 export default router;

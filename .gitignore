@@ -10,3 +10,6 @@ dist/
 build/
 frontend/dist/
 backend/dist/
+
+backend/logs/
+backend/backups/

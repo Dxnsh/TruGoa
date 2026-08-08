@@ -1,130 +1,123 @@
 // models/Review.js
-
 import mongoose from "mongoose";
 
 const reviewSchema = new mongoose.Schema(
-{
-  business_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Business",
-    required: true,
-    index: true,
-  },
-
-  tourist_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Tourist",
-    default: null,
-  },
-
-  /* Reviewer Identity */
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 60,
-  },
-
-  avatar: {
-    type: String,
-    default: "",
-  },
-
-  city: {
-    type: String,
-    default: "",
-    trim: true,
-    maxlength: 50,
-  },
-
-  country: {
-    type: String,
-    default: "",
-    trim: true,
-    maxlength: 50,
-  },
-
-  /* Review Content */
-  rating: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5,
-  },
-
-  title: {
-    type: String,
-    default: "",
-    trim: true,
-    maxlength: 100,
-  },
-
-  comment: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 1500,
-  },
-
-  images: [
-    {
-      type: String,
-    },
-  ],
-
-  tags: [
-    {
-      type: String,
-      trim: true,
-    },
-  ],
-
-  /* Trust Signals */
-  verifiedBooking: {
-    type: Boolean,
-    default: false,
-  },
-
-  helpfulCount: {
-    type: Number,
-    default: 0,
-  },
-
-  edited: {
-    type: Boolean,
-    default: false,
-  },
-
-  /* Owner Reply */
-  ownerReply: {
-    text: {
-      type: String,
-      default: "",
-      maxlength: 1000,
+  {
+    business_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      required: true,
+      index: true,
     },
 
-    repliedAt: {
-      type: Date,
+    tourist_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tourist",
       default: null,
     },
-  },
 
-  /* Moderation */
-  status: {
-    type: String,
-    enum: ["published", "hidden", "flagged"],
-    default: "published",
-  },
+    /* Reviewer Identity */
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 60,
+    },
 
-  reportCount: {
-    type: Number,
-    default: 0,
-  },
+    avatar: {
+      type: String,
+      default: "",
+    },
 
-},
-{
-  timestamps: true,
-}
+    city: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 50,
+    },
+
+    country: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 50,
+    },
+
+    /* Review Content */
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+
+    title: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
+    },
+
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 1500,
+    },
+
+    images: [
+      {
+        type: String,
+      },
+    ],
+
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
+    /* Trust Signals */
+    helpfulCount: {
+      type: Number,
+      default: 0,
+    },
+
+    edited: {
+      type: Boolean,
+      default: false,
+    },
+
+    /* Owner Reply */
+    ownerReply: {
+      text: {
+        type: String,
+        default: "",
+        maxlength: 1000,
+      },
+
+      repliedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    /* Moderation */
+    status: {
+      type: String,
+      enum: ["published", "hidden", "flagged"],
+      default: "published",
+    },
+
+    reportCount: {
+      type: Number,
+      default: 0,
+    },
+  },
+  {
+    timestamps: true,
+  }
 );
 
 /* =========================================
@@ -135,7 +128,8 @@ reviewSchema.index({ business_id: 1, createdAt: -1 });
 reviewSchema.index({ business_id: 1, rating: -1 });
 reviewSchema.index({ tourist_id: 1 });
 
-/* One review per tourist per business */
+/* One review per tourist per business — enforced at the DB level so
+   concurrent double-submits from the same account can't both land. */
 reviewSchema.index(
   { business_id: 1, tourist_id: 1 },
   {

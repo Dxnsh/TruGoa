@@ -1,44 +1,64 @@
-
+import { MulterError } from "multer";
+import { ApiError } from "../utils/ApiError.js";
+import { logger } from "../utils/logger.js";
 
 // 404 — route not found
 export const notFound = (req, res, next) => {
-  const error = new Error(`Route not found: ${req.originalUrl}`);
-  res.status(404);
-  next(error);
+  next(new ApiError(404, `Route not found: ${req.originalUrl}`));
 };
 
 // Global error handler — catches everything
 export const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  let message    = err.message;
+  let statusCode = err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
+  let message = err.message || "Something went wrong";
+  let errors = err.errors || [];
 
   // Mongoose bad ObjectId
   if (err.name === "CastError" && err.kind === "ObjectId") {
     statusCode = 404;
-    message    = "Resource not found";
+    message = "Resource not found";
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
     statusCode = 400;
-    const field = Object.keys(err.keyValue)[0];
-    message    = `${field} already exists`;
+    const field = Object.keys(err.keyValue || {})[0] || "field";
+    message = `${field} already exists`;
   }
 
   // Mongoose validation error
-  if (err.name === "ValidationError") {
+  if (err.name === "ValidationError" && err.errors) {
     statusCode = 400;
-    message    = Object.values(err.errors).map(e => e.message).join(". ");
+    message = Object.values(err.errors).map((e) => e.message).join(". ");
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError")  { statusCode = 401; message = "Invalid token"; }
-  if (err.name === "TokenExpiredError")  { statusCode = 401; message = "Token expired"; }
+  if (err.name === "JsonWebTokenError") { statusCode = 401; message = "Invalid token"; }
+  if (err.name === "TokenExpiredError") { statusCode = 401; message = "Token expired"; }
 
-  // Never expose stack traces in production
+  // Multer upload errors (file too large, too many files, etc.)
+  if (err instanceof MulterError) {
+    statusCode = 400;
+    message = err.code === "LIMIT_FILE_SIZE" ? "File is too large" : err.message;
+  }
+
+  const isKnown = err instanceof ApiError || err instanceof MulterError || statusCode < 500;
+
+  logger.error(`${req.method} ${req.originalUrl} — ${err.message}`, {
+    ip: req.ip,
+    stack: err.stack,
+  });
+
+  // Never leak internal error details for unexpected (5xx) failures in production
+  if (!isKnown && process.env.NODE_ENV === "production") {
+    message = "Something went wrong";
+    errors = [];
+  }
+
   res.status(statusCode).json({
     success: false,
     message,
+    ...(errors.length > 0 && { errors }),
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 };

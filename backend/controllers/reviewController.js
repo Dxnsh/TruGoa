@@ -1,11 +1,18 @@
 // controllers/reviewController.js
-
 import mongoose from "mongoose";
 import Review from "../models/Review.js";
 import Business from "../models/Business.js";
+import { clearCache } from "../middleware/cacheMiddleware.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { sendSuccess } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
 /* =====================================================
    HELPERS
+   Recalculates from the reviews collection itself (a
+   single aggregate) rather than incrementing counters on
+   the business doc — safe under concurrent writes since
+   it never depends on the previous in-memory value.
 ===================================================== */
 
 const recalculateBusinessRating = async (businessId) => {
@@ -30,229 +37,121 @@ const recalculateBusinessRating = async (businessId) => {
 
   await Business.findByIdAndUpdate(businessId, {
     rating: Math.round(avg * 10) / 10,
-    review_count: total,
+    reviewCount: total,
   });
+
+  clearCache(`/api/v1/businesses`);
 };
 
 /* =====================================================
-   POST /api/reviews
-   Add Review
+   POST /reviews
+   Add Review — if a tourist is signed in (optionalTourist
+   middleware), identity is taken from the verified token,
+   not trusted from the request body.
 ===================================================== */
 
-export const addReview = async (req, res) => {
+export const addReview = asyncHandler(async (req, res) => {
+  const { business_id, city, country, rating, title, comment, images, tags } = req.body;
+  const name = req.user ? req.user.name : req.body.name;
+  const tourist_id = req.user ? req.user._id : null;
+
+  const business = await Business.findById(business_id).select("_id");
+  if (!business) throw new ApiError(404, "Business not found.");
+
+  let review;
   try {
-    const {
+    review = await Review.create({
       business_id,
-      name,
-      city,
-      country,
-      rating,
-      title,
-      comment,
-      images,
-      tags,
       tourist_id,
-    } = req.body;
-
-    /* ---------- Validation ---------- */
-    if (!business_id || !name || !rating || !comment) {
-      return res.status(400).json({
-        error: "business_id, name, rating and comment are required.",
-      });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return res.status(400).json({
-        error: "Rating must be between 1 and 5.",
-      });
-    }
-
-    if (comment.trim().length < 10) {
-      return res.status(400).json({
-        error: "Review comment is too short.",
-      });
-    }
-
-    /* ---------- Check Business ---------- */
-    const business = await Business.findById(business_id);
-
-    if (!business) {
-      return res.status(404).json({
-        error: "Business not found.",
-      });
-    }
-
-    /* ---------- Prevent Duplicate Review ---------- */
-    if (tourist_id) {
-      const alreadyReviewed = await Review.findOne({
-        business_id,
-        tourist_id,
-      });
-
-      if (alreadyReviewed) {
-        return res.status(409).json({
-          error: "You already reviewed this place.",
-        });
-      }
-    }
-
-    /* ---------- Create Review ---------- */
-    const review = await Review.create({
-      business_id,
-      tourist_id: tourist_id || null,
-      name: name.trim(),
+      name: String(name).trim(),
+      avatar: req.user?.avatar || "",
       city: city || "",
       country: country || "",
       rating,
       title: title || "",
       comment: comment.trim(),
-      images: images || [],
-      tags: tags || [],
-      verifiedBooking: false,
+      images: Array.isArray(images) ? images.slice(0, 6) : [],
+      tags: Array.isArray(tags) ? tags.slice(0, 10) : [],
       helpfulCount: 0,
       status: "published",
     });
-
-    /* ---------- Recalculate Rating ---------- */
-    await recalculateBusinessRating(business_id);
-
-    res.status(201).json({
-      success: true,
-      message: "Review added successfully.",
-      review,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
+  } catch (err) {
+    // Duplicate-key from the unique (business_id, tourist_id) index —
+    // two concurrent submits from the same signed-in tourist.
+    if (err.code === 11000) {
+      throw new ApiError(409, "You already reviewed this place.");
+    }
+    throw err;
   }
-};
+
+  await recalculateBusinessRating(business_id);
+
+  sendSuccess(res, { statusCode: 201, message: "Review added successfully.", data: review });
+});
 
 /* =====================================================
-   GET /api/reviews?business_id=xxx
+   GET /reviews?business_id=xxx
 ===================================================== */
 
-export const getReviewsForBusiness = async (req, res) => {
-  try {
-    const { business_id } = req.query;
+export const getReviewsForBusiness = asyncHandler(async (req, res) => {
+  const { business_id } = req.query;
 
-    if (!business_id) {
-      return res.status(400).json({
-        error: "business_id query param required.",
-      });
-    }
+  const reviews = await Review.find({
+    business_id,
+    status: "published",
+  }).sort({ createdAt: -1 }).limit(200);
 
-    const reviews = await Review.find({
-      business_id,
-      status: "published",
-    }).sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      total: reviews.length,
-      reviews,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
+  sendSuccess(res, { data: { total: reviews.length, reviews } });
+});
 
 /* =====================================================
-   PATCH /api/reviews/:id/helpful
+   PATCH /reviews/:id/helpful
+   Atomic increment — safe when many tourists click at once.
 ===================================================== */
 
-export const markHelpful = async (req, res) => {
-  try {
-    const review = await Review.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { helpfulCount: 1 } },
-      { new: true }
-    );
+export const markHelpful = asyncHandler(async (req, res) => {
+  const review = await Review.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { helpfulCount: 1 } },
+    { new: true }
+  ).select("helpfulCount");
 
-    if (!review) {
-      return res.status(404).json({
-        error: "Review not found.",
-      });
-    }
+  if (!review) throw new ApiError(404, "Review not found.");
 
-    res.json({
-      success: true,
-      helpfulCount: review.helpfulCount,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
+  sendSuccess(res, { data: { helpfulCount: review.helpfulCount } });
+});
 
 /* =====================================================
-   PATCH /api/reviews/:id/reply
-   Owner Reply
+   PATCH /reviews/:id/reply
+   Owner/Admin Reply
 ===================================================== */
 
-export const ownerReply = async (req, res) => {
-  try {
-    const { text } = req.body;
+export const ownerReply = asyncHandler(async (req, res) => {
+  const { text } = req.body;
 
-    const review = await Review.findByIdAndUpdate(
-      req.params.id,
-      {
-        ownerReply: {
-          text,
-          repliedAt: new Date(),
-        },
-      },
-      { new: true }
-    );
+  const review = await Review.findByIdAndUpdate(
+    req.params.id,
+    { ownerReply: { text: text.trim(), repliedAt: new Date() } },
+    { new: true }
+  );
 
-    if (!review) {
-      return res.status(404).json({
-        error: "Review not found.",
-      });
-    }
+  if (!review) throw new ApiError(404, "Review not found.");
 
-    res.json({
-      success: true,
-      message: "Reply added.",
-      review,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
+  sendSuccess(res, { message: "Reply added.", data: review });
+});
 
 /* =====================================================
-   DELETE /api/reviews/:id
+   DELETE /reviews/:id
 ===================================================== */
 
-export const deleteReview = async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.id);
+export const deleteReview = asyncHandler(async (req, res) => {
+  const review = await Review.findById(req.params.id);
+  if (!review) throw new ApiError(404, "Review not found.");
 
-    if (!review) {
-      return res.status(404).json({
-        error: "Review not found.",
-      });
-    }
+  const businessId = review.business_id;
 
-    const businessId = review.business_id;
+  await review.deleteOne();
+  await recalculateBusinessRating(businessId);
 
-    await review.deleteOne();
-
-    await recalculateBusinessRating(businessId);
-
-    res.json({
-      success: true,
-      message: "Review deleted.",
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
+  sendSuccess(res, { message: "Review deleted." });
+});

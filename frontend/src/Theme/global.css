@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+/* NOTE: this used to import Syne for --font-display, but theme.js (typography.fontDisplay)
+   and every component in the app actually use Cormorant Garamond. Syne was never used
+   anywhere — it was just extra weight being downloaded for nothing. Switched the import
+   and the token below to match what's really in use. */
 
 :root {
   /* Brand */
@@ -43,7 +48,7 @@
   --color-danger-bg:  #FDEAEA;
 
   /* Typography */
-  --font-display: 'Syne', sans-serif;
+  --font-display: 'Cormorant Garamond', serif;
   --font-body:    'Instrument Sans', sans-serif;
 
   /* Spacing */

@@ -1,0 +1,163 @@
+/* ═══════════════════════════════════════════
+   SHARED SITE FOOTER
+═══════════════════════════════════════════ */
+.tg-footer {
+  background: var(--color-bg-page);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.tg-footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px clamp(20px, 6vw, 90px) 40px;
+}
+
+.tg-footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, 1fr);
+  gap: 32px;
+  padding-bottom: 40px;
+}
+
+.tg-footer-brand { max-width: 280px; }
+
+.tg-footer-logo {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.tg-footer-logo-tru { color: var(--color-secondary); }
+.tg-footer-logo-goa { color: var(--color-primary); }
+
+.tg-footer-tagline {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  margin-bottom: 16px;
+}
+
+.tg-footer-socials { display: flex; gap: 10px; }
+.tg-footer-social {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-text-body);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.tg-footer-social:hover { background: var(--color-bg-dark); color: var(--color-text-inverse); border-color: var(--color-bg-dark); }
+
+.tg-footer-col-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+  letter-spacing: 0.3px;
+}
+
+.tg-footer-col { display: flex; flex-direction: column; gap: 12px; }
+
+.tg-footer-link {
+  font-size: 13px;
+  color: var(--color-text-body);
+  cursor: pointer;
+  transition: color 0.2s;
+  letter-spacing: 0.2px;
+  font-family: var(--font-body);
+  width: fit-content;
+}
+.tg-footer-link:hover { color: var(--color-secondary); }
+
+.tg-footer-newsletter-form {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--color-bg-dark);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+.tg-footer-newsletter-form input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-inverse);
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+.tg-footer-newsletter-form input:focus { box-shadow: none; }
+.tg-footer-newsletter-form input::placeholder { color: rgba(255,255,255,0.45); }
+.tg-footer-newsletter-form button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tg-footer-newsletter-form button:hover { background: var(--color-primary-dark); }
+
+.tg-footer-rule {
+  height: 1px;
+  background: var(--color-border-light);
+  margin-bottom: 20px;
+}
+
+.tg-footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.3px;
+  font-family: var(--font-body);
+}
+
+@media (max-width: 900px) {
+  .tg-footer-grid { grid-template-columns: 1fr 1fr; }
+  .tg-footer-brand { grid-column: span 2; max-width: none; }
+}
+
+@media (max-width: 560px) {
+  .tg-footer-inner { padding: 32px 20px 20px; }
+
+  .tg-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 16px;
+    padding-bottom: 24px;
+  }
+
+  .tg-footer-brand { grid-column: span 2; max-width: none; }
+  .tg-footer-tagline { font-size: 12px; margin-bottom: 12px; }
+  .tg-footer-socials { margin-bottom: 4px; }
+  .tg-footer-social { width: 28px; height: 28px; }
+
+  .tg-footer-col-title { font-size: 11.5px; margin-bottom: 10px; }
+  .tg-footer-col { gap: 8px; }
+  .tg-footer-link { font-size: 12px; }
+
+  .tg-footer-newsletter { grid-column: span 2; }
+
+  .tg-footer-rule { margin-bottom: 14px; }
+
+  .tg-footer-bottom {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+}

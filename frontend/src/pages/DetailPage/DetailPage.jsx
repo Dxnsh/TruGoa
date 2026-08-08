@@ -1,20 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import {
+  MapPin, Heart, Share2, Camera, ChevronRight, Navigation,
+  Bookmark, Clock, Users, Sun, Compass, Utensils, Waves,
+  Sparkles, Phone, Globe, IndianRupee, Maximize2, X,
+} from "lucide-react";
 import StarRating from "../../components/StarRating/StarRating";
-import { getBusinessById, getReviewsForBusiness, getBusinesses } from "../../services/api";
+import ReviewForm from "../../components/ReviewForm/ReviewForm";
+import {
+  getBusinessById, getBusinessBySlug, getBusinesses,
+  getReviewsForBusiness, markReviewHelpful,
+  getFavorites, addFavorite, removeFavorite,
+} from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
+import SEO, { SITE_URL } from "../../components/SEO/SEO";
 import useIsMobile from "../../hooks/useIsMobile";
-import ReviewForm from "../../components/ReviewForm/ReviewForm";
 import "./DetailPage.css";
+
+const WHY_ICONS = [Sparkles, Waves, Compass, Camera, Utensils];
+const STORY_PREVIEW_LEN = 320;
 
 /* ══════════════════════════════════════════════════════════
    LIGHTBOX
 ══════════════════════════════════════════════════════════ */
 function Lightbox({ images, startIndex, onClose }) {
-
-  const [reviews, setReviews] = useState([]);
   const [current, setCurrent] = useState(startIndex);
 
   const prev = useCallback(() =>
@@ -39,30 +50,15 @@ function Lightbox({ images, startIndex, onClose }) {
   return (
     <div className="lb-overlay" onClick={onClose}>
       <div className="lb-inner" onClick={e => e.stopPropagation()}>
-
-        {/* close */}
         <button className="lb-close" onClick={onClose}>✕</button>
-
-        {/* counter */}
         <div className="lb-counter">{current + 1} / {images.length}</div>
-
-        {/* image */}
-        <img
-          key={current}
-          src={images[current]}
-          alt={`Photo ${current + 1}`}
-          className="lb-img"
-        />
-
-        {/* arrows */}
+        <img key={current} src={images[current]} alt={`Photo ${current + 1}`} className="lb-img" />
         {images.length > 1 && (
           <>
-            <button className="lb-arrow lb-arrow-left"  onClick={prev}>‹</button>
+            <button className="lb-arrow lb-arrow-left" onClick={prev}>‹</button>
             <button className="lb-arrow lb-arrow-right" onClick={next}>›</button>
           </>
         )}
-
-        {/* thumbnail strip */}
         {images.length > 1 && (
           <div className="lb-thumbs no-scrollbar">
             {images.map((img, i) => (
@@ -81,73 +77,273 @@ function Lightbox({ images, startIndex, onClose }) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   TRUST SCORE CARD
+   MAP MODAL — expands the map in-page (no new tab)
 ══════════════════════════════════════════════════════════ */
-function TrustScore({ biz }) {
-  const items = [
-    {
-      icon: "✦",
-      label: "Physically Verified",
-      desc: "Our team visited this location",
-      done: biz.trust === "verified" || biz.trust_level === "verified",
-    },
-    {
-      icon: "◈",
-      label: "Menu Prices Confirmed",
-      desc: "Prices match what locals pay",
-      done: !!biz.price || !!biz.price_range,
-    },
-    {
-      icon: "★",
-      label: "Community Reviews",
-      desc: `${biz.reviews || biz.review_count || 0} verified guest reviews`,
-      done: (biz.reviews || biz.review_count || 0) > 0,
-    },
-    {
-      icon: "⚑",
-      label: "Zero Scam Reports",
-      desc: "No complaints in last 12 months",
-      done: true,
-    },
-    {
-      icon: "✿",
-      label: "Local Endorsement",
-      desc: "Recommended by Goa residents",
-      done: biz.trust === "verified" || biz.trust_level === "verified",
-    },
-  ];
-
-  const score = Math.round((items.filter(i => i.done).length / items.length) * 100);
+function MapModal({ biz, mapEmbedSrc, directionsUrl, onClose, saved, onToggleSave }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
 
   return (
-    <div className="trust-card">
-      <p className="trust-eyebrow">TruGoa Trust Score</p>
-      <div className="trust-score-row">
-        <span className="trust-score-num">{score}</span>
-        <div className="trust-score-info">
-          <span className="trust-score-label">/ 100</span>
-          <span className={`trust-score-badge ${score >= 80 ? "high" : score >= 60 ? "mid" : "low"}`}>
-            {score >= 80 ? "Highly Trusted" : score >= 60 ? "Trusted" : "Under Review"}
-          </span>
+    <div className="dp-map-modal-overlay" onClick={onClose}>
+      <div className="dp-map-modal" onClick={e => e.stopPropagation()}>
+        <div className="dp-map-modal-frame">
+          {mapEmbedSrc ? (
+            <iframe
+              title="expanded location map"
+              src={mapEmbedSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="dp-map-placeholder">
+              <MapPin size={22} />
+              <span>Map unavailable</span>
+            </div>
+          )}
+        </div>
+
+        <div className="dp-map-modal-side">
+          <button className="dp-map-modal-close" onClick={onClose}>
+            <X size={18} />
+          </button>
+          <h3 className="dp-map-modal-title">{biz.name}</h3>
+          <div className="dp-map-modal-rule" />
+          <p className="dp-card-address">{biz.location || "Location not available"}</p>
+
+          <div className="dp-map-actions" style={{ marginTop: "auto" }}>
+            <a className="dp-map-btn primary" href={directionsUrl} target="_blank" rel="noreferrer">
+              <Navigation size={14} /> Directions
+            </a>
+            <button className="dp-map-btn" onClick={onToggleSave}>
+              <Bookmark size={14} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save Place"}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* progress bar */}
-      <div className="trust-bar-track">
-        <div className="trust-bar-fill" style={{ width: `${score}%` }} />
-      </div>
+/* ══════════════════════════════════════════════════════════
+   INFO CARD — one unified sidebar card: location, map,
+   directions/save actions, and a quick-facts list. Rows only
+   render when the underlying data actually exists.
+══════════════════════════════════════════════════════════ */
+function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasCoords = biz.latitude && biz.longitude;
+  const mapEmbedSrc = hasCoords
+    ? `https://www.google.com/maps?q=${biz.latitude},${biz.longitude}&z=14&output=embed`
+    : biz.location
+    ? `https://www.google.com/maps?q=${encodeURIComponent(biz.location)}&z=13&output=embed`
+    : null;
+  const directionsUrl = biz.googleMapUrl
+    || (hasCoords
+      ? `https://www.google.com/maps/dir/?api=1&destination=${biz.latitude},${biz.longitude}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(biz.location)}`);
 
-      <div className="trust-items">
-        {items.map((item, i) => (
-          <div key={i} className={`trust-item ${item.done ? "done" : "pending"}`}>
-            <div className="trust-item-icon">{item.done ? "✓" : "○"}</div>
-            <div>
-              <div className="trust-item-label">{item.label}</div>
-              <div className="trust-item-desc">{item.desc}</div>
+  const facts = [
+    { label: "Best Time to Visit", value: biz.bestTime, icon: Sun },
+    { label: "Ideal For",          value: biz.idealFor?.length ? biz.idealFor.join(", ") : "", icon: Users },
+    { label: "Price",              value: biz.price && biz.price !== "Contact for price" ? biz.price : "", icon: IndianRupee },
+    { label: "Timings",            value: biz.openingHours, icon: Clock },
+    { label: "Duration",           value: biz.visitDuration, icon: Compass },
+    { label: "Phone",              value: biz.phone, icon: Phone },
+    { label: "Nearest Places",     value: nearbyNames, icon: MapPin },
+  ].filter(f => f.value);
+
+  return (
+    <div className="dp-card">
+      <p className="dp-card-eyebrow">Location</p>
+      <p className="dp-card-address">{biz.location || "Location not available"}</p>
+
+      <div
+        className="dp-map-wrap"
+        onClick={() => mapEmbedSrc && setExpanded(true)}
+        style={{ cursor: mapEmbedSrc ? "pointer" : "default", position: "relative" }}
+      >
+        {mapEmbedSrc ? (
+          <>
+            <iframe
+              title="location map"
+              src={mapEmbedSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              style={{ pointerEvents: "none" }}
+            />
+            <div className="dp-map-expand-btn">
+              <Maximize2 size={14} /> Expand
             </div>
+          </>
+        ) : (
+          <div className="dp-map-placeholder">
+            <MapPin size={22} />
+            <span>Map unavailable</span>
           </div>
-        ))}
+        )}
       </div>
+
+      <div className="dp-map-actions">
+        <a className="dp-map-btn primary" href={directionsUrl} target="_blank" rel="noreferrer">
+          <Navigation size={14} /> Directions
+        </a>
+        <button className="dp-map-btn" onClick={onToggleSave}>
+          <Bookmark size={14} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save Place"}
+        </button>
+      </div>
+
+      {facts.length > 0 && (
+        <>
+          <div className="dp-card-divider" />
+          <div className="dp-glance-list">
+            {facts.map((f) => (
+              <div className="dp-glance-row" key={f.label}>
+                <f.icon size={16} className="dp-glance-icon" />
+                <div>
+                  <div className="dp-glance-label">{f.label}</div>
+                  <div className="dp-glance-value">{f.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {expanded && (
+        <MapModal
+          biz={biz}
+          mapEmbedSrc={mapEmbedSrc}
+          directionsUrl={directionsUrl}
+          onClose={() => setExpanded(false)}
+          saved={saved}
+          onToggleSave={onToggleSave}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLIMPSES STRIP — horizontally scrolling photo strip with a
+   floating nav arrow, opens the lightbox at the clicked photo.
+══════════════════════════════════════════════════════════ */
+function GlimpsesStrip({ name, images, onOpen }) {
+  const scrollerRef = useRef(null);
+  const isMobile = useIsMobile();
+
+  if (!images.length) return null;
+
+  const scrollBy = (dir) => {
+    scrollerRef.current?.scrollBy({ left: dir * (isMobile ? 180 : 240), behavior: "smooth" });
+  };
+
+  return (
+    <div>
+      <p className="dp-section-eyebrow">Glimpses of {name}</p>
+      <div style={{ position: "relative" }}>
+        <div ref={scrollerRef} className="dp-glimpses-strip no-scrollbar">
+          {images.map((img, i) => (
+            <div
+              key={i}
+              className="dp-glimpse-thumb"
+              style={{ backgroundImage: `url(${img})` }}
+              onClick={() => onOpen(i)}
+            />
+          ))}
+        </div>
+        {!isMobile && images.length > 3 && (
+          <button className="dp-glimpses-arrow" onClick={() => scrollBy(1)}>
+            <ChevronRight size={18} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   REVIEWS — real visitor reviews for this place
+══════════════════════════════════════════════════════════ */
+function ReviewsSection({ businessId, categoryLabel }) {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchReviews = useCallback(async () => {
+    try {
+      const { reviews } = await getReviewsForBusiness(businessId);
+      setReviews(reviews);
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [businessId]);
+
+  useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  const markHelpful = async (id) => {
+    // optimistic bump — matches the atomic $inc the server does
+    setReviews(rs => rs.map(r => r._id === id ? { ...r, helpfulCount: r.helpfulCount + 1 } : r));
+    try {
+      await markReviewHelpful(id);
+    } catch {
+      fetchReviews();
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 48 }}>
+      <p className="dp-section-eyebrow">Reviews</p>
+      <h2 className="dp-section-title">
+        {reviews.length > 0 ? `What visitors say about this ${categoryLabel.toLowerCase().replace(/s$/, "")}` : "Be the first to review"}
+      </h2>
+
+      {!loading && reviews.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 24 }}>
+          {reviews.map(r => (
+            <div key={r._id} style={{
+              border: "1px solid rgba(26,31,28,0.08)", borderRadius: 16, padding: "20px 22px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{r.name}</div>
+                  {(r.city || r.country) && (
+                    <div style={{ fontSize: 12, color: "#8a9e94", marginTop: 2 }}>
+                      {[r.city, r.country].filter(Boolean).join(", ")}
+                    </div>
+                  )}
+                </div>
+                <StarRating rating={r.rating} />
+              </div>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: "#333" }}>{r.comment}</p>
+              {r.ownerReply?.text && (
+                <div style={{ marginTop: 12, padding: "12px 14px", background: "#faf8f3", borderRadius: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Reply from TruGoa</div>
+                  <div style={{ fontSize: 13, color: "#555" }}>{r.ownerReply.text}</div>
+                </div>
+              )}
+              <button
+                onClick={() => markHelpful(r._id)}
+                style={{
+                  marginTop: 12, background: "none", border: "1px solid rgba(26,31,28,0.15)",
+                  borderRadius: 999, padding: "6px 14px", fontSize: 12, cursor: "pointer",
+                }}
+              >
+                👍 Helpful{r.helpfulCount > 0 ? ` (${r.helpfulCount})` : ""}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ReviewForm businessId={businessId} fetchReviews={fetchReviews} />
     </div>
   );
 }
@@ -156,43 +352,48 @@ function TrustScore({ biz }) {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════ */
 export default function DetailPage() {
-  const { id }     = useParams();
-  console.log("Route ID:", id);
-  const navigate   = useNavigate();
-  const isMobile   = useIsMobile();
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const contentRef = useRef(null);
+
+  const [biz, setBiz] = useState(null);
+  const [similar, setSimilar] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+  const [storyExpanded, setStoryExpanded] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const [showSaveLogin, setShowSaveLogin] = useState(false);
   const { isTouristLoggedIn } = useTourist();
 
-  const [biz,        setBiz       ] = useState(null);
-  const [reviews,    setReviews   ] = useState([]);
-  const [similar,    setSimilar   ] = useState([]);
-  const [loading,    setLoading   ] = useState(true);
-  const [error,      setError     ] = useState(null);
-  const [lightboxIdx,setLightboxIdx] = useState(null);  // null = closed
-  const [showLogin,  setShowLogin ] = useState(false);
-
-  /* ── fetch ──────────────────────────────────────────────── */
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const [bizData, reviewsData, allBiz] = await Promise.all([
-          getBusinessById(id),
-          getReviewsForBusiness(id),
+        setStoryExpanded(false);
+        const [bizData, allBiz] = await Promise.all([
+          // Clean slug URLs are canonical; fall back to raw Mongo ID for old/shared links.
+          getBusinessBySlug(slug).catch(() => getBusinessById(slug)),
           getBusinesses(),
         ]);
         const mapped = mapBusiness(bizData, 0);
         setBiz(mapped);
-        setReviews(
-        Array.isArray(reviewsData)
-          ? reviewsData
-          : Array.isArray(reviewsData.reviews)
-          ? reviewsData.reviews
-          : []
-      );
 
-        // similar: same category, exclude current
+        if (isTouristLoggedIn) {
+          getFavorites()
+            .then(favs => setSaved(favs.some(f => String(f._id) === String(bizData._id))))
+            .catch(() => {});
+        }
+
+        // If the URL didn't already use the canonical slug, swap it in for better SEO.
+        if (mapped.slug && mapped.slug !== slug) {
+          navigate(`/listings/${mapped.slug}`, { replace: true });
+        }
+
         const sim = allBiz
-          .filter(b => b._id !== id &&
+          .filter(b => String(b._id) !== String(bizData._id) &&
             b.category?.toLowerCase() === bizData.category?.toLowerCase()
           )
           .slice(0, 4)
@@ -204,9 +405,8 @@ export default function DetailPage() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [slug]);
 
-  /* ── loading ─────────────────────────────────────────────── */
   if (loading) return (
     <div className="dp-loading">
       <div className="dp-loading-ring" />
@@ -217,136 +417,154 @@ export default function DetailPage() {
   if (error || !biz) return (
     <div className="dp-error">
       <div className="dp-error-icon">😕</div>
-      <h2 className="dp-error-title">Business not found</h2>
-      <button className="dp-btn-gold" onClick={() => navigate("/listings")}>
-        Back to Listings
+      <h2 className="dp-error-title">Place not found</h2>
+      <button className="dp-btn-gold" onClick={() => navigate("/explore")}>
+        Back to Explore
       </button>
     </div>
   );
 
-  const images = biz.images?.length > 0 ? biz.images : [];
-  const hasMultiple = images.length > 1;
+  const images = biz.images?.length > 0 ? biz.images : (biz.image ? [biz.image] : []);
+  const storyText = biz.story || biz.desc;
+  const isLongStory = storyText.length > STORY_PREVIEW_LEN;
+  const storyPreview = isLongStory && !storyExpanded
+    ? storyText.slice(0, STORY_PREVIEW_LEN).trim() + "…"
+    : storyText;
+
+  const whyItems = (biz.highlights?.length ? biz.highlights : [
+    "Natural beauty", "Local culture", "Things to do", "Great photography",
+  ]).slice(0, 5);
+
+  const categoryLabel = biz.category
+    ? biz.category.charAt(0).toUpperCase() + biz.category.slice(1)
+    : "Places";
+
+  const heroHeadline = biz.tagline || biz.name;
+  const heroDescription = biz.desc;
+  const nearbyNames = similar.slice(0, 2).map(s => s.name).join(", ");
+
+  const scrollToContent = () => {
+    contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const toggleFavorite = async () => {
+    if (!isTouristLoggedIn) {
+      setShowSaveLogin(true);
+      return;
+    }
+    const next = !saved;
+    setSaved(next); // optimistic
+    setSavingFavorite(true);
+    try {
+      if (next) await addFavorite(biz.id);
+      else await removeFavorite(biz.id);
+    } catch {
+      setSaved(!next); // revert on failure
+    } finally {
+      setSavingFavorite(false);
+    }
+  };
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: biz.name,
+    description: biz.desc,
+    image: images,
+    url: `${SITE_URL}/listings/${biz.slug || biz.id}`,
+    address: biz.location ? { "@type": "PostalAddress", addressLocality: biz.location, addressRegion: "Goa", addressCountry: "IN" } : undefined,
+    geo: biz.latitude && biz.longitude ? { "@type": "GeoCoordinates", latitude: biz.latitude, longitude: biz.longitude } : undefined,
+    telephone: biz.phone || undefined,
+    priceRange: biz.price || undefined,
+    aggregateRating: biz.rating ? { "@type": "AggregateRating", ratingValue: biz.rating, reviewCount: biz.reviews || 1 } : undefined,
+  };
 
   return (
     <div className="dp-root">
-
-      {/* ══════════════════════════════════════════════════════
-          PHOTO GALLERY HERO
-      ══════════════════════════════════════════════════════ */}
-      <div className="dp-gallery" style={{ height: isMobile ? 320 : 520 }}>
-
-        {/* Back button */}
-        <button className="dp-back" onClick={() => navigate("/listings")}>
-          ← Back
-        </button>
-
-        {images.length === 0 ? (
-          /* No photos — gradient placeholder */
-          <div className="dp-gallery-placeholder">
-            <span className="dp-gallery-emoji">{biz.emoji}</span>
-          </div>
-        ) : images.length === 1 ? (
-          /* Single photo — full bleed */
+      <SEO
+        path={`/listings/${biz.slug || biz.id}`}
+        title={biz.name}
+        description={(biz.desc || heroDescription || "").slice(0, 160) || `${biz.name} — ${biz.location || "Goa"}, verified on TruGoa.`}
+        image={images[0]}
+        type="place"
+        jsonLd={jsonLd}
+      />
+      {/* ══════════════════════════════════════════════════
+          HERO
+      ══════════════════════════════════════════════════ */}
+      <div className="dp-hero" style={{ height: isMobile ? 460 : 620 }}>
+        {images.length > 0 ? (
           <div
-            className="dp-gallery-single"
+            className="dp-hero-img"
             style={{ backgroundImage: `url(${images[0]})` }}
             onClick={() => setLightboxIdx(0)}
           />
         ) : (
-          /* Multiple photos — editorial grid */
-          <div className={`dp-gallery-grid ${images.length >= 3 ? "grid-3" : "grid-2"}`}>
-            {/* Main large photo */}
-            <div
-              className="dp-gallery-main"
-              style={{ backgroundImage: `url(${images[0]})` }}
-              onClick={() => setLightboxIdx(0)}
-            />
-            {/* Secondary photos */}
-            <div className="dp-gallery-secondary">
-              {images.slice(1, isMobile ? 2 : 4).map((img, i) => (
-                <div
-                  key={i}
-                  className="dp-gallery-thumb"
-                  style={{ backgroundImage: `url(${img})` }}
-                  onClick={() => setLightboxIdx(i + 1)}
-                >
-                  {/* "View all" overlay on last thumb */}
-                  {i === (isMobile ? 0 : 2) && images.length > (isMobile ? 2 : 4) && (
-                    <div className="dp-gallery-more" onClick={() => setLightboxIdx(i + 1)}>
-                      +{images.length - (isMobile ? 2 : 4)} photos
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="dp-gallery-placeholder">
+            <span className="dp-gallery-emoji">📍</span>
+          </div>
+        )}
+        <div className="dp-hero-veil" />
+
+        {/* museum-plaque name tag, top-right */}
+        {!isMobile && (
+          <div className="dp-hero-plaque">
+            <span>{biz.name}</span>
           </div>
         )}
 
-        {/* Bottom overlay with badges */}
-        <div className="dp-gallery-overlay" />
-        <div className="dp-gallery-badges">
-          {(biz.trust === "verified" || biz.trust_level === "verified") && (
-            <span className="dp-badge-verified">✓ Verified Business</span>
-          )}
-          {biz.badge === "top" && (
-            <span className="dp-badge-top">⭐ Top Rated</span>
-          )}
-          {hasMultiple && (
-            <button
-              className="dp-badge-photos"
-              onClick={() => setLightboxIdx(0)}
-            >
-              📷 View all {images.length} photos
+        <div className="dp-hero-content">
+          <div className="dp-hero-ctas">
+            <button className="dp-hero-cta-primary" onClick={scrollToContent}>
+              Explore {biz.name} <ChevronRight size={14} />
             </button>
-          )}
+            {images.length > 0 && (
+              <button className="dp-hero-cta-secondary" onClick={() => setLightboxIdx(0)} aria-label="View gallery">
+                <Camera size={16} />
+              </button>
+            )}
+            {images.length > 0 && <span className="dp-hero-cta-label">View Gallery</span>}
+          </div>
+
+          <div className="dp-hero-stats">
+            {biz.location && (
+              <span><MapPin size={14} /> {biz.location}</span>
+            )}
+            <span><Clock size={14} /> {biz.visitDuration || categoryLabel}</span>
+            <span><Sparkles size={14} /> {biz.highlights?.[0] || (biz.trust === "verified" ? "Locally Verified" : "Editorial Pick")}</span>
+          </div>
         </div>
       </div>
 
-
-      {/* ══════════════════════════════════════════════════════
-          BODY GRID
-      ══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════
+          BODY
+      ══════════════════════════════════════════════════ */}
       <div
-        className="dp-body"
-        style={{
-          padding: isMobile ? "32px 20px" : "56px clamp(32px,6vw,96px)",
-          gridTemplateColumns: isMobile ? "1fr" : "1fr 360px",
-        }}
+        ref={contentRef}
+        className="dp-content"
+        style={{ gridTemplateColumns: isMobile ? "1fr" : "1fr 340px" }}
       >
-
-        {/* ── LEFT COLUMN ─────────────────────────────────── */}
-        <div className="dp-left">
-
-          {/* category eyebrow */}
-          <p className="dp-category">{biz.category}</p>
-
-          {/* name */}
-          <h1 className="dp-name"
-            style={{ fontSize: isMobile ? "clamp(32px,9vw,52px)" : "clamp(40px,5vw,68px)" }}>
+        <div className="dp-panel">
+          {/* ── THE STORY ── */}
+          <p className="dp-section-eyebrow">The Story</p>
+          <h2 className="dp-section-title">
             {biz.name}
-          </h1>
+          </h2>
 
-          {/* rating + location */}
-          <div className="dp-meta">
-            <StarRating rating={biz.rating} count={biz.reviews} />
-            <span className="dp-location">📍 {biz.location}</span>
+          <div className="dp-story-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr" }}>
+            <div>
+              <p className="dp-story-text">{storyPreview}</p>
+              {isLongStory && (
+                <button className="dp-readmore" onClick={() => setStoryExpanded(e => !e)}>
+                  {storyExpanded ? "Read less" : "Read more"} <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
+            {images[1] && (
+              <div className="dp-story-img" style={{ backgroundImage: `url(${images[1]})` }} />
+            )}
           </div>
 
-          {/* tags */}
-          {biz.tags?.length > 0 && (
-            <div className="dp-tags">
-              {biz.tags.map(t => (
-                <span key={t} className="dp-tag">{t}</span>
-              ))}
-            </div>
-          )}
-
-          <div className="dp-rule" />
-
-          {/* description */}
-          <p className="dp-desc">{biz.desc}</p>
-
-          {/* local tip */}
           {biz.localTip && (
             <div className="dp-tip">
               <div className="dp-tip-icon">💡</div>
@@ -357,304 +575,101 @@ export default function DetailPage() {
             </div>
           )}
 
-          {/* ── TRUST SCORE ─────────────────────────────────── */}
-          <TrustScore biz={biz} />
-   
-         
-        <div className="dp-reviews-wrap">
-
-          <div className="dp-reviews-header">
-            <div>
-      
-
-              <h2 className="dp-reviews-title">
-                Guest Reviews
-                {reviews.length > 0 && (
-                  <span className="dp-reviews-count">
-                    {reviews.length}
-                  </span>
-                )}
-              </h2>
+          {/* ── GLIMPSES GALLERY ── */}
+          {images.length > 0 && (
+            <div style={{ marginTop: 48 }}>
+              <GlimpsesStrip name={biz.name} images={images} onOpen={(i) => setLightboxIdx(i)} />
             </div>
+          )}
 
-            {biz.rating > 0 && (
-              <div className="dp-rating-summary">
-                <div className="dp-rating-big">{biz.rating}</div>
-                <div>
-                  <StarRating rating={biz.rating} />
-                  <p className="dp-rating-label">
-                    Based on {biz.review_count} trusted reviews
-                  </p>
+          {/* ── WHY YOU'LL LOVE IT ── */}
+          <p className="dp-section-eyebrow" style={{ marginTop: 48 }}>Why You'll Love It</p>
+          <div className="dp-why-grid">
+            {whyItems.map((item, i) => {
+              const Icon = WHY_ICONS[i % WHY_ICONS.length];
+              return (
+                <div className="dp-why-card" key={i}>
+                  <Icon size={22} />
+                  <span>{item}</span>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
 
-          {reviews.length === 0 ? (
-            <div className="dp-no-reviews">
-              <div className="dp-no-review-icon">✍️</div>
-              <h3>No stories yet</h3>
-              <p>
-                Be the first guest to share what made this place memorable.
-              </p>
-            </div>
-          ) : (
-            <div className="dp-reviews-grid">
-              {reviews.map((r, i) => (
-                <article key={i} className="dp-review-card">
-
-                  {/* Quote Mark */}
-                  <div className="dp-review-quote">“</div>
-
-                  {/* Top */}
-                  <div className="dp-review-top">
-                    <StarRating rating={r.rating} />
-
-                    {r.verifiedBooking && (
-                      <span className="dp-verified-badge">
-                        Verified Guest
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title */}
-                  {r.title && (
-                    <h3 className="dp-review-title">
-                      {r.title}
-                    </h3>
-                  )}
-
-                  {/* Comment */}
-                  <p className="dp-review-comment">
-                    {r.comment}
-                  </p>
-
-                  {/* Images */}
-                  {r.images?.length > 0 && (
-                    <div className="dp-review-images">
-                      {r.images.slice(0,3).map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt=""
-                          className="dp-review-img"
-                        />
-                      ))}
+          {/* ── EXPERIENCES (must-try list, if any) ── */}
+          {biz.mustTry?.length > 0 && (
+            <>
+              <p className="dp-section-eyebrow" style={{ marginTop: 48 }}>Experiences</p>
+              <h2 className="dp-section-title">Things to do here</h2>
+              <div className="dp-why-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : "repeat(2,1fr)" }}>
+                {biz.mustTry.map((item, i) => {
+                  const Icon = WHY_ICONS[i % WHY_ICONS.length];
+                  return (
+                    <div className="dp-why-card wide" key={i}>
+                      <Icon size={20} />
+                      <span>{item}</span>
                     </div>
-                  )}
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-                  {/* Footer */}
-                  <div className="dp-review-rule" />
-
-                  <div className="dp-review-author">
-
-                    <div className="dp-review-avatar">
-                      {r.name?.[0]?.toUpperCase()}
-                    </div>
-
-                    <div className="dp-review-author-info">
-                      <div className="dp-review-name">
-                        {r.name}
-                      </div>
-
-                      <div className="dp-review-meta">
-                        {r.city && `📍 ${r.city} · `}
-                        {new Date(r.createdAt).toLocaleDateString(
-                          "en-IN",
-                          {
-                            month: "long",
-                            year: "numeric",
-                          }
-                        )}
+          {/* ── NEARBY PLACES ── */}
+          {similar.length > 0 && (
+            <>
+              <p className="dp-section-eyebrow" style={{ marginTop: 48 }}>Nearby Places</p>
+              <h2 className="dp-section-title">More {categoryLabel.toLowerCase()} close by</h2>
+              <div className="dp-similar-grid" style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(2,1fr)" }}>
+                {similar.map(s => (
+                  <div key={s.id} className="dp-similar-card" onClick={() => navigate(`/listings/${s.slug || s.id}`)}>
+                    <div
+                      className="dp-similar-img"
+                      style={{
+                        backgroundImage: s.images?.[0] ? `url(${s.images[0]})` : undefined,
+                        background: s.images?.[0] ? undefined : "#EDE8DD",
+                      }}
+                    />
+                    <div className="dp-similar-body">
+                      <p className="dp-similar-category">{s.category}</p>
+                      <h3 className="dp-similar-name">{s.name}</h3>
+                      <div className="dp-similar-meta">
+                        <StarRating rating={s.rating} />
                       </div>
                     </div>
                   </div>
-
-                  {/* Owner Reply */}
-                  {r.ownerReply?.text && (
-                    <div className="dp-owner-reply">
-                      <div className="dp-owner-reply-label">
-                        Reply from TruGoa Partner
-                      </div>
-
-                      <p>{r.ownerReply.text}</p>
-                    </div>
-                  )}
-
-                  {/* Helpful */}
-                  <button className="dp-helpful-btn">
-                    Helpful ({r.helpfulCount || 0})
-                  </button>
-
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-
-       <ReviewForm
-        businessId={id}
-        fetchReviews={async () => {
-          const data = await getReviewsForBusiness(id);
-
-          setReviews(
-            Array.isArray(data)
-              ? data
-              : Array.isArray(data.reviews)
-              ? data.reviews
-              : []
-          );
-        }}
-        />
-        </div>
-
-
-        {/* ── RIGHT COLUMN — BOOKING CARD ─────────────────── */}
-        <div className="dp-right">
-          <div className="dp-booking-card">
-
-            {/* price */}
-            <div className="dp-price">{biz.price}</div>
-            <div className="dp-price-label">per {biz.priceLabel}</div>
-
-            <div className="dp-booking-rule" />
-
-            {/* CTA */}
-            <button
-              className="dp-btn-book"
-              onClick={() => {
-                if (!isTouristLoggedIn) {
-                  setShowLogin(true);
-                } else {
-                  navigate(`/booking/${biz.id}`);
-                }
-              }}
-            >
-              📅 Book Now
-            </button>
-
-            <button
-              className="dp-btn-ai"
-              onClick={() => navigate("/goaguide")}
-            >
-              💬 Ask GoaGuide AI
-            </button>
-
-            {/* trust features */}
-            <div className="dp-booking-features">
-              {[
-                "✓ Verified & trusted business",
-                "✓ Price matches local rates",
-                "✓ Free cancellation (24hr)",
-                "✓ Instant confirmation",
-              ].map(f => (
-                <div key={f} className="dp-booking-feature">{f}</div>
-              ))}
-            </div>
-
-            {/* fair price badge */}
-            <div className="dp-fair-price">
-              <span className="dp-fair-price-icon">₹</span>
-              <div>
-                <div className="dp-fair-price-title">Fair Price Guaranteed</div>
-                <div className="dp-fair-price-sub">
-                  No hidden fees · No tourist markup
-                </div>
+                ))}
               </div>
-            </div>
-          </div>
-
-          {/* contact */}
-          {biz.contact && (
-            <div className="dp-contact-card">
-              <p className="dp-contact-label">Contact</p>
-              <p className="dp-contact-val">{biz.contact}</p>
-            </div>
+            </>
           )}
+
+          {/* ── REVIEWS ── */}
+          <ReviewsSection businessId={biz.id} categoryLabel={categoryLabel} />
+        </div>
+
+        {/* ── SIDEBAR ── */}
+        <div className="dp-sidebar">
+          <InfoCard biz={biz} nearbyNames={nearbyNames} saved={saved} onToggleSave={toggleFavorite} />
         </div>
       </div>
 
-
-      {/* ══════════════════════════════════════════════════════
-          SIMILAR LISTINGS
-      ══════════════════════════════════════════════════════ */}
-      {similar.length > 0 && (
-        <div
-          className="dp-similar"
-          style={{ padding: isMobile ? "56px 20px" : "72px clamp(32px,6vw,96px)" }}
-        >
-          <div className="dp-similar-header">
-            <div>
-              <p className="dp-similar-eyebrow">You Might Also Like</p>
-              <h2 className="dp-similar-title"
-                style={{ fontSize: isMobile ? 32 : "clamp(32px,4vw,52px)" }}>
-                More {biz.category} in Goa
-              </h2>
-            </div>
-            <button
-              className="dp-similar-all"
-              onClick={() => navigate(`/listings?category=${encodeURIComponent(biz.category)}`)}
-            >
-              View all →
-            </button>
-          </div>
-
-          <div
-            className="dp-similar-grid"
-            style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}
-          >
-            {similar.map((s, i) => (
-              <div
-                key={s.id}
-                className="dp-similar-card"
-                onClick={() => navigate(`/listings/${s.id}`)}
-              >
-                <div
-                  className="dp-similar-img"
-                  style={{
-                    backgroundImage: s.images?.[0] ? `url(${s.images[0]})` : undefined,
-                    background: s.images?.[0] ? undefined : "#EDE8DD",
-                  }}
-                >
-                  {!s.images?.[0] && (
-                    <span style={{ fontSize: 32 }}>{s.emoji}</span>
-                  )}
-                  {(s.trust === "verified" || s.trust_level === "verified") && (
-                    <span className="dp-similar-verified">✓</span>
-                  )}
-                </div>
-                <div className="dp-similar-body">
-                  <p className="dp-similar-category">{s.category}</p>
-                  <h3 className="dp-similar-name">{s.name}</h3>
-                  <div className="dp-similar-meta">
-                    <StarRating rating={s.rating} />
-                    <span className="dp-similar-price">{s.price}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {showSaveLogin && (
+        <LoginModal
+          onClose={() => setShowSaveLogin(false)}
+          message="Sign in to save this place"
+        />
       )}
 
 
-      {/* ══════════════════════════════════════════════════════
+
+      {/* ══════════════════════════════════════════════════
           LIGHTBOX
-      ══════════════════════════════════════════════════════ */}
+      ══════════════════════════════════════════════════ */}
       {lightboxIdx !== null && images.length > 0 && (
         <Lightbox
           images={images}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
-        />
-      )}
-
-      {/* Login modal */}
-      {showLogin && (
-        <LoginModal
-          onClose={() => setShowLogin(false)}
-          onSuccess={() => setShowLogin(false)}
-          message="Sign in to book this place"
         />
       )}
     </div>

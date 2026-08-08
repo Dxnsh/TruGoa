@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-// import { useAuth } from "../../context/AuthContext";
 import { useTourist } from "../../context/TouristContext";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import LoginModal from "../LoginModal/LoginModal";
-import { Map, Bot, House, Route, ClipboardList, Compass } from "lucide-react";
+import { Map, Bot, Route, Compass, Sun, ChevronDown, Search, Store, Heart } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Home",      path: "/" },
-  { label: "Explore",   path: "/listings" },
-  { label: "AI Guide",  path: "/goaguide" },
-  { label: "Itinerary", path: "/itinerary" },
+  { label: "Explore",     path: "/explore",              icon: <Compass size={16} strokeWidth={2} /> },
+  { label: "AI Guide",    path: "/goaguide",              icon: <Bot size={16} strokeWidth={2} /> },
+  { label: "Itinerary",   path: "/itinerary",             icon: <Route size={16} strokeWidth={2} /> },
+  { label: "Stories",     path: "/stories/destinations",  icon: <Map size={16} strokeWidth={2} /> },
 ];
-
-
 
 const Navbar = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  // const { isLoggedIn, owner, logout } = useAuth();
   const { isTouristLoggedIn, tourist, touristLogout } = useTourist();
   const isMobile  = useIsMobile();
   const [showLoginModal,  setShowLoginModal ] = useState(false);
@@ -29,51 +25,26 @@ const Navbar = () => {
 
   // ── Auth-aware navigation ──────────────────────────────────
   
-  const PUBLIC_PATHS = ["/", "/auth", "/admin"];
-
   const handleNavClick = (path) => {
-    if (!isTouristLoggedIn && !PUBLIC_PATHS.includes(path)) {
-      setShowLoginModal(true);   // show Google login modal
-    } else {
+
       navigate(path);
-    }
+
   };
-  // ──────────────────────────────────────────────────────────
-  
 
-    const OWNER_ROUTES = [
-      "/dashboard",
-      "/add-business",
-      "/my-listings",
-      "/bookings"
-    ];
+    useEffect(() => {
+      const handler = (e) => {
+        if (!e.target.closest("[data-profile-menu]")) {
+          setShowProfileMenu(false);
+        }
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, []);
 
-    const isOwnerRoute = OWNER_ROUTES.some((route) =>
-      location.pathname.startsWith(route)
-    );
-
-  
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (!e.target.closest("[data-profile-menu]")) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-
-  if(isOwnerRoute){
-    return null;
-  }
 
   if (isAdminRoute && isAdminLoggedIn) return null;
   
   return (
-
-   
     <nav style={{
       position: "sticky", top: 0, zIndex: 200,
       height: 64,
@@ -88,24 +59,25 @@ const Navbar = () => {
 
       {/* LOGO */}
       <div
-    onClick={() => {
-      if (location.pathname.startsWith("/admin")) {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/");
-      }
-  }}
-  style={{
-    fontFamily: theme.typography.fontDisplay,
-    fontWeight: theme.typography.weightBlack,
-    fontSize: isMobile ? 20 : 22,
-    cursor: "pointer",
-    letterSpacing: "-0.5px",
-  }}
->
-  <span style={{ color: theme.colors.secondary }}>Tru</span>
-  <span style={{ color: theme.colors.primary }}>Goa</span>
-</div>
+        onClick={() => {
+          if (location.pathname.startsWith("/admin")) {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/");
+          }
+      }}
+      style={{
+        fontFamily: theme.typography.fontDisplay,
+        fontWeight: theme.typography.weightBlack,
+        fontSize: isMobile ? 20 : 22,
+        cursor: "pointer",
+        letterSpacing: "-0.5px",
+      }}
+    >
+      <span style={{ color: theme.colors.secondary }}>Tru</span>
+      <span style={{ color: theme.colors.primary }}>Goa</span>
+      
+    </div>
 
       {/* RIGHT SIDE */}
       <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 20 }}>
@@ -133,36 +105,28 @@ const Navbar = () => {
           );
         })}
 
-        {/* icon links — mobile only */}
-        {isMobile && (
-          <div style={{ display: "flex", gap: 4 }}>
-            {[
-              { icon: <House size={24} />, path: "/" },
-              { icon: <Map   size={24} />, path: "/listings" },
-              { icon: <Bot   size={24} />, path: "/goaguide" },
-              { icon: <Route size={24} />, path: "/itinerary" },
-            ].map(link => {
-              const isActive = location.pathname === link.path;
-              return (
-                <button
-                  key={link.path}
-                  onClick={() => handleNavClick(link.path)}  // ← changed
-                  style={{
-                    background: isActive ? theme.colors.primaryLight : "transparent",
-                    border: "none", borderRadius: theme.radii.md,
-                    width: 38, height: 38,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer",
-                    color: isActive ? theme.colors.primary : theme.colors.textMuted,
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {link.icon}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* nav links — mobile: icon-only row */}
+        {isMobile && NAV_LINKS.map(link => {
+          const isActive = location.pathname === link.path;
+          return (
+            <div
+              key={link.path}
+              onClick={() => handleNavClick(link.path)}
+              aria-label={link.label}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 34, height: 34, borderRadius: theme.radii.pill,
+                cursor: "pointer",
+                color: isActive ? theme.colors.secondary : theme.colors.textBody,
+                background: isActive ? theme.colors.primaryLight : "transparent",
+                transition: theme.transitions.fast,
+              }}
+            >
+              {link.icon}
+            </div>
+          );
+        })}
+
 
         {/* ── TOURIST SECTION ── */}
         {isTouristLoggedIn ? (
@@ -244,51 +208,51 @@ const Navbar = () => {
                 icon: <Map size={16} strokeWidth={2} />,
                 label: "Explore Places",
                 action: () => {
-                  navigate("/listings");
+                  navigate("/explore");
                   setShowProfileMenu(false);
                 },
               },
-  {
-    icon: <Bot size={16} strokeWidth={2} />,
-    label: "Ask AI Guide",
-    action: () => {
-      navigate("/goaguide");
-      setShowProfileMenu(false);
-    },
-  },
-  {
-    icon: <Route size={16} strokeWidth={2} />,
-    label: "Itinerary",
-    action: () => {
-      navigate("/itinerary");
-      setShowProfileMenu(false);
-    },
-  },
-  {
-    icon: <ClipboardList size={16} strokeWidth={2} />,
-    label: "My Bookings",
-    action: () => {
-      navigate("/my-bookings");
-      setShowProfileMenu(false);
-    },
-  },
-].map((item) => (
-                  <div
-                    key={item.label}
-                    onClick={item.action}
-                    style={{
-                      padding: "12px 16px",
-                      display: "flex", alignItems: "center", gap: 10,
-                      cursor: "pointer", fontSize: 14,
-                      color: theme.colors.textBody,
-                      transition: theme.transitions.fast,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = theme.colors.bgSurface}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <span>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </div>
+            {
+              icon: <Bot size={16} strokeWidth={2} />,
+              label: "Ask AI Guide",
+              action: () => {
+                navigate("/goaguide");
+                setShowProfileMenu(false);
+              },
+            },
+            {
+              icon: <Route size={16} strokeWidth={2} />,
+              label: "Itinerary",
+              action: () => {
+                navigate("/itinerary");
+                setShowProfileMenu(false);
+              },
+            },
+            {
+              icon: <Heart size={16} strokeWidth={2} />,
+              label: "Saved Places",
+              action: () => {
+                navigate("/saved");
+                setShowProfileMenu(false);
+              },
+            },
+          ].map((item) => (
+                            <div
+                              key={item.label}
+                              onClick={item.action}
+                              style={{
+                                padding: "12px 16px",
+                                display: "flex", alignItems: "center", gap: 10,
+                                cursor: "pointer", fontSize: 14,
+                                color: theme.colors.textBody,
+                                transition: theme.transitions.fast,
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = theme.colors.bgSurface}
+                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                            >
+                              <span>{item.icon}</span>
+                              <span>{item.label}</span>
+                            </div>
                 ))}
 
                 {/* sign out */}
@@ -335,13 +299,12 @@ const Navbar = () => {
 
       </div>
 
-    
       {showLoginModal && (
         <LoginModal
           onClose={() => setShowLoginModal(false)}
           message="Sign in to explore Goa's best places"
         />
-      )} 
+      )}
     </nav>
   );
 };

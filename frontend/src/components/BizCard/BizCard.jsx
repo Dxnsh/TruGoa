@@ -1,165 +1,186 @@
-import { useNavigate } from "react-router-dom";
-import StarRating from "../StarRating/StarRating";
+import { MapPin, Lightbulb, ShieldCheck } from "lucide-react";
 import { theme } from "../../Theme";
 
-const gradients = {
-  "🍽️": "linear-gradient(135deg, #fef3c7, #fde68a)",
-  "🏕️": "linear-gradient(135deg, #d1fae5, #a7f3d0)",
-  "🌊": "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-  "☕": "linear-gradient(135deg, #fce7f3, #fbcfe8)",
-  "🫒": "linear-gradient(135deg, #f0fdf4, #dcfce7)",
-  "🛍️": "linear-gradient(135deg, #fef9c3, #fef08a)",
-};
-
+/**
+ * Editorial listing card — matches the "Goa Edit" voice used on the
+ * homepage and itinerary pages: serif place name, category eyebrow,
+ * short editorial description, optional insider tip.
+ *
+ * Expected `biz` shape (from mapBusiness):
+ *   id, name, location, category, image, trust ("verified" | ...)
+ *
+ * Optional fields — render only if present, no errors if missing:
+ *   description   (1–2 sentence editorial blurb)
+ *   insiderTip    (a specific local tip — table, time, what to avoid)
+ *   tag           ("Hidden Gem" | "Local Favourite" | "Classic, Reimagined" | ...)
+ *   priceIndicator ("₹" | "₹₹" | "₹₹₹")
+ */
 const BizCard = ({ biz }) => {
-  const navigate = useNavigate();
-  const hasPhoto = biz.images && biz.images.length > 0;
+  const {
+    name,
+    location,
+    category,
+    image,
+    trust,
+    description,
+    insiderTip,
+    tag,
+    priceIndicator,
+  } = biz;
 
   return (
     <div
-      onClick={() => navigate(`/listings/${biz.id}`)}
       style={{
+        display: "flex",
+        flexDirection: "column",
         background: theme.colors.bgCard,
-        borderRadius: theme.radii.lg,
-        overflow: "hidden",
-        boxShadow: theme.shadows.card,
-        cursor: "pointer",
-        transition: theme.transitions.spring,
         border: `1px solid ${theme.colors.borderLight}`,
-        fontFamily: theme.typography.fontBody,
+        borderRadius: theme.radii.large || 14,
+        overflow: "hidden",
+        cursor: "pointer",
+        transition: theme.transitions.fast,
       }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform = "translateY(-6px)";
-        e.currentTarget.style.boxShadow = theme.shadows.cardHover;
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-3px)";
+        e.currentTarget.style.boxShadow = "0 12px 28px rgba(0,0,0,0.08)";
       }}
-      onMouseLeave={e => {
+      onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = theme.shadows.card;
+        e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {/* ── IMAGE AREA ─────────────────────────────────── */}
-      <div style={{ position: "relative" }}>
-        {hasPhoto ? (
-          // ✅ real photo from Cloudinary
-          <img
-            src={biz.images[0]}
-            alt={biz.name}
-            style={{
-              width: "100%",
-              height: 200,
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ) : (
-          // fallback gradient + emoji
-          <div style={{
-            width: "100%",
-            height: 200,
-            background: gradients[biz.emoji] || theme.colors.bgSurface,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 64,
-          }}>
-            {biz.emoji}
-          </div>
-        )}
+      {/* ── Image ── */}
+      <div style={{ position: "relative", aspectRatio: "4 / 3", overflow: "hidden" }}>
+        <img
+          src={image}
+          alt={name}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          loading="lazy"
+        />
 
-        {/* dark overlay on real photos for badge readability */}
-        {hasPhoto && (
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 50%)",
-          }} />
-        )}
-
-        {/* photo count badge — only if more than 1 photo */}
-        {biz.images && biz.images.length > 1 && (
-          <div style={{
-            position: "absolute", bottom: 10, right: 10,
-            background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(4px)",
+        {/* category eyebrow, over the image */}
+        <span
+          style={{
+            position: "absolute",
+            top: 14,
+            left: 14,
+            padding: "4px 12px",
             borderRadius: theme.radii.pill,
-            padding: "3px 10px",
+            background: "rgba(255,255,255,0.92)",
             fontSize: 11,
-            color: "white",
             fontWeight: theme.typography.weightMedium,
-          }}>
-            📷 {biz.images.length}
-          </div>
-        )}
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: theme.colors.textBody,
+          }}
+        >
+          {category}
+        </span>
 
-        {/* BADGES */}
-        <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6 }}>
-          {biz.trust === "verified" && (
-            <span style={{
-              padding: "4px 10px", borderRadius: theme.radii.pill,
-              fontSize: 11, fontWeight: theme.typography.weightBold,
-              background: "rgba(255,255,255,0.95)",
-              color: theme.colors.secondary,
-            }}>
-              ✓ Verified
-            </span>
-          )}
-          {biz.badge === "top" && (
-            <span style={{
-              padding: "4px 10px", borderRadius: theme.radii.pill,
-              fontSize: 11, fontWeight: theme.typography.weightBold,
+        {/* discovery tag — only if your data has it */}
+        {tag && (
+          <span
+            style={{
+              position: "absolute",
+              top: 14,
+              right: 14,
+              padding: "4px 12px",
+              borderRadius: theme.radii.pill,
               background: theme.colors.primary,
-              color: theme.colors.textPrimary,
-            }}>
-              ⭐ Top Rated
-            </span>
-          )}
-          {biz.badge === "new" && (
-            <span style={{
-              padding: "4px 10px", borderRadius: theme.radii.pill,
-              fontSize: 11, fontWeight: theme.typography.weightBold,
-              background: theme.colors.accentLight,
-              color: theme.colors.accentText,
-            }}>
-              ✨ New
-            </span>
-          )}
-        </div>
+              fontSize: 11,
+              fontWeight: theme.typography.weightMedium,
+              letterSpacing: "0.03em",
+              color: "white",
+            }}
+          >
+            {tag}
+          </span>
+        )}
       </div>
 
-      {/* ── BODY ───────────────────────────────────────── */}
-      <div style={{ padding: "18px 20px 20px" }}>
-        <div style={{
-          fontSize: 11, color: theme.colors.textMuted,
-          fontWeight: theme.typography.weightMedium,
-          letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6,
-        }}>
-          {biz.category}
-        </div>
-        <div style={{
-          fontFamily: theme.typography.fontDisplay,
-          fontSize: 18, fontWeight: theme.typography.weightBold,
-          color: theme.colors.textPrimary, marginBottom: 6,
-          letterSpacing: "-0.3px",
-        }}>
-          {biz.name}
-        </div>
-        <div style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 12 }}>
-          📍 {biz.location}
-        </div>
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginTop: 14, paddingTop: 14,
-          borderTop: `1px solid ${theme.colors.borderLight}`,
-        }}>
-          <div>
-            <span style={{ fontSize: 15, fontWeight: theme.typography.weightMedium, color: theme.colors.textPrimary }}>
-              {biz.price}
+      {/* ── Body ── */}
+      <div style={{ padding: "18px 18px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* name + trust */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+          <h3
+            style={{
+              fontFamily: theme.typography.fontDisplay,
+              fontSize: 19,
+              fontWeight: theme.typography.weightBold,
+              color: theme.colors.textPrimary,
+              margin: 0,
+              lineHeight: 1.25,
+            }}
+          >
+            {name}
+          </h3>
+          {priceIndicator && (
+            <span style={{ fontSize: 13, color: theme.colors.textMuted, whiteSpace: "nowrap", marginTop: 3 }}>
+              {priceIndicator}
             </span>
-            <span style={{ fontSize: 11, color: theme.colors.textMuted }}>
-              {" "}/ {biz.priceLabel}
+          )}
+        </div>
+
+        {/* location */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: theme.colors.textMuted }}>
+          <MapPin size={13} strokeWidth={2} />
+          <span>{location}</span>
+        </div>
+
+        {/* editorial blurb, only if present */}
+        {description && (
+          <p
+            style={{
+              fontSize: 13.5,
+              lineHeight: 1.6,
+              color: theme.colors.textBody,
+              margin: "2px 0 0",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {description}
+          </p>
+        )}
+
+        {/* insider tip, only if present */}
+        {insiderTip && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-start",
+              marginTop: 8,
+              padding: "10px 12px",
+              borderRadius: 8,
+              background: theme.colors.primaryLight,
+            }}
+          >
+            <Lightbulb size={14} strokeWidth={2} color={theme.colors.primary} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 12.5, lineHeight: 1.5, color: theme.colors.primaryText }}>
+              {insiderTip}
             </span>
           </div>
-          <StarRating rating={biz.rating} count={biz.reviews} />
-        </div>
+        )}
+
+        {/* verified footer */}
+        {trust === "verified" && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginTop: 6,
+              fontSize: 11.5,
+              color: theme.colors.textMuted,
+            }}
+          >
+            <ShieldCheck size={13} strokeWidth={2} color={theme.colors.secondary} />
+            <span>Locally verified by TruGoa</span>
+          </div>
+        )}
       </div>
     </div>
   );
