@@ -57,7 +57,7 @@ const Navbar = () => {
       fontFamily: theme.typography.fontBody,
     }}>
 
-      {/* LOGO */}
+      {/* LOGO — cropped to the icon + wordmark, hiding the tagline/whitespace baked into the source image */}
       <div
         onClick={() => {
           if (location.pathname.startsWith("/admin")) {
@@ -67,16 +67,22 @@ const Navbar = () => {
           }
       }}
       style={{
-        fontFamily: theme.typography.fontDisplay,
-        fontWeight: theme.typography.weightBlack,
-        fontSize: isMobile ? 20 : 22,
+        height: isMobile ? 38 : 48,
+        width: isMobile ? 64 : 82,
+        overflow: "hidden",
         cursor: "pointer",
-        letterSpacing: "-0.5px",
       }}
     >
-      <span style={{ color: theme.colors.secondary }}>Tru</span>
-      <span style={{ color: theme.colors.primary }}>Goa</span>
-      
+      <img
+        src="/images/Trugoa_logo.png"
+        alt="TruGoa"
+        style={{
+          height: isMobile ? 64 : 81,
+          width: isMobile ? 64 : 81,
+          marginTop: isMobile ? -8 : -10,
+          display: "block",
+        }}
+      />
     </div>
 
       {/* RIGHT SIDE */}
