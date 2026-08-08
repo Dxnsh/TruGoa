@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ARRIVAL_OPTIONS } from "../../../Data/ArrivalData";
+import { ARRIVAL_OPTIONS } from "../../../Data/arrivalData";
 
 export default function ArrivalChapter() {
   const [selectedArrival, setSelectedArrival] = useState(0);
