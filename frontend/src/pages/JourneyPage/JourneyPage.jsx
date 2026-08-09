@@ -1,5 +1,4 @@
 import Hero from "../../components/Journey/Hero/Hero";
-import ArrivalChapter from "../../components/Journey/ArrivalChapter/ArrivalChapter";
 import StayChapter from "../../components/Journey/StayChapter/StayChapter";
 import FirstDayChapter from "../../components/Journey/FirstDayChapter/FirstDayChapter";
 import ExploreChapter from "../../components/Journey/ExploreChapter/ExploreChapter";
@@ -20,9 +19,6 @@ export default function JourneyPage() {
         description="Follow a day-by-day Goa journey — arrival, stays, first day, exploring, nightlife and departure — planned the TruGoa way."
       />
       <Hero isMobile={isMobile} />
-
-      
-      <ArrivalChapter />
 
       <StayChapter />
 
