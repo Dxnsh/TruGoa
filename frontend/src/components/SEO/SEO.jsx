@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_NAME = "TruGoa";
-const SITE_URL = "https://trugoa.com";
+const SITE_URL = "https://trugoa.in";
 const DEFAULT_DESCRIPTION =
   "TruGoa is the trusted local guide to Goa — verified restaurants, cafes, stays, beaches and experiences, with honest tips locals actually use.";
 const DEFAULT_IMAGE = `${SITE_URL}/images/Hero-img.jpg`;
