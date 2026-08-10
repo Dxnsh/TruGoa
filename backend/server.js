@@ -45,8 +45,8 @@ app.use(helmet({ crossOriginOpenerPolicy: false }));
 // ── 3. CORS ───────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://trugoa.com",
-  "https://www.trugoa.com",
+  "https://trugoa.in",
+  "https://www.trugoa.in",
 ];
 
 app.use(cors({
