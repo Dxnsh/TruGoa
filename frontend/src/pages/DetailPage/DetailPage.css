@@ -171,6 +171,7 @@
   display: grid; gap: 48px; max-width: 1280px; margin: 0 auto;
   padding: 48px clamp(16px,4vw,64px) 80px;
 }
+.dp-panel, .dp-sidebar { min-width: 0; }
 
 .dp-section-eyebrow {
   font-size: 10px; color: #2D6A4F; letter-spacing: 3px;
