@@ -34,14 +34,18 @@ const COLUMNS = [
   {
     title: "Company",
     links: [
-      ["About Us", "/"],
-      ["Our Manifesto", "/"],
-      ["Contact", "/"],
+      ["About Us", "/about"],
+      ["Our Manifesto", "/manifesto"],
+      ["Contact", "/contact"],
     ],
   },
 ];
 
-const SOCIALS = ["IG", "FB", "YT"];
+const SOCIALS = [
+  { label: "IG", href: "https://www.instagram.com/trugoa?utm_source=qr&igsh=eGQ5dHAxdmhtY3Bz" },
+  { label: "X", href: "https://x.com/TruGoa_" },
+  { label: "IN", href: "https://www.linkedin.com/company/trugoa/" },
+];
 
 export default function Footer() {
   const navigate = useNavigate();
@@ -61,7 +65,16 @@ export default function Footer() {
             </p>
             <div className="tg-footer-socials">
               {SOCIALS.map((s) => (
-                <span key={s} className="tg-footer-social">{s}</span>
+                <a
+                  key={s.label}
+                  className="tg-footer-social"
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                >
+                  {s.label}
+                </a>
               ))}
             </div>
           </div>

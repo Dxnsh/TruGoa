@@ -54,6 +54,7 @@
   color: var(--color-text-body);
   cursor: pointer;
   transition: var(--transition-fast);
+  text-decoration: none;
 }
 .tg-footer-social:hover { background: var(--color-bg-dark); color: var(--color-text-inverse); border-color: var(--color-bg-dark); }
 

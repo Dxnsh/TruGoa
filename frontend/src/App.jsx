@@ -14,6 +14,9 @@ import StoryArticlePage from "./pages/StoryArticlePage/StoryArticlePage";
 import JourneyPage from "./pages/JourneyPage/JourneyPage";
 import AdminRoute from "./routes/AdminRoute";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
+import AboutPage from "./pages/StaticPages/AboutPage";
+import ManifestoPage from "./pages/StaticPages/ManifestoPage";
+import ContactPage from "./pages/StaticPages/ContactPage";
 
 function App() {
   return (
@@ -33,6 +36,9 @@ function App() {
         <Route path="/stories/:slug" element={<StoriesPage />} />
         <Route path="/stories/:slug/:storySlug" element={<StoryArticlePage />} />
         <Route path="/journey" element={<JourneyPage />} />
+        <Route path="/about"       element={<AboutPage />} />
+        <Route path="/manifesto"   element={<ManifestoPage />} />
+        <Route path="/contact"     element={<ContactPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
