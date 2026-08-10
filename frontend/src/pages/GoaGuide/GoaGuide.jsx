@@ -384,7 +384,7 @@ export default function GoaGuide() {
   const [input,   setInput  ] = useState("");
   const [msgs,    setMsgs   ] = useState([{
     role: "assistant",
-    content: "Namaskaar. 🌴\n\nI'm GoaGuide — your deeply trained local companion for Goa. I know every fair taxi price, every hidden beach, every restaurant worth your time, and the true, authentic side of this place.\n\nWhat would you like to know?",
+    content: "Namaskaar. 🌴\n\nI'm your Goa Friend — not a search engine, just someone who knows this place well. The quiet corners, the honest food, the little things worth slowing down for.\n\nWhat would you like to know?",
   }]);
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -527,14 +527,6 @@ export default function GoaGuide() {
               ›
             </button>
           </div>
-
-          {showLogin && (
-            <LoginModal
-              onClose={() => setShowLogin(false)}
-              onSuccess={() => setShowLogin(false)}
-              message="Sign up to chat with GoaGuide"
-            />
-          )}
         </div>
       )}
 
