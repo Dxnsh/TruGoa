@@ -384,7 +384,7 @@ export default function GoaGuide() {
   const [input,   setInput  ] = useState("");
   const [msgs,    setMsgs   ] = useState([{
     role: "assistant",
-    content: "Namaskaar. 🌴\n\nI'm your Goa Friend — not a search engine, just someone who knows this place well. The quiet corners, the honest food, the little things worth slowing down for.\n\nWhat would you like to know?",
+    content: "Namaskaar. 🌴\n\n I'm your Goa Friend — not a search engine, just someone who knows this place well. The quiet corners, the honest food, the little things worth slowing down for.\n\nWhat would you like to know?",
   }]);
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
