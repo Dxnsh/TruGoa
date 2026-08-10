@@ -287,6 +287,8 @@ function IntroScroller({
           style={{
             flex: 1,
             position: "relative",
+            width: isMobile ? "100%" : undefined,
+            minWidth: 0,
           }}
         >
           <div
@@ -297,6 +299,8 @@ function IntroScroller({
               overflowX: "auto",
               scrollbarWidth: "none",
               scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+              minWidth: 0,
             }}
           >
             {items.map((item) => (
