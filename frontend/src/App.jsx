@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar/Navbar";
 import Homepage from "./pages/HomePage/Homepage";
 import ExplorePage from "./pages/ExplorePage/ExplorePage";
@@ -41,6 +42,7 @@ function App() {
         <Route path="/contact"     element={<ContactPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <Analytics />
     </BrowserRouter>
   );
 }
