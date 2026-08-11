@@ -7,7 +7,7 @@ import compression from "compression";
 import morgan     from "morgan";
 
 import connectDB     from "./config/db.js";
-import { apiLimiter, authLimiter, aiLimiter } from "./middleware/rateLimiter.js";
+import { apiLimiter, authLimiter, aiLimiter, burstLimiter, healthLimiter } from "./middleware/rateLimiter.js";
 import { notFound, errorHandler }             from "./middleware/errorHandler.js";
 import { responseTime }                       from "./middleware/timing.js";
 import { sanitizeInput }                      from "./middleware/sanitize.js";
@@ -73,12 +73,13 @@ app.use(sanitizeInput);
 app.use(responseTime);
 
 // ── 7. RATE LIMITERS ──────────────────────────────────────────────────────────
+app.use(burstLimiter);
 app.use("/api/v1",        apiLimiter);
 app.use("/api/v1/auth",   authLimiter);
 app.use("/api/v1/ai",     aiLimiter);
 
 // ── 8. HEALTH CHECK ───────────────────────────────────────────────────────────
-app.get("/health", (req, res) => {
+app.get("/health", healthLimiter, (req, res) => {
   const dbState = ["disconnected", "connected", "connecting", "disconnecting"];
   res.json({
     status:    "ok",
@@ -101,6 +102,14 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
 });
+
+// Guard against slow-loris style connection exhaustion: cap how long a
+// client can take to finish sending headers/body before we drop it.
+server.headersTimeout = 15000;
+server.requestTimeout = 20000;
+// Keep-alive must stay below headersTimeout or a legitimate reused
+// connection can get cut off mid-request.
+server.keepAliveTimeout = 10000;
 
 // Graceful shutdown
 const shutdown = (signal) => {

@@ -3,6 +3,26 @@ import rateLimit from "express-rate-limit";
 
 const msg = (message) => ({ success: false, message });
 
+// Burst limiter — blunts rapid-fire request floods (script/bot hammering)
+// within a short window, ahead of the longer 15-min window below.
+export const burstLimiter = rateLimit({
+  windowMs: 10 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: msg("Too many requests in a short time. Slow down and try again."),
+});
+
+// Health check — cheap, but still worth capping so it can't be used to
+// keep hammering the process even after the main API limiter kicks in.
+export const healthLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: msg("Too many requests."),
+});
+
 // General API limit — 100 requests per 15 min per IP
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
