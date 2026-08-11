@@ -362,7 +362,6 @@ const TABS = [
 ];
 
 const STARTERS = [
-  "What's the fair taxi price from the airport to Baga?",
   "Give me a 3-day itinerary under ₹8,000 total",
   "Best hidden beaches that most tourists miss?",
   "Where do locals eat in Panaji?",
