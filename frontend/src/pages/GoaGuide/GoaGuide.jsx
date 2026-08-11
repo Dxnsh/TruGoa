@@ -425,6 +425,13 @@ export default function GoaGuide() {
         description="Ask TruGoa's AI guide anything about Goa — beaches, food, safety, itineraries — and get honest, locally-informed answers instantly."
       />
 
+      {showLogin && (
+        <LoginModal
+          onClose={() => setShowLogin(false)}
+          message="Sign in to ask GoaGuide"
+        />
+      )}
+
       {/* ── HERO ────────────────────────────────────────────
       <div className="gg-hero">
         <div className="gg-hero-bg" />
