@@ -147,7 +147,11 @@ const StoriesManager = ({ isMobile }) => {
                   /{story.slug}
                 </div>
                 {story.desc && (
-                  <div style={{ fontSize: 13, color: theme.colors.textBody, lineHeight: 1.5, maxWidth: 500 }}>
+                  <div style={{
+                    fontSize: 13, color: theme.colors.textBody, lineHeight: 1.5, maxWidth: 500,
+                    whiteSpace: "pre-line", overflow: "hidden", textOverflow: "ellipsis",
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                  }}>
                     {story.desc}
                   </div>
                 )}
