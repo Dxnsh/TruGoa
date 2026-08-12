@@ -242,7 +242,7 @@ const StoryForm = ({ story, onClose, onSaved }) => {
           <Field label="Description">
             <textarea style={{ ...inputStyle, minHeight: 60 }} value={form.desc} onChange={e => set("desc", e.target.value)} />
             <div style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
-              Used for search results and social previews. Also shown on the page itself, but only as a fallback when there's no Manifesto text below.
+              Used for search results and social previews. Also shown as the first paragraph on the page itself, above the Opening Section text below.
             </div>
           </Field>
 
