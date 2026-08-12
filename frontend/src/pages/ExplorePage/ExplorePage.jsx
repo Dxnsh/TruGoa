@@ -775,28 +775,28 @@ const ExplorePage = () => {
                     Handpicked, just for you.
                   </h2>
                 </div>
-                {!isMobile && (
-                  <button
-                    onClick={() => navigate("/explore")}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: theme.typography.weightMedium,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: theme.colors.textPrimary,
-                      fontFamily: theme.typography.fontBody,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    View All Picks <ChevronRight size={13} strokeWidth={2} />
-                  </button>
-                )}
+                {/* {!isMobile && (
+                  // <button
+                  //   onClick={() => navigate("/explore")}
+                  //   style={{
+                  //     display: "flex",
+                  //     alignItems: "center",
+                  //     gap: 4,
+                  //     background: "none",
+                  //     border: "none",
+                  //     cursor: "pointer",
+                  //     fontSize: 12,
+                  //     fontWeight: theme.typography.weightMedium,
+                  //     letterSpacing: "0.06em",
+                  //     textTransform: "uppercase",
+                  //     color: theme.colors.textPrimary,
+                  //     fontFamily: theme.typography.fontBody,
+                  //     whiteSpace: "nowrap",
+                  //   }}
+                  // >
+                  //   View All Picks <ChevronRight size={13} strokeWidth={2} />
+                  // </button>
+                )} */}
               </div>
 
               <div
