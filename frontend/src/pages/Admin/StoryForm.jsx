@@ -239,14 +239,27 @@ const StoryForm = ({ story, onClose, onSaved }) => {
           </div>
 
           <Field label="Title *"><input style={inputStyle} value={form.title} onChange={e => set("title", e.target.value)} /></Field>
-          <Field label="Description"><textarea style={{ ...inputStyle, minHeight: 60 }} value={form.desc} onChange={e => set("desc", e.target.value)} /></Field>
+          <Field label="Description">
+            <textarea style={{ ...inputStyle, minHeight: 60 }} value={form.desc} onChange={e => set("desc", e.target.value)} />
+            <div style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
+              Used for search results and social previews. Also shown as the first paragraph on the page itself, above the Opening Section text below.
+            </div>
+          </Field>
 
           <SingleImageUpload label="Cover Image *" value={form.image} onChange={url => set("image", url)} />
           <Field label="Read Time"><input style={inputStyle} value={form.readTime} onChange={e => set("readTime", e.target.value)} placeholder="8 min read" /></Field>
 
-          <Field label="Manifesto Title"><input style={inputStyle} value={form.manifestoTitle} onChange={e => set("manifestoTitle", e.target.value)} /></Field>
-          <Field label="Manifesto Text 1"><textarea style={{ ...inputStyle, minHeight: 60 }} value={form.manifestoText1} onChange={e => set("manifestoText1", e.target.value)} /></Field>
-          <Field label="Manifesto Text 2"><textarea style={{ ...inputStyle, minHeight: 60 }} value={form.manifestoText2} onChange={e => set("manifestoText2", e.target.value)} /></Field>
+          {/* ── Opening section — shown right under the hero on /stories/:slug ── */}
+          <div style={sectionHeadStyle}>Opening Section (shown on the page)</div>
+          <Field label="Title">
+            <input style={inputStyle} value={form.manifestoTitle} onChange={e => set("manifestoTitle", e.target.value)} />
+          </Field>
+          <Field label="Paragraph 1">
+            <textarea style={{ ...inputStyle, minHeight: 80 }} value={form.manifestoText1} onChange={e => set("manifestoText1", e.target.value)} />
+          </Field>
+          <Field label="Paragraph 2 (optional)">
+            <textarea style={{ ...inputStyle, minHeight: 80 }} value={form.manifestoText2} onChange={e => set("manifestoText2", e.target.value)} />
+          </Field>
 
           <div style={{ marginTop: 24, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <label style={labelStyle}>Articles in this Collection</label>

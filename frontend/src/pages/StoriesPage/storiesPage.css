@@ -131,11 +131,23 @@
   margin:0 auto;
 }
 
+.sp-opening-title{
+  font-family:"Cormorant Garamond", serif;
+  font-size:clamp(24px,3vw,32px);
+  font-weight:600;
+  color:#23261F;
+  margin-bottom:18px;
+}
+
 .sp-opening-text{
   font-size:18px;
   line-height:1.9;
   color:#4d4d42;
   white-space:pre-line;
+}
+
+.sp-opening-text + .sp-opening-text{
+  margin-top:22px;
 }
 
 /* ======================

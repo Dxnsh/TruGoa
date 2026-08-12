@@ -79,9 +79,12 @@ export default function StoriesPage() {
 
       <section className="sp-opening">
         <div className="sp-opening-inner">
-          <p className="sp-opening-text">
-            {story.manifestoText1 || story.desc}
-          </p>
+          {story.manifestoTitle && (
+            <h2 className="sp-opening-title">{story.manifestoTitle}</h2>
+          )}
+          {story.desc && <p className="sp-opening-text">{story.desc}</p>}
+          {story.manifestoText1 && <p className="sp-opening-text">{story.manifestoText1}</p>}
+          {story.manifestoText2 && <p className="sp-opening-text">{story.manifestoText2}</p>}
         </div>
       </section>
 
