@@ -8,6 +8,29 @@ export const listBusinessesRules = [
   query("search").optional().isString().trim().isLength({ max: 100 }),
 ];
 
+// Bounds are enforced here rather than in the controller so a malformed
+// coordinate is rejected before it reaches Mongo — $near throws a raw driver
+// error on out-of-range values, which would surface as a 500.
+export const nearbyBusinessesRules = [
+  query("lat")
+    .exists().withMessage("lat is required")
+    .isFloat({ min: -90, max: 90 }).withMessage("lat must be between -90 and 90")
+    .toFloat(),
+  query("lng")
+    .exists().withMessage("lng is required")
+    .isFloat({ min: -180, max: 180 }).withMessage("lng must be between -180 and 180")
+    .toFloat(),
+  // Capped at 200km so a huge value can't turn this into a full-collection scan.
+  query("maxDistance")
+    .optional()
+    .isInt({ min: 100, max: 200000 }).withMessage("maxDistance must be 100–200000 metres")
+    .toInt(),
+  query("limit")
+    .optional()
+    .isInt({ min: 1, max: 50 }).toInt(),
+  query("category").optional().isString().trim().isLength({ max: 50 }),
+];
+
 export const businessIdParamRules = [
   param("id").isMongoId().withMessage("Invalid business id"),
 ];

@@ -2,16 +2,26 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Waves, Landmark, UtensilsCrossed, Mountain, Music2, Flower2,
-  ArrowRight, ChevronRight, MapPin, MousePointer2, Menu,
-  PenLine, BookOpen, Backpack, Camera,
+  ArrowRight, ChevronRight, MousePointer2, Menu,
+  PenLine, BookOpen, Backpack, Camera, Bell, Search, SlidersHorizontal,
+  Heart, Wind, MoreHorizontal, User, Palmtree, ArrowUp, LogOut,
 } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
+import { CATEGORIES } from "../../constants/categories";
+import DiscoverSwipe from "../../components/DiscoverSwipe/DiscoverSwipe";
 import { getBusinesses, getStories } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
+import { useTourist } from "../../context/TouristContext";
+import LoginModal from "../../components/LoginModal/LoginModal";
+import MobileMenu from "../../components/MobileMenu/MobileMenu";
 
 import useIsMobile from "../../hooks/useIsMobile";
 import "./homepage.css";
+
+// Category shortcuts come from constants/categories.js — the same list the
+// Explore page renders. Each one deep-links to /explore?category=<key>, which
+// opens that section there directly.
 
 /* ─── SCROLL REVEAL ──────────────────────────────────────────────────────────── */
 const useScrollReveal = (threshold = 0.1) => {
@@ -38,7 +48,7 @@ const JOURNEY_WAY_STEPS = [
 ];
 
 const STATS = [
-  { value: "700+", label: "Verified Places",     sub: "Handpicked by locals" },
+  { value: "20+", label: "Verified Places",     sub: "Handpicked by locals" },
   { value: "95%",  label: "Recommended",         sub: "By real travellers" },
   { value: "100%", label: "No Sponsored Listings", sub: "Just honest recommendations" },
 ];
@@ -55,6 +65,26 @@ const TESTIMONIAL = {
 const Homepage = () => {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
+  const { isTouristLoggedIn, tourist, touristLogout } = useTourist();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  // Dismiss the profile menu on any tap outside it.
+  useEffect(() => {
+    if (!showProfile) return;
+    const handler = (e) => {
+      if (!e.target.closest("[data-hd-profile]")) setShowProfile(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [showProfile]);
+  // The global Navbar is hidden on the mobile homepage, so this page owns the
+  // menu its own header opens.
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const [placesRef,  placesVisible ] = useScrollReveal();
   const [journeyRef, journeyVisible] = useScrollReveal();
@@ -97,25 +127,169 @@ const Homepage = () => {
       <SEO path="/" />
 
       {/* ══ HERO ════════════════════════════════════════ */}
-      <section className="hero">
-        <div className="hero-bg" />
-        <div className="hero-overlay" />
+      <section className="hero-discover">
+        {/* Compact app-style header — mobile only. On desktop the global
+            Navbar covers this, so rendering both would duplicate the logo. */}
+        {isMobile && (
+          <div className="hd-header">
+            <button
+              className="hd-icon-btn"
+              onClick={() => setShowMobileMenu(true)}
+              aria-label="Open menu"
+              aria-expanded={showMobileMenu}
+            >
+              <Menu size={20} strokeWidth={2} />
+            </button>
 
-        
+            <div className="hd-logo-block">
+              <span className="hd-eyebrow">Discover</span>
+              <span className="hd-logo">
+                <span className="hd-logo-tru">Tru</span><span className="hd-logo-goa">Goa</span>
+              </span>
+            </div>
 
-        <div className="hero-content" style={{ padding: isMobile ? "0 24px" : "0 64px" }}>
-          <h1 className="hero-h1">
-            Discover the <br />
-            <span className="hero-h1-accent">soul of Goa.</span>
-          </h1>
-          <p className="hero-sub">
-            Handpicked places. Honest stories. Real experiences. The true soul of Goa.
-          </p>
-       
+            <div className="hd-header-actions">
+              <button className="hd-icon-btn hd-bell" onClick={() => navigate("/saved")} aria-label="Saved places">
+                <Bell size={19} strokeWidth={2} />
+                <span className="hd-bell-dot" />
+              </button>
+              {isTouristLoggedIn ? (
+                <div className="hd-profile" data-hd-profile>
+                  <button
+                    className="hd-avatar"
+                    onClick={() => setShowProfile((v) => !v)}
+                    aria-label="Your account"
+                    aria-expanded={showProfile}
+                  >
+                    {tourist.avatar ? (
+                      <img src={tourist.avatar} alt="" referrerPolicy="no-referrer" />
+                    ) : (
+                      tourist.name?.[0]?.toUpperCase()
+                    )}
+                  </button>
+
+                  {showProfile && (
+                    <div className="hd-profile-menu">
+                      <div className="hd-profile-head">
+                        <span className="hd-profile-avatar">
+                          {tourist.avatar ? (
+                            <img src={tourist.avatar} alt="" referrerPolicy="no-referrer" />
+                          ) : (
+                            tourist.name?.[0]?.toUpperCase()
+                          )}
+                        </span>
+                        <span className="hd-profile-id">
+                          <span className="hd-profile-name">{tourist.name}</span>
+                          <span className="hd-profile-email" title={tourist.email}>
+                            {tourist.email}
+                          </span>
+                        </span>
+                      </div>
+
+                      <button
+                        className="hd-profile-signout"
+                        onClick={() => { touristLogout(); setShowProfile(false); }}
+                      >
+                        <LogOut size={16} strokeWidth={2} />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button className="hd-avatar hd-avatar-guest" onClick={() => setShowLoginModal(true)} aria-label="Sign in">
+                  <User size={16} strokeWidth={2} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="hd-layout">
+          {/* Editorial copy — desktop only, sits opposite the deck */}
+          <div className="hd-copy">
+            <div className="hd-copy-badge">
+              <span className="hd-copy-dot" />
+              Truthfully curated. Locally rooted.
+            </div>
+
+            <h1 className="hd-copy-h1">
+              This isn&rsquo;t the <br />
+              <span className="hd-copy-accent">Goa</span> you googled.
+            </h1>
+
+            <p className="hd-copy-sub">
+              Swipe through places we&rsquo;ve stood in ourselves &mdash; verified,
+              unsponsored, and picked by people who live here.
+            </p>
+
+            <div className="hd-copy-stats">
+              {[
+                { value: "20+", label: "Verified places" },
+                { value: "15 km", label: "Around you" },
+                { value: "0", label: "Paid listings" },
+              ].map((s) => (
+                <div key={s.label} className="hd-copy-stat">
+                  <div className="hd-copy-stat-value">{s.value}</div>
+                  <div className="hd-copy-stat-label">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Live swipe deck — geolocation + real places from the database */}
+          <div className="hd-deck-col">
+            {/* <button className="hd-search" onClick={() => navigate("/explore")}>
+              <Search size={17} strokeWidth={2} className="hd-search-icon" />
+              <span className="hd-search-placeholder">Where do you want to discover?</span>
+              <span
+                className="hd-search-filter"
+                role="button"
+                aria-label="Filters"
+                onClick={(e) => { e.stopPropagation(); navigate("/explore"); }}
+              >
+                <SlidersHorizontal size={16} strokeWidth={2.2} />
+              </span>
+            </button> */}
+
+            <DiscoverSwipe />
+
+            {/* Category shortcuts are mobile-only. On desktop the Explore page
+                carries its own filter chips, and repeating them here crowded
+                the hero — the swipe deck is the point of this section. */}
+            {isMobile && (
+              <div className="hd-categories">
+                {CATEGORIES.map(({ key, label, sub, icon: Icon }) => (
+                  <button
+                    key={key}
+                    className="hd-cat"
+                    title={sub}
+                    onClick={() =>
+                      navigate(key === "all" ? "/explore" : `/explore?category=${key}`)
+                    }
+                  >
+                    <Icon size={16} strokeWidth={2} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-
-    
       </section>
+
+      <MobileMenu
+        open={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+        onRequestLogin={() => setShowLoginModal(true)}
+      />
+
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          message="Sign in to explore Goa's best places"
+        />
+      )}
 
 
       {/* ══ FEATURED PLACES IN GOA ═══════════════════════ */}
@@ -183,38 +357,41 @@ const Homepage = () => {
 
       {/* ══ GOAGUIDE AI BANNER ════════════════════════════ */}
       <section className="goaguide-banner" onClick={() => navigate("/goaguide")}>
-        <div className="goaguide-banner-copy">
-          <p className="eyebrow-light">GoaGuide AI</p>
-          <h2 className="goaguide-banner-heading">Not just answers, a local friend.</h2>
-          <p className="goaguide-banner-sub">
-            Ask anything about Goa and get honest, expert answers instantly.
-          </p>
-          <button
-            className="btn-primary-gold"
-            onClick={(e) => { e.stopPropagation(); navigate("/goaguide"); }}
-          >
-            Chat with GoaGuide <ArrowRight size={14} strokeWidth={2} />
-          </button>
+        <Palmtree className="gg-leaf" size={220} strokeWidth={1} aria-hidden="true" />
+
+        <div className="gg-head">
+          <span className="gg-head-avatar">G</span>
+          <span className="gg-head-name">GoaGuide AI</span>
+          <span className="gg-head-status">
+            <span className="gg-head-dot" />
+            Online
+          </span>
         </div>
 
-        {!isMobile && (
-          <div className="goaguide-banner-chat">
-            <div className="gg-bubble gg-bubble-user">Where can I eat authentic Goan fish?</div>
-            <div className="gg-bubble gg-bubble-ai">
-              <span className="gg-bubble-avatar">G</span>
-              Try Souza Lobo in Calangute. Loved by locals for decades.
-            </div>
-            <div className="gg-bubble gg-bubble-user">Best hidden beach?</div>
-            <div className="gg-bubble gg-bubble-ai">
-              <span className="gg-bubble-avatar">G</span>
-              Kakolem Beach in South Goa. Peaceful and untouched.
-            </div>
-          </div>
-        )}
+        <div className="gg-body">
+          <h2 className="goaguide-banner-heading">
+            Not just answers.<br />
+            <span className="goaguide-banner-accent">A local friend.</span>
+          </h2>
 
-        {!isMobile && (
-          <img src="/images/food.jpg" alt="Goan food" className="goaguide-banner-img" />
-        )}
+          <div className="goaguide-banner-chat">
+            <div className="gg-bubble gg-bubble-user">Best hidden beach near Palolem?</div>
+            <div className="gg-bubble gg-bubble-ai">
+              Rajbaug &mdash; locals go, tourists don&rsquo;t yet.
+            </div>
+
+            {/* Styled like an input but it's a button — GoaGuide has no way to
+                receive an opening question, so a real field would drop what
+                you typed on the way there. */}
+            <button
+              className="gg-ask"
+              onClick={(e) => { e.stopPropagation(); navigate("/goaguide"); }}
+            >
+              <span className="gg-ask-placeholder">Ask GoaGuide anything&hellip;</span>
+              <span className="gg-ask-send"><ArrowUp size={17} strokeWidth={2.5} /></span>
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* ══ STORIES THAT INSPIRE TRAVEL ═══════════════════ */}
@@ -248,7 +425,7 @@ const Homepage = () => {
       </section>
 
       {/* ══ STATS + TESTIMONIAL ═══════════════════════════ */}
-      <section ref={statsRef} className="stats-section">
+      {/* <section ref={statsRef} className="stats-section">
         <div className={`stats-wrap reveal ${statsVisible ? "visible" : ""}`}
           style={{ flexDirection: isMobile ? "column" : "row" }}>
           <div className="stats-numbers">
@@ -273,7 +450,7 @@ const Homepage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <Footer />
 

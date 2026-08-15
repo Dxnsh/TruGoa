@@ -13,3 +13,7 @@ backend/dist/
 
 backend/logs/
 backend/backups/
+
+*.zip
+
+.claude/
