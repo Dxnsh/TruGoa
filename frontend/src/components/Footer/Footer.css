@@ -2,6 +2,8 @@
    SHARED SITE FOOTER
 ═══════════════════════════════════════════ */
 .tg-footer {
+  --tgf-ink: #1A3225;
+  --tgf-accent: #E5502A;
   background: var(--color-bg-page);
   border-top: 1px solid var(--color-border-light);
 }
@@ -12,64 +14,110 @@
   padding: 56px clamp(20px, 6vw, 90px) 40px;
 }
 
+/* Mobile is a single stacked column; the desktop grid is set further down. */
 .tg-footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr repeat(4, 1fr);
-  gap: 32px;
-  padding-bottom: 40px;
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding-bottom: 28px;
 }
 
-.tg-footer-brand { max-width: 280px; }
+/* ── Brand ── */
+.tg-footer-brand { max-width: 300px; }
 
 .tg-footer-logo {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
+  letter-spacing: -0.2px;
+  margin-bottom: 12px;
 }
-.tg-footer-logo-tru { color: var(--color-secondary); }
-.tg-footer-logo-goa { color: var(--color-primary); }
+.tg-footer-logo-tru { color: var(--tgf-ink); }
+.tg-footer-logo-goa { color: var(--tgf-accent); }
 
 .tg-footer-tagline {
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.65;
   color: var(--color-text-muted);
   font-family: var(--font-body);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
-.tg-footer-socials { display: flex; gap: 10px; }
+.tg-footer-socials { display: flex; gap: 12px; }
 .tg-footer-social {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid var(--color-border-light);
+  background: var(--color-bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--color-text-body);
+  color: var(--tgf-ink);
   cursor: pointer;
   transition: var(--transition-fast);
   text-decoration: none;
+  flex-shrink: 0;
 }
-.tg-footer-social:hover { background: var(--color-bg-dark); color: var(--color-text-inverse); border-color: var(--color-bg-dark); }
+.tg-footer-social:hover {
+  background: var(--tgf-ink);
+  color: var(--color-text-inverse);
+  border-color: var(--tgf-ink);
+}
 
+/* ── Link groups (accordion on mobile) ── */
+.tg-footer-col-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+}
 .tg-footer-col-title {
-  font-size: 12.5px;
+  font-family: var(--font-display);
+  font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 16px;
-  letter-spacing: 0.3px;
+  color: var(--tgf-ink);
+  letter-spacing: -0.2px;
 }
+.tg-footer-col-plus {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tgf-ink);
+  transition: transform 0.25s ease, background 0.2s ease;
+}
+.tg-footer-col.open .tg-footer-col-plus { transform: rotate(45deg); }
 
-.tg-footer-col { display: flex; flex-direction: column; gap: 12px; }
+/* 0fr → 1fr animates a panel of unknown height without a magic max-height. */
+.tg-footer-col-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+.tg-footer-col.open .tg-footer-col-panel { grid-template-rows: 1fr; }
+.tg-footer-col-links {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tg-footer-col.open .tg-footer-col-links { padding-bottom: 22px; }
 
 .tg-footer-link {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--color-text-body);
   cursor: pointer;
   transition: color 0.2s;
@@ -79,37 +127,52 @@
 }
 .tg-footer-link:hover { color: var(--color-secondary); }
 
+/* ── Newsletter ── */
+/* Its title is a bare heading, not an accordion head, so it owns its spacing. */
+.tg-footer-newsletter .tg-footer-col-title {
+  display: block;
+  margin-bottom: 8px;
+}
+
 .tg-footer-newsletter-form {
   display: flex;
   align-items: center;
-  gap: 0;
-  background: var(--color-bg-dark);
-  border-radius: var(--radius-sm);
-  padding: 4px;
+  gap: 8px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+  padding: 5px 5px 5px 20px;
+  transition: var(--transition-fast);
 }
+.tg-footer-newsletter-form:focus-within { border-color: var(--color-border-medium); }
+/* Unset the global input chrome — the pill is the field here. */
 .tg-footer-newsletter-form input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
-  color: var(--color-text-inverse);
-  padding: 8px 10px;
-  font-size: 12.5px;
+  border-radius: 0;
+  color: var(--color-text-primary);
+  padding: 9px 0;
+  font-size: 13.5px;
 }
-.tg-footer-newsletter-form input:focus { box-shadow: none; }
-.tg-footer-newsletter-form input::placeholder { color: rgba(255,255,255,0.45); }
+.tg-footer-newsletter-form input:focus { border: none; box-shadow: none; }
+.tg-footer-newsletter-form input::placeholder { color: var(--color-text-muted); }
 .tg-footer-newsletter-form button {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--tgf-ink);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: var(--transition-fast);
 }
-.tg-footer-newsletter-form button:hover { background: var(--color-primary-dark); }
+.tg-footer-newsletter-form button:hover { background: var(--color-secondary); }
 
+/* ── Bottom bar ── */
 .tg-footer-rule {
   height: 1px;
   background: var(--color-border-light);
@@ -119,6 +182,7 @@
 .tg-footer-bottom {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   gap: 10px;
   font-size: 11.5px;
@@ -126,39 +190,58 @@
   letter-spacing: 0.3px;
   font-family: var(--font-body);
 }
+.tg-footer-legal { display: flex; align-items: center; gap: 8px; }
+.tg-footer-legal-link {
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.tg-footer-legal-link:hover { color: var(--tgf-ink); }
+.tg-footer-legal-sep { color: var(--color-border-medium); }
 
+/* ═══════════════════════════════════════════
+   MOBILE — dividers between the stacked blocks
+═══════════════════════════════════════════ */
 @media (max-width: 900px) {
-  .tg-footer-grid { grid-template-columns: 1fr 1fr; }
-  .tg-footer-brand { grid-column: span 2; max-width: none; }
+  .tg-footer-brand {
+    max-width: none;
+    padding-bottom: 26px;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  .tg-footer-col { border-bottom: 1px solid var(--color-border-light); }
+  .tg-footer-newsletter { padding-top: 24px; }
+  .tg-footer-newsletter .tg-footer-tagline { margin-bottom: 16px; }
 }
 
 @media (max-width: 560px) {
-  .tg-footer-inner { padding: 32px 20px 20px; }
+  .tg-footer-inner { padding: 36px 20px 22px; }
+  .tg-footer-logo { font-size: 27px; }
+  .tg-footer-col-title { font-size: 18px; }
+  /* Stays on one line — it wraps on its own if it truly runs out of room. */
+  .tg-footer-bottom { font-size: 10.5px; gap: 8px; }
+}
 
+/* ═══════════════════════════════════════════
+   DESKTOP — columns, always expanded
+═══════════════════════════════════════════ */
+@media (min-width: 901px) {
   .tg-footer-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 24px 16px;
-    padding-bottom: 24px;
+    grid-template-columns: 1.7fr repeat(3, 1fr) 1.3fr;
+    gap: 40px;
+    padding-bottom: 44px;
   }
 
-  .tg-footer-brand { grid-column: span 2; max-width: none; }
-  .tg-footer-tagline { font-size: 12px; margin-bottom: 12px; }
-  .tg-footer-socials { margin-bottom: 4px; }
-  .tg-footer-social { width: 28px; height: 28px; }
-
-  .tg-footer-col-title { font-size: 11.5px; margin-bottom: 10px; }
-  .tg-footer-col { gap: 8px; }
-  .tg-footer-link { font-size: 12px; }
-
-  .tg-footer-newsletter { grid-column: span 2; }
-
-  .tg-footer-rule { margin-bottom: 14px; }
-
-  .tg-footer-bottom {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 8px;
-    font-size: 11px;
+  /* The head is only a toggle on mobile — here it's just a heading. */
+  .tg-footer-col-head {
+    padding: 0 0 18px;
+    cursor: default;
+    pointer-events: none;
   }
+  .tg-footer-col-plus { display: none; }
+  .tg-footer-col-title { font-size: 17px; }
+
+  .tg-footer-col-panel { grid-template-rows: 1fr; }
+  .tg-footer-col.open .tg-footer-col-links { padding-bottom: 0; }
+
+  .tg-footer-newsletter .tg-footer-tagline { margin-bottom: 16px; }
 }

@@ -616,18 +616,20 @@ export default function DetailPage() {
           )}
 
           {/* ── NEARBY PLACES ── */}
-          {similar.length > 0 && (
+          {/* {similar.length > 0 && (
             <>
               <p className="dp-section-eyebrow" style={{ marginTop: 48 }}>Nearby Places</p>
               <h2 className="dp-section-title">More {categoryLabel.toLowerCase()} close by</h2>
               <div className="dp-similar-grid" style={{ gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(2,1fr)" }}>
-                {similar.map(s => (
+                {similar.map(s => {
+                  const sImg = s.images?.[0] || s.image;
+                  return (
                   <div key={s.id} className="dp-similar-card" onClick={() => navigate(`/listings/${s.slug || s.id}`)}>
                     <div
                       className="dp-similar-img"
                       style={{
-                        backgroundImage: s.images?.[0] ? `url(${s.images[0]})` : undefined,
-                        background: s.images?.[0] ? undefined : "#EDE8DD",
+                        backgroundImage: sImg ? `url(${sImg})` : undefined,
+                        background: sImg ? undefined : "#EDE8DD",
                       }}
                     />
                     <div className="dp-similar-body">
@@ -638,10 +640,11 @@ export default function DetailPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
-          )}
+          )} */}
 
           {/* ── REVIEWS ── */}
           <ReviewsSection businessId={biz.id} categoryLabel={categoryLabel} />
