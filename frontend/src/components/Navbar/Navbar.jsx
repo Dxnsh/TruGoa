@@ -4,13 +4,15 @@ import { useTourist } from "../../context/TouristContext";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import LoginModal from "../LoginModal/LoginModal";
-import { Map, Bot, Route, Compass, Sun, ChevronDown, Search, Store, Heart } from "lucide-react";
+import MobileMenu from "../MobileMenu/MobileMenu";
+import { Map, Bot, Route, Compass, Menu } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Explore",     path: "/explore",              icon: <Compass size={16} strokeWidth={2} /> },
   { label: "AI Guide",    path: "/goaguide",              icon: <Bot size={16} strokeWidth={2} /> },
   { label: "Itinerary",   path: "/itinerary",             icon: <Route size={16} strokeWidth={2} /> },
   { label: "Stories",     path: "/stories/destinations",  icon: <Map size={16} strokeWidth={2} /> },
+
 ];
 
 const Navbar = () => {
@@ -20,6 +22,7 @@ const Navbar = () => {
   const isMobile  = useIsMobile();
   const [showLoginModal,  setShowLoginModal ] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileMenu,  setShowMobileMenu ] = useState(false);
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isAdminLoggedIn = !!localStorage.getItem("trugoa_admin_token")
 
@@ -43,6 +46,10 @@ const Navbar = () => {
 
 
   if (isAdminRoute && isAdminLoggedIn) return null;
+  // On mobile the homepage hero renders its own compact app-style header
+  // (menu / logo / bell / avatar), so this bar would be a duplicate. Desktop
+  // keeps the standard navbar.
+  if (location.pathname === "/" && isMobile) return null;
   
   return (
     <nav style={{
@@ -104,31 +111,32 @@ const Navbar = () => {
           );
         })}
 
-        {/* nav links — mobile: icon-only row */}
-        {isMobile && NAV_LINKS.map(link => {
-          const isActive = location.pathname === link.path;
-          return (
-            <div
-              key={link.path}
-              onClick={() => handleNavClick(link.path)}
-              aria-label={link.label}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 34, height: 34, borderRadius: theme.radii.pill,
-                cursor: "pointer",
-                color: isActive ? theme.colors.secondary : theme.colors.textBody,
-                background: isActive ? theme.colors.primaryLight : "transparent",
-                transition: theme.transitions.fast,
-              }}
-            >
-              {link.icon}
-            </div>
-          );
-        })}
+        {/* nav — mobile: one hamburger opening the full text menu. The old
+            icon-only row gave no labels, so each destination was a guess. */}
+        {isMobile && (
+          <button
+            onClick={() => setShowMobileMenu(true)}
+            aria-label="Open menu"
+            aria-expanded={showMobileMenu}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 40, height: 40, borderRadius: theme.radii.pill,
+              border: `1px solid ${theme.colors.borderLight}`,
+              background: theme.colors.bgCard,
+              color: theme.colors.textPrimary,
+              cursor: "pointer",
+              transition: theme.transitions.fast,
+            }}
+          >
+            <Menu size={20} strokeWidth={2} />
+          </button>
+        )}
 
 
-        {/* ── TOURIST SECTION ── */}
-        {isTouristLoggedIn ? (
+        {/* ── TOURIST SECTION — desktop only. On mobile the same identity,
+             Saved Places and Sign Out all live inside the menu, so showing an
+             avatar here too would open a second, near-identical dropdown. ── */}
+        {!isMobile && (isTouristLoggedIn ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
             {/* avatar */}
@@ -184,75 +192,63 @@ const Navbar = () => {
                   border: `1px solid ${theme.colors.borderLight}`,
                   borderRadius: theme.radii.lg,
                   boxShadow: theme.shadows.modal,
-                  minWidth: 200, zIndex: 300, overflow: "hidden",
+                  minWidth: 260, zIndex: 300, overflow: "hidden",
                 }}
               >
-                {/* tourist info */}
+                {/* Identity only. The destinations this used to list (Explore,
+                    AI Guide, Itinerary) are already in the nav bar beside it,
+                    so repeating them here was pure duplication. */}
                 <div style={{
-                  padding: "16px",
+                  padding: "18px 16px",
                   borderBottom: `1px solid ${theme.colors.borderLight}`,
                   background: theme.colors.bgSurface,
+                  display: "flex", alignItems: "center", gap: 12,
                 }}>
-                  <div style={{ fontSize: 14, fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary, marginBottom: 2 }}>
-                    {tourist.name}
+                  <div style={{
+                    width: 44, height: 44, borderRadius: "50%",
+                    border: `2px solid ${theme.colors.primary}`,
+                    overflow: "hidden", flexShrink: 0,
+                    background: theme.colors.primaryLight,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontFamily: theme.typography.fontDisplay,
+                    fontWeight: theme.typography.weightBold,
+                    color: theme.colors.primaryText,
+                    fontSize: 18,
+                  }}>
+                    {tourist.avatar ? (
+                      <img
+                        src={tourist.avatar}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={e => { e.target.style.display = "none"; }}
+                      />
+                    ) : (
+                      tourist.name?.[0]?.toUpperCase()
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, color: theme.colors.textMuted }}>
-                    {tourist.email}
+
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14.5,
+                      fontWeight: theme.typography.weightBold,
+                      color: theme.colors.textPrimary,
+                      marginBottom: 2,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {tourist.name}
+                    </div>
+                    <div
+                      title={tourist.email}
+                      style={{
+                        fontSize: 12, color: theme.colors.textMuted,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {tourist.email}
+                    </div>
                   </div>
                 </div>
-
-                {/* menu items */}
-               {[
-              {
-                icon: <Map size={16} strokeWidth={2} />,
-                label: "Explore Places",
-                action: () => {
-                  navigate("/explore");
-                  setShowProfileMenu(false);
-                },
-              },
-            {
-              icon: <Bot size={16} strokeWidth={2} />,
-              label: "Ask AI Guide",
-              action: () => {
-                navigate("/goaguide");
-                setShowProfileMenu(false);
-              },
-            },
-            {
-              icon: <Route size={16} strokeWidth={2} />,
-              label: "Itinerary",
-              action: () => {
-                navigate("/itinerary");
-                setShowProfileMenu(false);
-              },
-            },
-            {
-              icon: <Heart size={16} strokeWidth={2} />,
-              label: "Saved Places",
-              action: () => {
-                navigate("/saved");
-                setShowProfileMenu(false);
-              },
-            },
-          ].map((item) => (
-                            <div
-                              key={item.label}
-                              onClick={item.action}
-                              style={{
-                                padding: "12px 16px",
-                                display: "flex", alignItems: "center", gap: 10,
-                                cursor: "pointer", fontSize: 14,
-                                color: theme.colors.textBody,
-                                transition: theme.transitions.fast,
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.background = theme.colors.bgSurface}
-                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                            >
-                              <span>{item.icon}</span>
-                              <span>{item.label}</span>
-                            </div>
-                ))}
 
                 {/* sign out */}
                 <div
@@ -294,9 +290,15 @@ const Navbar = () => {
               Sign In
             </button>
           )
-        )}
+        ))}
 
       </div>
+
+      <MobileMenu
+        open={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+        onRequestLogin={() => setShowLoginModal(true)}
+      />
 
       {showLoginModal && (
         <LoginModal

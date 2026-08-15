@@ -49,9 +49,19 @@ const allowedOrigins = [
   "https://www.trugoa.in",
 ];
 
+// Vite picks the next free port (5174, 5175, …) whenever 5173 is already in
+// use, which silently breaks every request with a CORS error. In development
+// any localhost port is therefore accepted; production still matches the
+// allowlist above exactly, so this never widens the deployed surface.
+const isAllowedOrigin = (origin) => {
+  if (allowedOrigins.includes(origin)) return true;
+  if (process.env.NODE_ENV !== "development") return false;
+  return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    if (!origin || isAllowedOrigin(origin)) callback(null, true);
     else callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -62,8 +72,8 @@ app.use(cors({
 app.use(compression({ level: 6 }));
 
 // ── 5. BODY PARSING ───────────────────────────────────────────────────────────
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // ── 5b. SANITIZATION ──────────────────────────────────────────────────────────
 // Strips $/. keys to block NoSQL operator injection — must run after body parsing.

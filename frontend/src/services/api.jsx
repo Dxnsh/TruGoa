@@ -3,6 +3,7 @@ const BUSINESS_URL  = `${BASE}/businesses`;
 const AUTH_URL      = `${BASE}/auth`;
 const ADMIN_URL     = `${BASE}/admin`;
 const STORIES_URL   = `${BASE}/stories`;
+const BLOGS_URL      = `${BASE}/blogs`;
 const TOURIST_URL   = `${BASE}/tourist`;
 const REVIEWS_URL   = `${BASE}/reviews`;
 const ITINERARY_URL = `${BASE}/itinerary`;
@@ -37,6 +38,22 @@ export const getBusinesses = async (params = {}) => {
   return unwrap(await res.json());
 };
 
+// GET curated places near a coordinate, nearest first.
+// Each result carries a `distance` field in metres (added by $geoNear).
+export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit = 20, category } = {}) => {
+  const query = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    maxDistance: String(maxDistance),
+    limit: String(limit),
+  });
+  if (category) query.set("category", category);
+
+  const res = await fetch(`${BUSINESS_URL}/nearby?${query.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch nearby places");
+  return unwrap(await res.json());
+};
+
 // GET single business by MongoDB ID
 export const getBusinessById = async (id) => {
   const res = await fetch(`${BUSINESS_URL}/${id}`);
@@ -64,6 +81,22 @@ export const getStories = async () => {
 export const getStoryBySlug = async (slug) => {
   const res = await fetch(`${STORIES_URL}/${slug}`);
   if (!res.ok) throw new Error("Story not found");
+  return unwrap(await res.json());
+};
+
+// ─── BLOGS (Public) ───────────────────────────────────────────────────────────
+
+// GET all blogs (summary fields only)
+export const getBlogs = async () => {
+  const res = await fetch(BLOGS_URL);
+  if (!res.ok) throw new Error("Failed to fetch blogs");
+  return unwrap(await res.json());
+};
+
+// GET a single blog (full detail) by slug
+export const getBlogBySlug = async (slug) => {
+  const res = await fetch(`${BLOGS_URL}/${slug}`);
+  if (!res.ok) throw new Error("Blog not found");
   return unwrap(await res.json());
 };
 
@@ -284,6 +317,44 @@ export const adminDeleteStory = async (id) => {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to delete story");
+  }
+  return unwrap(await res.json());
+};
+
+export const adminCreateBlog = async (data) => {
+  const res = await fetch(`${ADMIN_URL}/blogs`, {
+    method:  "POST",
+    headers: adminHeader(),
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create blog");
+  }
+  return unwrap(await res.json());
+};
+
+export const adminUpdateBlog = async (id, data) => {
+  const res = await fetch(`${ADMIN_URL}/blogs/${id}`, {
+    method:  "PUT",
+    headers: adminHeader(),
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update blog");
+  }
+  return unwrap(await res.json());
+};
+
+export const adminDeleteBlog = async (id) => {
+  const res = await fetch(`${ADMIN_URL}/blogs/${id}`, {
+    method:  "DELETE",
+    headers: adminHeader(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to delete blog");
   }
   return unwrap(await res.json());
 };

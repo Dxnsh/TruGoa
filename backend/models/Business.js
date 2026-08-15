@@ -64,6 +64,27 @@ season: [{
   longitude:    { type: Number, min: -180, max: 180 },
   googleMapUrl: { type: String },
 
+  // GeoJSON mirror of latitude/longitude, kept in sync by the pre-save hook
+  // below. Mongo's $near/$geoNear can only read a GeoJSON field with a
+  // 2dsphere index, so the flat lat/lng pair above can't drive the "places
+  // near me" query on its own. Note the coordinate order is [lng, lat] —
+  // GeoJSON is longitude-first, the reverse of how we store/display it.
+  // Docs without coordinates leave this undefined so they simply drop out of
+  // proximity results rather than landing at [0,0] off the coast of Africa.
+  geo: {
+    type: {
+      type: String,
+      enum: ["Point"],
+    },
+    coordinates: {
+      type: [Number],
+      validate: {
+        validator: (v) => !v || v.length === 2,
+        message: "geo.coordinates must be [longitude, latitude]",
+      },
+    },
+  },
+
   // ── PRACTICAL INFO ────────────────────────────────────────────────────────
   priceRange:   { type: String },              // "₹400–₹800 per person"
   priceLevel: {
@@ -118,6 +139,42 @@ businessSchema.pre("save", function () {
   }
 });
 
+// ── KEEP GeoJSON IN SYNC WITH latitude/longitude ──────────────────────────────
+// latitude/longitude stay the source of truth (that's what the admin form
+// edits and what every existing document already has). This mirrors them into
+// `geo` so proximity search keeps working after an edit, instead of silently
+// querying against stale coordinates.
+businessSchema.pre("save", function () {
+  if (!this.isModified("latitude") && !this.isModified("longitude")) return;
+
+  if (typeof this.latitude === "number" && typeof this.longitude === "number") {
+    this.geo = { type: "Point", coordinates: [this.longitude, this.latitude] };
+  } else {
+    // Coordinates were cleared — drop the point so the doc falls out of
+    // proximity results rather than keeping a stale location.
+    this.geo = undefined;
+  }
+});
+
+// The admin dashboard saves via findByIdAndUpdate, which skips document
+// middleware entirely, so the same sync has to be repeated for update queries.
+businessSchema.pre(["findOneAndUpdate", "updateOne"], function () {
+  const update = this.getUpdate();
+  if (!update) return;
+
+  const $set = update.$set || update;
+  const lat = $set.latitude;
+  const lng = $set.longitude;
+  if (lat === undefined && lng === undefined) return;
+
+  if (typeof lat === "number" && typeof lng === "number") {
+    $set.geo = { type: "Point", coordinates: [lng, lat] };
+  } else {
+    $set.geo = undefined;
+  }
+  this.setUpdate(update);
+});
+
 // ── INDEXES ───────────────────────────────────────────────────────────────────
 businessSchema.index({ status: 1 });
 businessSchema.index({ category: 1, status: 1 });
@@ -125,5 +182,7 @@ businessSchema.index({ area: 1, status: 1 });
 businessSchema.index({ priceLevel: 1, status: 1 });
 businessSchema.index({ featured: -1, createdAt: -1 });
 businessSchema.index({ name: "text", description: "text", story: "text" });
+// Required by $near / $geoNear — proximity search errors out without it.
+businessSchema.index({ geo: "2dsphere" });
 
 export default mongoose.model("Business", businessSchema);

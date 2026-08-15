@@ -1,18 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronRight,
   ChevronLeft,
-  Palmtree,
-  Utensils,
-  BedDouble,
   Compass,
-  Map,
-  Martini,
-  LayoutGrid,
   Heart,
   MapPin,
+  X,
 } from "lucide-react";
+import { CATEGORIES } from "../../constants/categories";
 import { getBusinesses, getFavorites, addFavorite, removeFavorite } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
 import { mapBusiness } from "../../services/mapper";
@@ -22,33 +18,24 @@ import { LoadingState, EmptyState, PrimaryButton } from "../../Theme";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
 
-/* ─── category shortcuts — the icon row just under the hero ─── */
-const CATEGORIES = [
-  { key: "beaches", label: "Beaches", sub: "Sun, sand & sea", icon: Palmtree },
-  { key: "food", label: "Food & Drink", sub: "Goa on a plate", icon: Utensils },
-  { key: "stays", label: "Stays", sub: "Hotels & homestays", icon: BedDouble },
-  { key: "hidden", label: "Hidden Goa", sub: "Off the beaten path", icon: Map },
-  { key: "nightlife", label: "Nightlife", sub: "After dark", icon: Martini },
-  { key: "all", label: "View All", sub: "All categories", icon: LayoutGrid },
-];
-
-/* ─── filters that decide what shows up in each section ─── */
+/* ─── filters ─── */
 const isCategory = (b, list) => list.includes(b.category?.toLowerCase());
 const hasTag = (b, tag) => b.tags?.includes(tag);
 
 const EDITORS_PICK_FILTER = (b) =>
   hasTag(b, "editors-pick") || hasTag(b, "popular") || b.featured === true;
 
-const STAYS_FILTER = (b) => isCategory(b, ["hotel", "resort", "homestay", "stay"]);
-
-const FOOD_FILTER = (b) =>
-  isCategory(b, ["restaurant", "cafe", "bakery"]) || hasTag(b, "food");
-
-const HIDDEN_FILTER = (b) => hasTag(b, "hidden");
-
-const BEACHES_FILTER = (b) => isCategory(b, ["beach"]);
-
-const NIGHTLIFE_FILTER = (b) => isCategory(b, ["nightlife"]);
+// Maps a ?category= key from the homepage shortcuts onto the Business records.
+// One place stores several underlying category values (a "stay" may be saved as
+// hotel/resort/homestay), so each key owns a predicate rather than a single
+// string comparison. Keys must stay in sync with constants/categories.js.
+const CATEGORY_FILTERS = {
+  beaches:   (b) => isCategory(b, ["beach"]),
+  food:      (b) => isCategory(b, ["restaurant", "cafe", "bakery"]) || hasTag(b, "food"),
+  stays:     (b) => isCategory(b, ["hotel", "resort", "homestay", "stay"]),
+  hidden:    (b) => hasTag(b, "hidden"),
+  nightlife: (b) => isCategory(b, ["nightlife"]),
+};
 
 // exact pin if the business has one, otherwise falls back to lat/long, then a text search
 const mapUrlFor = (b) =>
@@ -475,14 +462,21 @@ const ExplorePage = () => {
   const [error, setError] = useState(null);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null);
 
-  const activeSectionRef = useRef(null);
+  // ?category=food narrows the list to that category. Derived straight from the
+  // URL rather than mirrored into state, so a link, a back/forward step and an
+  // in-page filter change can't disagree about what's showing. Unknown values
+  // fall back to the unfiltered list instead of rendering an empty page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryKey = searchParams.get("category");
+  const activeCategory = CATEGORY_FILTERS[categoryKey] ? categoryKey : null;
+  const activeCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory);
 
-  useEffect(() => {
-    if (!activeCategory) return;
-    activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [activeCategory]);
+  const setCategory = (key) => {
+    if (key && CATEGORY_FILTERS[key]) setSearchParams({ category: key });
+    else setSearchParams({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -539,25 +533,15 @@ const ExplorePage = () => {
     }
   };
 
-  const SCROLLABLE_CATEGORIES = ["beaches", "stays", "food", "hidden", "nightlife"];
-
-  const goToCategory = (key) => {
-    if (!SCROLLABLE_CATEGORIES.includes(key)) {
-      setActiveCategory(null);
-      return navigate("/explore");
-    }
-    setActiveCategory((prev) => (prev === key ? null : key));
-  };
-
   const editorsPicks = businesses.filter(EDITORS_PICK_FILTER).slice(0, 4);
-  const beaches = businesses.filter(BEACHES_FILTER);
-  const stays = businesses.filter(STAYS_FILTER);
-  const food = businesses.filter(FOOD_FILTER);
-  const hiddenGems = businesses.filter(HIDDEN_FILTER);
-  const nightlife = businesses.filter(NIGHTLIFE_FILTER);
 
-  const nothingToShow =
-    !editorsPicks.length && !beaches.length && !stays.length && !food.length && !hiddenGems.length && !nightlife.length;
+  // The grid shows every place by default and only the matching ones once a
+  // category is picked — that narrowing is the whole point of the shortcuts.
+  const visibleBusinesses = activeCategory
+    ? businesses.filter(CATEGORY_FILTERS[activeCategory])
+    : businesses;
+
+  const nothingToShow = !businesses.length;
 
   return (
     <div style={{ fontFamily: theme.typography.fontBody, background: theme.colors.bgPage, minHeight: "100vh", overflowX: "hidden" }}>
@@ -652,62 +636,6 @@ const ExplorePage = () => {
         </div>
       </div>
 
-      {/* ── CATEGORY SHORTCUTS ───────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : `repeat(${CATEGORIES.length}, 1fr)`,
-          gap: isMobile ? 16 : 0,
-          margin: isMobile ? "36px 0 0" : "56px 0 0",
-          padding: isMobile ? "0 16px 28px" : `0 ${theme.spacing.pagePadding} 28px`,
-
-        }}
-      >
-        {CATEGORIES.map((c, i) => (
-          <button
-            key={c.key}
-            onClick={() => goToCategory(c.key)}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 9,
-              background: "none",
-              border: "none",
-              borderRight: !isMobile && i < CATEGORIES.length - 1 ? `1px solid ${theme.colors.borderLight}` : "none",
-              cursor: "pointer",
-              padding: isMobile ? 0 : "4px 10px 0",
-              textAlign: "center",
-              transition: "transform .2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              const icon = e.currentTarget.querySelector("svg");
-              if (icon) icon.style.color = HERITAGE_GOLD;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              const icon = e.currentTarget.querySelector("svg");
-              if (icon) icon.style.color = theme.colors.textPrimary;
-            }}
-          >
-            <c.icon size={20} strokeWidth={1.5} color={theme.colors.textPrimary} style={{ transition: "color .2s ease" }} />
-            <span
-              style={{
-                fontSize: 11.5,
-                fontWeight: theme.typography.weightMedium,
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                color: theme.colors.textPrimary,
-              }}
-            >
-              {c.label}
-            </span>
-            <span style={{ fontSize: 11, color: theme.colors.textMuted }}>{c.sub}</span>
-          </button>
-        ))}
-      </div>
-
       {/* ── STATE HANDLING ───────────────────────────── */}
       {loading && (
         <div style={{ padding: isMobile ? "24px 16px" : `40px ${theme.spacing.pagePadding}` }}>
@@ -735,8 +663,10 @@ const ExplorePage = () => {
 
       {!loading && !error && (
         <>
-          {/* ── EDITOR'S PICKS ────────────────────────── */}
-          {editorsPicks.length > 0 && (
+          {/* ── EDITOR'S PICKS — hidden while a category is active, since
+                 its picks span every category and would contradict the
+                 filter the user just applied ── */}
+          {!activeCategory && editorsPicks.length > 0 && (
             <div
               style={{
                 padding: isMobile ? "32px 16px" : `48px ${theme.spacing.pagePadding}`,
@@ -819,99 +749,122 @@ const ExplorePage = () => {
             </div>
           )}
 
-          {/* ── ACTIVE CATEGORY SECTION — only the clicked one shows ── */}
-          {activeCategory && (
-            <div ref={activeSectionRef}>
-              {activeCategory === "beaches" && (
-                <IntroScroller
-                  title="Beaches in Goa"
-                  description="Sun, sand and sea — from buzzing shacks to quiet coves."
-                  exploreLabel="Explore Beaches"
-                  items={beaches}
-                  isMobile={isMobile}
-                  onExplore={() => goToCategory("beaches")}
-                  onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
-                  captionStyle="overlay"
-                  arrows="double"
-                  favoriteIds={favoriteIds}
-                  onToggleSave={toggleSave}
-                />
-              )}
+          {/* ── PLACES (filtered by ?category=) ───────── */}
+          {businesses.length > 0 && (
+            <div
+              style={{
+                padding: isMobile ? "8px 16px 40px" : `8px ${theme.spacing.pagePadding} 56px`,
+              }}
+            >
+              {/* Filter chips — also the way back to the full list, so a
+                  visitor arriving on a filtered link is never stuck in it. */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  paddingBottom: 4,
+                  marginBottom: isMobile ? 18 : 24,
+                }}
+              >
+                {[{ key: null, label: "All" }, ...CATEGORIES.filter((c) => c.key !== "all")].map((c) => {
+                  const isOn = activeCategory === c.key || (!activeCategory && c.key === null);
+                  return (
+                    <button
+                      key={c.key ?? "all"}
+                      onClick={() => setCategory(c.key)}
+                      aria-pressed={isOn}
+                      style={{
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        minHeight: 40,
+                        padding: "9px 16px",
+                        borderRadius: theme.radii.pill,
+                        border: `1.5px solid ${isOn ? theme.colors.secondary : theme.colors.borderLight}`,
+                        background: isOn ? theme.colors.secondary : theme.colors.bgCard,
+                        color: isOn ? theme.colors.textInverse : theme.colors.textBody,
+                        fontFamily: theme.typography.fontBody,
+                        fontSize: 13,
+                        fontWeight: isOn
+                          ? theme.typography.weightMedium
+                          : theme.typography.weightRegular,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        transition: theme.transitions.fast,
+                      }}
+                    >
+                      {c.label}
+                      {isOn && c.key && <X size={13} strokeWidth={2.5} />}
+                    </button>
+                  );
+                })}
+              </div>
 
-              {activeCategory === "stays" && (
-                <IntroScroller
-                  title="Stays in Goa"
-                  description="From boutique stays to luxury resorts, find your perfect place to unwind."
-                  exploreLabel="Explore Stays"
-                  items={stays}
-                  isMobile={isMobile}
-                  onExplore={() => goToCategory("stays")}
-                  onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
-                  captionStyle="overlay"
-                  arrows="double"
-                  favoriteIds={favoriteIds}
-                  onToggleSave={toggleSave}
-                />
-              )}
+              <div
+                style={{
+                  fontFamily: theme.typography.fontDisplay,
+                  fontSize: isMobile ? 22 : 28,
+                  fontWeight: theme.typography.weightBold,
+                  color: theme.colors.textPrimary,
+                  marginBottom: 6,
+                }}
+              >
+                {activeCategoryMeta ? activeCategoryMeta.label : "All Places"}
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: theme.colors.textMuted,
+                  marginBottom: isMobile ? 20 : 28,
+                }}
+              >
+                {visibleBusinesses.length} verified{" "}
+                {visibleBusinesses.length === 1 ? "place" : "places"}
+                {activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa."}
+              </div>
 
-              {activeCategory === "food" && (
-                <IntroScroller
-                  title="Food & Drink"
-                  description="Goa's food scene is bold, diverse and deeply satisfying."
-                  exploreLabel="Explore Food"
-                  items={food}
-                  isMobile={isMobile}
-                  onExplore={() => goToCategory("food")}
-                  onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
-                  captionStyle="below"
-                  arrows="single"
-                  favoriteIds={favoriteIds}
-                  onToggleSave={toggleSave}
-                />
-              )}
-
-              {activeCategory === "hidden" && (
-                <IntroScroller
-                  title="Hidden Gems"
-                  description="Places that don't make it to the typical itineraries."
-                  exploreLabel="Explore More"
-                  items={hiddenGems}
-                  isMobile={isMobile}
-                  onExplore={() => goToCategory("hidden")}
-                  onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
-                  captionStyle="below"
-                  arrows="single"
-                  favoriteIds={favoriteIds}
-                  onToggleSave={toggleSave}
-                />
-              )}
-
-              {activeCategory === "nightlife" && (
-                <IntroScroller
-                  title="Nightlife"
-                  description="After dark, Goa comes alive — beach parties, live music and rooftop bars."
-                  exploreLabel="Explore Nightlife"
-                  items={nightlife}
-                  isMobile={isMobile}
-                  onExplore={() => goToCategory("nightlife")}
-                  onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
-                  captionStyle="below"
-                  arrows="single"
-                  favoriteIds={favoriteIds}
-                  onToggleSave={toggleSave}
+              {visibleBusinesses.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+                    gap: isMobile ? 16 : 26,
+                  }}
+                >
+                  {visibleBusinesses.map((b) => (
+                    <EditorPickCard
+                      key={b.id}
+                      b={b}
+                      onOpen={(b) => navigate(`/listings/${b.slug || b.id}`)}
+                      saved={favoriteIds.has(String(b.id))}
+                      onToggleSave={toggleSave}
+                    />
+                  ))}
+                </div>
+              ) : (
+                // The catalogue has places, just none in this category — say so
+                // rather than showing a bare empty grid.
+                <EmptyState
+                  icon="🔍"
+                  title={`No ${activeCategoryMeta?.label.toLowerCase() || "places"} yet`}
+                  subtitle="We haven't verified anything in this category so far. Try another one."
+                  action={<PrimaryButton onClick={() => setCategory(null)}>Show all places</PrimaryButton>}
                 />
               )}
             </div>
           )}
 
-          {/* ── EMPTY STATE, if DB has nothing tagged yet ── */}
+          {/* ── EMPTY STATE, if there are no places at all ── */}
           {nothingToShow && (
             <div style={{ padding: isMobile ? "0 16px 60px" : `0 ${theme.spacing.pagePadding} 60px` }}>
               <EmptyState
                 icon="🗺️"
-                title="Nothing tagged yet"
-                subtitle="Add a tags field (e.g. 'hidden', 'popular', 'editors-pick') to your places to populate these sections."
-                action={<PrimaryButton onClick={() => navigate("/explore")}>Browse All Places</PrimaryButton>}
+                title="No places yet"
+                subtitle="There are no approved places to show right now. Add some from the admin dashboard and they'll appear here."
+                action={<PrimaryButton onClick={() => navigate("/")}>Back to home</PrimaryButton>}
               />
             </div>
           )}
