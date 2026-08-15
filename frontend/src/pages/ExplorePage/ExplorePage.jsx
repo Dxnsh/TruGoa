@@ -37,6 +37,55 @@ const CATEGORY_FILTERS = {
   nightlife: (b) => isCategory(b, ["nightlife"]),
 };
 
+// The whole hero — artwork and words — is dressed per category, so picking a
+// filter doesn't leave a beach headline sitting over a photo of a bar. Keys
+// without an image of their own ("stays" — there's no stays photo in
+// public/images yet) still get their own copy over the default picture.
+const DEFAULT_HERO = {
+  src: "/images/Explore-hero.jpg",
+  alt: "Palm trees along a rocky Goa coastline",
+  eyebrow: "Explore Goa",
+  title: "Beyond the beaches,\nthe real Goa.",
+  sub: "A curated guide to the places, people and experiences that make Goa unforgettable.",
+};
+
+const CATEGORY_HEROES = {
+  beaches: {
+    src: "/images/beaches.jpg",
+    alt: "A wide, empty Goan beach at low tide",
+    eyebrow: "Beaches",
+    title: "Sand, surf and\nsomewhere quieter.",
+    sub: "From the busy northern strips to the coves most visitors never find.",
+  },
+  food: {
+    src: "/images/food.jpg",
+    alt: "A spread of Goan dishes on a table",
+    eyebrow: "Food & Drink",
+    title: "Goa, one plate\nat a time.",
+    sub: "Fish curry rice, bakery counters and the kitchens locals actually queue for.",
+  },
+  stays: {
+    ...DEFAULT_HERO,
+    eyebrow: "Stays",
+    title: "Somewhere worth\nwaking up.",
+    sub: "Heritage homes, beach shacks and homestays picked for character, not star ratings.",
+  },
+  hidden: {
+    src: "/images/hidden-gems.jpg",
+    alt: "A quiet corner of Goa away from the crowds",
+    eyebrow: "Hidden Goa",
+    title: "The Goa that isn't\non the map.",
+    sub: "Back lanes and quiet corners you'd only find if a local pointed you there.",
+  },
+  nightlife: {
+    src: "/images/drinks.jpg",
+    alt: "A bartender mixing a cocktail over ice",
+    eyebrow: "Nightlife",
+    title: "After dark,\nGoa changes.",
+    sub: "Beach bars, live sets and late tables — the good ones, not the tourist traps.",
+  },
+};
+
 // exact pin if the business has one, otherwise falls back to lat/long, then a text search
 const mapUrlFor = (b) =>
   b.googleMapUrl
@@ -471,6 +520,7 @@ const ExplorePage = () => {
   const categoryKey = searchParams.get("category");
   const activeCategory = CATEGORY_FILTERS[categoryKey] ? categoryKey : null;
   const activeCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory);
+  const hero = CATEGORY_HEROES[activeCategory] || DEFAULT_HERO;
 
   const setCategory = (key) => {
     if (key && CATEGORY_FILTERS[key]) setSearchParams({ category: key });
@@ -564,10 +614,19 @@ const ExplorePage = () => {
           background: "#0B0F12",
         }}
       >
-        {/* BACKGROUND — image, shown in full (not cropped) */}
+        {/* BACKGROUND — swapped per category. `key` remounts the <img> so the
+            fade replays on every change rather than only the first. */}
+        <style>{`
+          @keyframes exp-hero-in { from { opacity: 0; } to { opacity: 1; } }
+          @media (prefers-reduced-motion: reduce) {
+            .exp-hero-img { animation: none !important; }
+          }
+        `}</style>
         <img
-          src="/images/Explore-hero.jpg"
-          alt="Palm trees along a rocky Goa coastline"
+          key={hero.src}
+          className="exp-hero-img"
+          src={hero.src}
+          alt={hero.alt}
           style={{
             position: "absolute",
             inset: 0,
@@ -575,6 +634,7 @@ const ExplorePage = () => {
             height: "110%",
             objectFit: "cover",
             zIndex: 0,
+            animation: "exp-hero-in 0.45s ease",
           }}
         />
         <div
@@ -587,8 +647,19 @@ const ExplorePage = () => {
           }}
         />
 
-        {/* COPY — over the image */}
-        <div style={{ position: "relative", zIndex: 2, flex: isMobile ? "unset" : "0 0 42%", minWidth: 0 }}>
+        {/* COPY — over the image, and swapped with it. Keyed on the same
+            category so the words fade in alongside the new picture. */}
+        <div
+          key={hero.eyebrow}
+          className="exp-hero-img"
+          style={{
+            position: "relative",
+            zIndex: 2,
+            flex: isMobile ? "unset" : "0 0 42%",
+            minWidth: 0,
+            animation: "exp-hero-in 0.45s ease",
+          }}
+        >
           <p
             style={{
               fontSize: 12,
@@ -601,7 +672,7 @@ const ExplorePage = () => {
               margin: "0 0 18px",
             }}
           >
-            Explore Goa
+            {hero.eyebrow}
           </p>
 
           <h1
@@ -612,11 +683,11 @@ const ExplorePage = () => {
               color: "#FFFFFF",
               lineHeight: 1.15,
               margin: "0 0 20px",
+              // Titles carry their own line break, so honour the \n.
+              whiteSpace: "pre-line",
             }}
           >
-            Beyond the beaches,
-            <br />
-            the real Goa.
+            {hero.title}
           </h1>
 
           <p
@@ -628,8 +699,7 @@ const ExplorePage = () => {
               maxWidth: 420,
             }}
           >
-            A curated guide to the places, people and experiences that make
-            Goa unforgettable.
+            {hero.sub}
           </p>
 
       
