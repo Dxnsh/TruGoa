@@ -11,6 +11,13 @@ const client = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+// Groq retires hosted models without notice — llama-3.1-8b-instant stopped
+// existing on this account and every chat call started 500ing with a 404 from
+// the provider. Keep it overridable so the next retirement is an env change
+// rather than a code change. Check the live list with:
+//   curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+const CHAT_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+
 const SYSTEM_PROMPT = `You are GoaGuide AI — the most deeply knowledgeable, honest and trusted travel companion for Goa, India. You are built into TruGoa, a verified local travel platform.
 
 You are NOT a generic travel chatbot. You are a specialist. You have lived knowledge of Goa — its streets, its food, its seasons, its people, its culture. Every answer you give is specific, honest, and actionable — and it shows Goa's true, authentic side.
@@ -281,7 +288,7 @@ export const chat = asyncHandler(async (req, res) => {
   ];
 
   const response = await client.chat.completions.create({
-    model:      "llama-3.1-8b-instant",
+    model:       CHAT_MODEL,
     temperature: 0.7,
     max_tokens: 1024,
     messages:    formattedMessages,

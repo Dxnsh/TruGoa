@@ -66,6 +66,17 @@ const areasForLatitude = (lat) =>
     ? ["north-goa", "panaji", "central-goa"]
     : ["south-goa", "central-goa"];
 
+// Exactly the fields the Discover swipe deck renders — card face, detail
+// panel and the link out to the full listing. `distance` and `gallery` are
+// added per query below, since $slice takes different arguments in an
+// aggregation stage than in a find() projection.
+const DECK_FIELDS = {
+  slug: 1, name: 1, category: 1, verified: 1,
+  heroImage: 1, location: 1, rating: 1,
+  tagline: 1, description: 1, localTip: 1, bestTime: 1,
+  mustTry: 1, priceRange: 1, openingHours: 1, scamAlert: 1,
+};
+
 // GET /businesses/nearby?lat=&lng=&maxDistance=&limit=&category=
 // Curated places near a coordinate, nearest first — powers the Discover
 // swipe deck on the homepage.
@@ -82,9 +93,17 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
   const maxDistance = Number(req.query.maxDistance) || 15000; // 15km default
   const limit = Number(req.query.limit) || 20;
 
+  // Accepts one category or a comma-separated list, because a single mood in
+  // the UI can span several enum values ("stays" is hotel + stay). A lone
+  // value still works — it just becomes a one-element $in.
+  const categories = String(category || "")
+    .split(",")
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean);
+
   const baseFilter = {
     ...(process.env.NODE_ENV !== "development" ? { status: "approved" } : {}),
-    ...(category ? { category: String(category).toLowerCase() } : {}),
+    ...(categories.length ? { category: { $in: categories } } : {}),
   };
 
   // $geoNear must be the first stage of the pipeline, and unlike $near it
@@ -102,6 +121,11 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
       },
     },
     { $limit: limit },
+    // The swipe deck is the only consumer, and it renders maybe a third of a
+    // business document. Shipping the rest (story, highlights, geo, contact,
+    // timestamps) roughly tripled the response for no visible benefit, and
+    // only gallery[0] is ever shown.
+    { $project: { ...DECK_FIELDS, distance: 1, gallery: { $slice: ["$gallery", 1] } } },
   ]);
 
   if (businesses.length > 0) {
@@ -118,6 +142,10 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
     ...baseFilter,
     area: { $in: areasForLatitude(lat) },
   })
+    // Same trimmed shape as the geo path, so the client sees one payload.
+    // No `distance` here — these results aren't ranked by proximity, and the
+    // card omits the "x km away" line when it's absent.
+    .select({ ...DECK_FIELDS, gallery: { $slice: 1 } })
     .sort({ editorPick: -1, featured: -1, createdAt: -1 })
     .limit(limit)
     .lean();

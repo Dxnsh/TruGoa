@@ -28,7 +28,8 @@ export const nearbyBusinessesRules = [
   query("limit")
     .optional()
     .isInt({ min: 1, max: 50 }).toInt(),
-  query("category").optional().isString().trim().isLength({ max: 50 }),
+  // May be a comma-separated list, so it needs more room than a single value.
+  query("category").optional().isString().trim().isLength({ max: 120 }),
 ];
 
 export const businessIdParamRules = [
