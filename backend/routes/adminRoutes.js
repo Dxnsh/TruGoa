@@ -14,6 +14,11 @@ import {
   updateStory,
   deleteStory,
 } from "../controllers/storyController.js";
+import {
+  createBlog,
+  updateBlog,
+  deleteBlog,
+} from "../controllers/blogController.js";
 import { uploadImages } from "../controllers/uploadController.js";
 import adminAuth from "../middleware/adminAuth.js";
 import upload from "../middleware/upload.js";
@@ -30,6 +35,11 @@ import {
   updateStoryRules,
   storyIdParamRules,
 } from "../validators/storyValidators.js";
+import {
+  createBlogRules,
+  updateBlogRules,
+  blogIdParamRules,
+} from "../validators/blogValidators.js";
 import { validate } from "../middleware/validate.js";
 
 const router = express.Router();
@@ -47,6 +57,10 @@ router.patch("/businesses/:id/reject", adminAuth, businessIdParamRules, validate
 router.post("/stories", adminAuth, createStoryRules, validate, createStory);
 router.put("/stories/:id", adminAuth, updateStoryRules, validate, updateStory);
 router.delete("/stories/:id", adminAuth, storyIdParamRules, validate, deleteStory);
+
+router.post("/blogs", adminAuth, createBlogRules, validate, createBlog);
+router.put("/blogs/:id", adminAuth, updateBlogRules, validate, updateBlog);
+router.delete("/blogs/:id", adminAuth, blogIdParamRules, validate, deleteBlog);
 
 router.post("/upload", adminAuth, upload.array("images", 10), validateFileContent, uploadImages);
 
