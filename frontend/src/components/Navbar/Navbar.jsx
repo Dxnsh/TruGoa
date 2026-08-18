@@ -5,7 +5,7 @@ import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import LoginModal from "../LoginModal/LoginModal";
 import MobileMenu from "../MobileMenu/MobileMenu";
-import { Map, Bot, Route, Compass, Menu } from "lucide-react";
+import { Map, Bot, Route, Compass, Menu, Heart, LogOut } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Explore",     path: "/explore",              icon: <Compass size={16} strokeWidth={2} /> },
@@ -195,9 +195,11 @@ const Navbar = () => {
                   minWidth: 260, zIndex: 300, overflow: "hidden",
                 }}
               >
-                {/* Identity only. The destinations this used to list (Explore,
-                    AI Guide, Itinerary) are already in the nav bar beside it,
-                    so repeating them here was pure duplication. */}
+                {/* Identity, then Saved Places. The other destinations this
+                    used to list (Explore, AI Guide, Itinerary) are already in
+                    the nav bar beside it, so repeating those was duplication —
+                    but Saved Places has no desktop entry point anywhere else,
+                    so without it the page is unreachable outside mobile. */}
                 <div style={{
                   padding: "18px 16px",
                   borderBottom: `1px solid ${theme.colors.borderLight}`,
@@ -250,6 +252,23 @@ const Navbar = () => {
                   </div>
                 </div>
 
+                {/* saved places */}
+                <div
+                  onClick={() => { navigate("/saved"); setShowProfileMenu(false); }}
+                  style={{
+                    padding: "12px 16px",
+                    display: "flex", alignItems: "center", gap: 10,
+                    cursor: "pointer", fontSize: 14,
+                    color: theme.colors.textBody,
+                    transition: theme.transitions.fast,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = theme.colors.bgSurface}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <Heart size={16} strokeWidth={2} />
+                  <span>Saved Places</span>
+                </div>
+
                 {/* sign out */}
                 <div
                   onClick={() => { touristLogout(); setShowProfileMenu(false); }}
@@ -264,7 +283,7 @@ const Navbar = () => {
                   onMouseEnter={e => e.currentTarget.style.background = theme.colors.dangerBg}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
-                  
+                  <LogOut size={16} strokeWidth={2} />
                   <span>Sign Out</span>
                 </div>
               </div>
