@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  MapPin, Heart, Share2, Camera, ChevronRight, Navigation,
+  MapPin, Heart, Share2, Camera, ChevronRight, ChevronLeft, Navigation,
   Bookmark, Clock, Users, Sun, Compass, Utensils, Waves,
   Sparkles, Phone, Globe, IndianRupee, Maximize2, X,
 } from "lucide-react";
@@ -274,6 +274,7 @@ function GlimpsesStrip({ name, images, onOpen }) {
 function ReviewsSection({ businessId, categoryLabel }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState(0);
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -287,6 +288,12 @@ function ReviewsSection({ businessId, categoryLabel }) {
   }, [businessId]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  // A submitted or removed review can shorten the list out from under the
+  // carousel, leaving it parked past the end showing blank space.
+  useEffect(() => {
+    setActive(a => Math.min(a, Math.max(0, reviews.length - 1)));
+  }, [reviews.length]);
 
   const markHelpful = async (id) => {
     // optimistic bump — matches the atomic $inc the server does
@@ -306,40 +313,100 @@ function ReviewsSection({ businessId, categoryLabel }) {
       </h2>
 
       {!loading && reviews.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 24 }}>
-          {reviews.map(r => (
-            <div key={r._id} style={{
-              border: "1px solid rgba(26,31,28,0.08)", borderRadius: 16, padding: "20px 22px",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{r.name}</div>
-                  {(r.city || r.country) && (
-                    <div style={{ fontSize: 12, color: "#8a9e94", marginTop: 2 }}>
-                      {[r.city, r.country].filter(Boolean).join(", ")}
+        <div className="rv-carousel">
+          <div className="rv-viewport">
+            {/* Shifting the whole track by one card-plus-gap per step keeps the
+                active card centred, since the track is pre-padded by half a
+                card. Neighbours stay visible on either side rather than being
+                clipped away, which is what makes it read as a deck. */}
+            <div
+              className="rv-track"
+              style={{ transform: `translateX(calc(-1 * ${active} * (var(--rv-card-w) + var(--rv-gap))))` }}
+            >
+              {reviews.map((r, i) => {
+                const place = [r.city, r.country].filter(Boolean).join(", ");
+                const isActive = i === active;
+                return (
+                  <article
+                    key={r._id}
+                    className={`rv-card ${isActive ? "rv-card--active" : ""}`}
+                    data-tint={i % 3}
+                    onClick={() => setActive(i)}
+                  >
+                    <div className="rv-stars" aria-label={`Rated ${r.rating} out of 5`}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span
+                          key={n}
+                          aria-hidden="true"
+                          className={`rv-star ${n <= Math.round(r.rating) ? "rv-star--on" : ""}`}
+                        >
+                          ★
+                        </span>
+                      ))}
                     </div>
-                  )}
-                </div>
-                <StarRating rating={r.rating} />
-              </div>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: "#333" }}>{r.comment}</p>
-              {r.ownerReply?.text && (
-                <div style={{ marginTop: 12, padding: "12px 14px", background: "#faf8f3", borderRadius: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Reply from TruGoa</div>
-                  <div style={{ fontSize: 13, color: "#555" }}>{r.ownerReply.text}</div>
-                </div>
-              )}
+
+                    <header className="rv-head">
+                      <h3 className="rv-name">{r.name}</h3>
+                      {place && <p className="rv-place">{place}</p>}
+                    </header>
+
+                    <blockquote className="rv-quote">&ldquo;{r.comment}&rdquo;</blockquote>
+
+                    {r.ownerReply?.text && (
+                      <div className="rv-reply">
+                        <div className="rv-reply-label">Reply from TruGoa</div>
+                        <p className="rv-reply-text">{r.ownerReply.text}</p>
+                      </div>
+                    )}
+
+                    {/* Off-centre cards are out of the tab order — tabbing into
+                        a card the reader cannot properly see is disorienting. */}
+                    <button
+                      className="rv-helpful"
+                      tabIndex={isActive ? 0 : -1}
+                      onClick={e => { e.stopPropagation(); markHelpful(r._id); }}
+                    >
+                      👍 Helpful{r.helpfulCount > 0 ? ` (${r.helpfulCount})` : ""}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+
+          {reviews.length > 1 && (
+            <div className="rv-controls">
               <button
-                onClick={() => markHelpful(r._id)}
-                style={{
-                  marginTop: 12, background: "none", border: "1px solid rgba(26,31,28,0.15)",
-                  borderRadius: 999, padding: "6px 14px", fontSize: 12, cursor: "pointer",
-                }}
+                className="rv-arrow"
+                onClick={() => setActive(a => Math.max(0, a - 1))}
+                disabled={active === 0}
+                aria-label="Previous review"
               >
-                👍 Helpful{r.helpfulCount > 0 ? ` (${r.helpfulCount})` : ""}
+                <ChevronLeft size={18} strokeWidth={2} />
+              </button>
+
+              <div className="rv-dots">
+                {reviews.map((r, i) => (
+                  <button
+                    key={r._id}
+                    className={`rv-dot ${i === active ? "rv-dot--on" : ""}`}
+                    onClick={() => setActive(i)}
+                    aria-label={`Go to review ${i + 1}`}
+                    aria-current={i === active}
+                  />
+                ))}
+              </div>
+
+              <button
+                className="rv-arrow"
+                onClick={() => setActive(a => Math.min(reviews.length - 1, a + 1))}
+                disabled={active === reviews.length - 1}
+                aria-label="Next review"
+              >
+                <ChevronRight size={18} strokeWidth={2} />
               </button>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -575,6 +642,22 @@ export default function DetailPage() {
             </div>
           )}
 
+          {/* ── LOCATION (mobile) ── Stacked to one column the sidebar would
+               fall after every panel section, burying the map at the foot of
+               the page. It reads best right after the story, so on mobile it
+               is rendered inline here instead and the sidebar is dropped —
+               grid `order` could not place it mid-panel like this. */}
+          {isMobile && (
+            <div className="dp-location-inline">
+              <InfoCard
+                biz={biz}
+                nearbyNames={nearbyNames}
+                saved={saved}
+                onToggleSave={toggleFavorite}
+              />
+            </div>
+          )}
+
           {/* ── GLIMPSES GALLERY ── */}
           {images.length > 0 && (
             <div style={{ marginTop: 48 }}>
@@ -650,10 +733,13 @@ export default function DetailPage() {
           <ReviewsSection businessId={biz.id} categoryLabel={categoryLabel} />
         </div>
 
-        {/* ── SIDEBAR ── */}
-        <div className="dp-sidebar">
-          <InfoCard biz={biz} nearbyNames={nearbyNames} saved={saved} onToggleSave={toggleFavorite} />
-        </div>
+        {/* ── SIDEBAR ── desktop only; on mobile the same card is rendered
+             inline after the story, and two instances would duplicate it. */}
+        {!isMobile && (
+          <div className="dp-sidebar">
+            <InfoCard biz={biz} nearbyNames={nearbyNames} saved={saved} onToggleSave={toggleFavorite} />
+          </div>
+        )}
       </div>
 
       {showSaveLogin && (

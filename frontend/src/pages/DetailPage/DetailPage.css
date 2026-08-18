@@ -497,6 +497,164 @@ a.dp-glance-value { text-transform: none; color: #2D6A4F; }
 .dp-btn-gold:hover { background: #D4960A; }
 
 /* ═══════════════════════════════════════════════
+   REVIEWS — testimonial carousel
+═══════════════════════════════════════════════ */
+.rv-carousel { margin-top: 26px; }
+
+.rv-viewport {
+  --rv-card-w: clamp(268px, 76vw, 348px);
+  --rv-gap: 22px;
+  overflow: hidden;
+  /* The lifted active card casts a shadow past its own box; without this the
+     viewport's overflow clip would slice the top and bottom off it. */
+  padding: 26px 0 10px;
+}
+
+.rv-track {
+  display: flex;
+  align-items: center;
+  gap: var(--rv-gap);
+  /* Half a card of lead-in, so translating by whole cards lands the active
+     one dead centre instead of flush left. */
+  padding-left: calc(50% - var(--rv-card-w) / 2);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.rv-card {
+  flex: 0 0 var(--rv-card-w);
+  width: var(--rv-card-w);
+  box-sizing: border-box;
+  border-radius: 22px;
+  padding: 26px 24px 22px;
+  color: #3A2A1E;
+  cursor: pointer;
+  /* Scale is a paint-only effect on a flex item, so the neighbours shrink
+     without the track's geometry — and the centring maths — shifting. */
+  transform: scale(0.9);
+  opacity: 0.5;
+  filter: saturate(0.72);
+  background: linear-gradient(160deg, #FBD9BC 0%, #F3BB94 100%);
+  box-shadow: 0 8px 20px rgba(58,42,30,0.10);
+  transition: transform 0.55s cubic-bezier(0.22,1,0.36,1),
+              opacity 0.45s ease, filter 0.45s ease, box-shadow 0.45s ease;
+}
+.rv-card[data-tint="1"] { background: linear-gradient(160deg, #F9D2CD 0%, #EEB0AA 100%); }
+.rv-card[data-tint="2"] { background: linear-gradient(160deg, #FAEBD1 0%, #F1DAB0 100%); }
+
+.rv-card--active {
+  transform: scale(1);
+  opacity: 1;
+  filter: none;
+  cursor: default;
+  box-shadow: 0 22px 44px rgba(58,42,30,0.22);
+}
+
+.rv-stars { display: flex; gap: 3px; margin-bottom: 14px; }
+.rv-star { font-size: 14px; line-height: 1; color: rgba(58,42,30,0.22); }
+.rv-star--on { color: #E39A16; }
+
+.rv-head { margin-bottom: 14px; }
+.rv-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+.rv-place {
+  font-size: 12px;
+  color: rgba(58,42,30,0.58);
+  margin: 3px 0 0;
+}
+
+.rv-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.65;
+  color: rgba(58,42,30,0.92);
+  margin: 0;
+}
+
+.rv-reply {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.5);
+}
+.rv-reply-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.rv-reply-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(58,42,30,0.85);
+  margin: 0;
+}
+
+.rv-helpful {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(58,42,30,0.14);
+  background: rgba(255,255,255,0.55);
+  font-family: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.rv-helpful:hover { background: rgba(255,255,255,0.88); }
+
+.rv-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 22px;
+}
+.rv-arrow {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(26,31,28,0.10);
+  background: #FFFFFF;
+  color: #1A1F1C;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.rv-arrow:hover:not(:disabled) { background: #F1EBE1; }
+.rv-arrow:disabled { opacity: 0.32; cursor: default; }
+
+.rv-dots { display: flex; align-items: center; gap: 7px; }
+.rv-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(26,31,28,0.2);
+  cursor: pointer;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.rv-dot--on { width: 22px; background: #1A1F1C; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-track, .rv-card, .rv-dot { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════ */
 @media (max-width: 768px) {
@@ -511,4 +669,14 @@ a.dp-glance-value { text-transform: none; color: #2D6A4F; }
   .dp-hero-cta-label { display: none; }
   .dp-hero-stats { gap: 14px; font-size: 12px; }
   .dp-glimpse-thumb { width: 150px; }
+  /* Neighbours would be slivers at this width — tighten the gap so a usable
+     sliver of each still shows either side of the active card. */
+  .rv-viewport { --rv-gap: 14px; }
+  .rv-card { padding: 22px 20px 20px; }
+  .rv-name { font-size: 24px; }
+  .rv-quote { font-size: 16px; }
 }
+
+/* The location card rendered inline after the story on mobile. Spaced like a
+   panel section rather than sitting flush against the story text above it. */
+.dp-location-inline { margin-top: 40px; }
