@@ -12,6 +12,8 @@ import ItineraryPage from "./pages/ItineraryPage/ItineraryPage";
 import SavedPlacesPage from "./pages/SavedPlacesPage/SavedPlacesPage";
 import StoriesPage from "./pages/StoriesPage/StoriesPage";
 import StoryArticlePage from "./pages/StoryArticlePage/StoryArticlePage";
+import GuidesPage from "./pages/GuidesPage/GuidesPage";
+import GuidePostPage from "./pages/GuidePostPage/GuidePostPage";
 import JourneyPage from "./pages/JourneyPage/JourneyPage";
 import AdminRoute from "./routes/AdminRoute";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
@@ -36,6 +38,8 @@ function App() {
         <Route path="/saved"       element={<SavedPlacesPage />} />
         <Route path="/stories/:slug" element={<StoriesPage />} />
         <Route path="/stories/:slug/:storySlug" element={<StoryArticlePage />} />
+        <Route path="/guides" element={<GuidesPage />} />
+        <Route path="/guides/:slug" element={<GuidePostPage />} />
         <Route path="/journey" element={<JourneyPage />} />
         <Route path="/about"       element={<AboutPage />} />
         <Route path="/manifesto"   element={<ManifestoPage />} />
