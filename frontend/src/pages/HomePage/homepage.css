@@ -44,22 +44,33 @@
 .hd-copy { display: none; }
 
 @media (min-width: 900px) {
+  /* Runs near the full width of the window rather than a centred 1280px box —
+     boxed, the copy and the deck bunched together in the middle of a wide
+     monitor with dead space either side. */
   .hero-discover {
-    max-width: 1280px;
-    padding: 64px clamp(32px, 5vw, 80px) 80px;
+    max-width: 1680px;
+    padding: 64px clamp(32px, 5vw, 96px) 80px;
   }
+  /* Copy hugs the left edge, deck the right, and every spare pixel is pushed
+     into the middle — a 1fr copy column would swallow that slack instead and
+     leave the two halves crowding each other. */
   .hd-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 720px) auto;
+    justify-content: space-between;
     align-items: center;
-    gap: clamp(48px, 7vw, 110px);
+    gap: clamp(72px, 8vw, 160px);
   }
-  .hd-copy { display: block; max-width: 520px; }
+  .hd-copy { display: block; }
   .hd-deck-col { width: 380px; }
 }
 
 @media (min-width: 1200px) {
   .hd-deck-col { width: 400px; }
+}
+
+@media (min-width: 1600px) {
+  .hd-deck-col { width: 440px; }
 }
 
 /* ── Editorial copy (desktop) ── */
@@ -100,7 +111,7 @@
   font-size: 16px;
   line-height: 1.7;
   color: var(--color-text-body);
-  max-width: 420px;
+  max-width: 520px;
   margin-bottom: 36px;
 }
 .hd-copy-stats {
