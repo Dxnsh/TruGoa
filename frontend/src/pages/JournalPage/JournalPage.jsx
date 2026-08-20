@@ -1,24 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getBlogs } from "../../services/api";
+import { getJournals } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
 import Footer from "../../components/Footer/Footer";
 import { theme } from "../../Theme";
 import { LoadingState, EmptyState } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 
-const GuidesPage = () => {
+const JournalPage = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [guides, setGuides] = useState([]);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    getBlogs()
-      .then((data) => { if (!cancelled) setGuides(data); })
-      .catch(() => { if (!cancelled) setGuides([]); })
+    getJournals()
+      .then((data) => { if (!cancelled) setEntries(data); })
+      .catch(() => { if (!cancelled) setEntries([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -26,9 +26,9 @@ const GuidesPage = () => {
   return (
     <div style={{ background: theme.colors.bgPage, minHeight: "100vh" }}>
       <SEO
-        path="/guides"
-        title="Guides"
-        description="Stories, guides and honest tips from TruGoa — real Goa, written by people who know it."
+        path="/journal"
+        title="Journal"
+        description="Notes, stories and honest tips from TruGoa — real Goa, written by people who know it."
       />
 
       <div style={{ padding: `48px ${isMobile ? "16px" : theme.spacing.pagePadding}` }}>
@@ -40,23 +40,23 @@ const GuidesPage = () => {
             color: theme.colors.textPrimary,
             margin: 0,
           }}>
-            TruGoa Guides
+            The TruGoa Journal
           </h1>
           <p style={{
             fontSize: 15, color: theme.colors.textMuted, marginTop: 10,
             maxWidth: 560, marginLeft: "auto", marginRight: "auto",
           }}>
-            Stories, guides and honest tips from people who actually know Goa.
+            Notes from the road — stories, guides and honest tips from people who actually know Goa.
           </p>
         </div>
 
         {loading ? (
-          <LoadingState message="Loading guides..." />
-        ) : guides.length === 0 ? (
+          <LoadingState message="Loading the journal..." />
+        ) : entries.length === 0 ? (
           <EmptyState
             icon="📝"
-            title="No guides yet"
-            subtitle="New guides are on the way — check back soon."
+            title="Nothing published yet"
+            subtitle="The first journal entries are on the way — check back soon."
           />
         ) : (
           <div style={{
@@ -66,10 +66,10 @@ const GuidesPage = () => {
             maxWidth: 1200,
             margin: "0 auto",
           }}>
-            {guides.map((guide) => (
+            {entries.map((entry) => (
               <article
-                key={guide.slug}
-                onClick={() => navigate(`/guides/${guide.slug}`)}
+                key={entry.slug}
+                onClick={() => navigate(`/journal/${entry.slug}`)}
                 style={{
                   background: theme.colors.bgCard,
                   border: `1px solid ${theme.colors.borderLight}`,
@@ -84,7 +84,7 @@ const GuidesPage = () => {
               >
                 <div style={{
                   aspectRatio: "16 / 10",
-                  backgroundImage: `url(${guide.coverImage})`,
+                  backgroundImage: `url(${entry.coverImage})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   background: theme.colors.bgSurface,
@@ -98,24 +98,24 @@ const GuidesPage = () => {
                     margin: 0,
                     lineHeight: 1.3,
                   }}>
-                    {guide.title}
+                    {entry.title}
                   </h2>
-                  {guide.excerpt && (
+                  {entry.excerpt && (
                     <p style={{
                       fontSize: 13.5, color: theme.colors.textBody, lineHeight: 1.55,
                       margin: 0,
                       display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
                     }}>
-                      {guide.excerpt}
+                      {entry.excerpt}
                     </p>
                   )}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, marginTop: "auto", paddingTop: 10,
                     fontSize: 12, color: theme.colors.textMuted,
                   }}>
-                    {guide.author && <span>{guide.author}</span>}
-                    {guide.author && guide.readTime && <span>·</span>}
-                    {guide.readTime && <span>{guide.readTime}</span>}
+                    {entry.author && <span>{entry.author}</span>}
+                    {entry.author && entry.readTime && <span>·</span>}
+                    {entry.readTime && <span>{entry.readTime}</span>}
                   </div>
                 </div>
               </article>
@@ -129,4 +129,4 @@ const GuidesPage = () => {
   );
 };
 
-export default GuidesPage;
+export default JournalPage;

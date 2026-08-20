@@ -6,15 +6,15 @@ import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import BusinessForm from "./BusinessForm";
 import StoriesManager from "./StoriesManager";
-import GuidesManager from "./GuidesManager";
+import JournalManager from "./JournalManager";
 import BeachForm from "./forms/BeachForm";
 import FoodForm from "./forms/FoodForm";
 import StayForm from "./forms/StayForm";
 import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
 
-const SECTIONS = ["businesses", "stories", "guides"];
-const SECTION_LABELS = { businesses: "Businesses", stories: "Stories", guides: "Guides" };
+const SECTIONS = ["businesses", "stories", "journal"];
+const SECTION_LABELS = { businesses: "Businesses", stories: "Stories", journal: "Journal" };
 
 // which clean, category-specific form to open for each listing type
 const FORM_TYPES = [
@@ -210,8 +210,8 @@ const AdminDashboard = () => {
 
         {section === "stories" ? (
           <StoriesManager isMobile={isMobile} />
-        ) : section === "guides" ? (
-          <GuidesManager isMobile={isMobile} />
+        ) : section === "journal" ? (
+          <JournalManager isMobile={isMobile} />
         ) : (
         <>
           {/* ── HEADER ─────────────────────────────────── */}

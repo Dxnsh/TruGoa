@@ -80,6 +80,15 @@ const formatDistance = (metres) => {
     : `${(metres / 1000).toFixed(1)} km away`;
 };
 
+// How wide the backend had to look before it found anything. Only the
+// "nearby" tier is ranked by proximity and carries a distance, so the other
+// two say where the results actually come from rather than leaving the card
+// implying a place is round the corner when it may be an hour's drive.
+const SCOPE_NOTE = {
+  region: "In your part of Goa",
+  goa: "Across Goa",
+};
+
 const DiscoverSwipe = () => {
   const navigate = useNavigate();
   const { isTouristLoggedIn } = useTourist();
@@ -96,6 +105,9 @@ const DiscoverSwipe = () => {
   const [showInfo, setShowInfo]     = useState(false);
   const [showLogin, setShowLogin]   = useState(false);
   const [mood, setMood] = useState("all");
+  // "nearby" | "region" | "goa" — how far the backend had to widen to fill the
+  // deck. Drives the caption on each card and the copy on the empty state.
+  const [scope, setScope] = useState("nearby");
   // Re-filtering keeps the shell (and the mood chips) on screen, so it gets
   // its own flag rather than dropping back to the full-page "loading" status.
   const [refetching, setRefetching] = useState(false);
@@ -133,8 +145,11 @@ const DiscoverSwipe = () => {
     storeOrigin(lat, lng, label);
     setStatus("loading");
     try {
-      const data = await getNearbyBusinesses({ lat, lng, maxDistance: 15000, limit: 20, category });
-      setPlaces(data);
+      const { scope: resultScope, places: results } = await getNearbyBusinesses({
+        lat, lng, maxDistance: 15000, limit: 20, category,
+      });
+      setPlaces(results);
+      setScope(resultScope);
       setIndex(0);
       setStatus("ready");
     } catch {
@@ -151,14 +166,15 @@ const DiscoverSwipe = () => {
 
     setRefetching(true);
     try {
-      const data = await getNearbyBusinesses({
+      const { scope: resultScope, places: results } = await getNearbyBusinesses({
         lat: at.lat,
         lng: at.lng,
         maxDistance: 15000,
         limit: 20,
         category: categoryFor(key),
       });
-      setPlaces(data);
+      setPlaces(results);
+      setScope(resultScope);
       setIndex(0);
       setShowInfo(false);
     } catch {
@@ -346,7 +362,11 @@ const DiscoverSwipe = () => {
 
   const next = places[index + 1];
   const image = current ? current.heroImage || current.gallery?.[0] || null : null;
-  const distance = current ? formatDistance(current.distance) : null;
+  // A card shows its real distance when we have one, and otherwise says which
+  // wider net caught it. Never both — the two answer the same question.
+  const caption = current
+    ? formatDistance(current.distance) ?? SCOPE_NOTE[scope] ?? null
+    : null;
 
   // Past this point the deck is live. The meta row — and the filter button in
   // it — renders in every branch below: an empty result is exactly when you
@@ -397,37 +417,32 @@ const DiscoverSwipe = () => {
         <div className="ds-inline-state">
           <MapPin size={26} strokeWidth={1.5} className="ds-state-icon" />
           <p className="ds-state-title">
-            {mood === "all" ? "Nothing curated here yet" : `No ${labelFor(mood).toLowerCase()} nearby`}
+            {mood === "all" ? "Nothing curated yet" : `No ${labelFor(mood).toLowerCase()} yet`}
           </p>
+          {/* An empty deck now means the whole catalogue came back empty — the
+              backend widens past the radius and past the region before giving
+              up — so switching coast can't help, and only clearing the mood
+              can. Offering a region picker here would be a dead end. */}
           <p className="ds-state-sub">
             {mood === "all"
-              ? "We haven't verified any places within 15 km. Try another coast."
-              : "Nothing verified in this mood within 15 km. Try another one."}
+              ? "We haven't verified any places yet. Check back soon."
+              : `We haven't verified any ${labelFor(mood).toLowerCase()} in Goa yet.`}
           </p>
-          <div className="ds-region-picker">
-            {mood !== "all" && (
+          {mood !== "all" && (
+            <div className="ds-region-picker">
               <button className="ds-region-btn ds-region-btn--solid" onClick={() => applyMood("all")}>
                 Show all places
               </button>
-            )}
-            {mood === "all" && Object.entries(REGION_CENTRES).map(([key, r]) => (
-              <button
-                key={key}
-                className="ds-region-btn"
-                onClick={() => loadNearby(r.lat, r.lng, r.label, categoryFor(mood))}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       ) : !hasMore ? (
         <div className="ds-inline-state">
           <Heart size={26} strokeWidth={1.5} className="ds-state-icon" />
           <p className="ds-state-title">
             {mood === "all"
-              ? "That's everything nearby"
-              : `That's every ${labelFor(mood).toLowerCase().replace(/s$/, "")} nearby`}
+              ? `That's everything ${scope === "nearby" ? "nearby" : "we've curated"}`
+              : `That's every ${labelFor(mood).toLowerCase().replace(/s$/, "")} ${scope === "nearby" ? "nearby" : "we've curated"}`}
           </p>
           <p className="ds-state-sub">
             {savedCount > 0
@@ -485,7 +500,7 @@ const DiscoverSwipe = () => {
                 </span>
               )}
             </div>
-            {distance && <p className="ds-card-distance">{distance}</p>}
+            {caption && <p className="ds-card-distance">{caption}</p>}
             <p className="ds-card-desc">
               {current.tagline || current.description || "A place worth your time."}
             </p>

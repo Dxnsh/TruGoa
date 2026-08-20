@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /auth
 Disallow: /saved
 
-Sitemap: https://trugoa.com/sitemap.xml
+Sitemap: https://trugoa.in/sitemap.xml

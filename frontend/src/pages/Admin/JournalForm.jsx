@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { theme } from "../../Theme";
-import { adminCreateBlog, adminUpdateBlog } from "../../services/api";
+import { adminCreateJournal, adminUpdateJournal } from "../../services/api";
 import { inputStyle, labelStyle } from "./adminFormKit";
 import { SingleImageUpload } from "./ImageUpload";
 
@@ -13,13 +13,14 @@ const Field = ({ label, children }) => (
 
 const blankForm = {
   slug: "", title: "", excerpt: "", content: "", coverImage: "",
-  author: "", readTime: "", tags: "",
+  author: "", readTime: "", tags: "", published: false,
 };
 
-const toFormState = (guide) => ({
+const toFormState = (entry) => ({
   ...blankForm,
-  ...guide,
-  tags: (guide.tags || []).join(", "),
+  ...entry,
+  tags: (entry.tags || []).join(", "),
+  published: !!entry.published,
 });
 
 const toolbarBtnStyle = {
@@ -44,9 +45,9 @@ const wrapSelection = (textareaRef, marker, setValue) => {
   });
 };
 
-const GuideForm = ({ guide, onClose, onSaved }) => {
-  const isEdit = !!guide?._id;
-  const [form, setForm] = useState(guide ? toFormState(guide) : blankForm);
+const JournalForm = ({ entry, onClose, onSaved }) => {
+  const isEdit = !!entry?._id;
+  const [form, setForm] = useState(entry ? toFormState(entry) : blankForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const contentRef = useRef(null);
@@ -69,8 +70,8 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
 
     try {
       const saved = isEdit
-        ? await adminUpdateBlog(guide._id, payload)
-        : await adminCreateBlog(payload);
+        ? await adminUpdateJournal(entry._id, payload)
+        : await adminCreateJournal(payload);
       onSaved(saved);
       onClose();
     } catch (err) {
@@ -99,7 +100,7 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
             fontFamily: theme.typography.fontDisplay, fontSize: 20,
             fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary, margin: 0,
           }}>
-            {isEdit ? `Edit ${guide.title}` : "New Guide"}
+            {isEdit ? `Edit ${entry.title}` : "New Journal Entry"}
           </h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: theme.colors.textMuted, cursor: "pointer" }}>✕</button>
         </div>
@@ -107,13 +108,13 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
         <form onSubmit={handleSubmit} style={{ padding: "24px 28px 28px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Title *"><input style={inputStyle} value={form.title} onChange={e => set("title", e.target.value)} /></Field>
-            <Field label="Slug *"><input style={inputStyle} value={form.slug} onChange={e => set("slug", e.target.value)} placeholder="my-first-guide" /></Field>
+            <Field label="Slug *"><input style={inputStyle} value={form.slug} onChange={e => set("slug", e.target.value)} placeholder="a-morning-in-assagao" /></Field>
           </div>
 
           <Field label="Excerpt">
             <textarea style={{ ...inputStyle, minHeight: 60 }} value={form.excerpt} onChange={e => set("excerpt", e.target.value)} />
             <div style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
-              Shown on the guides listing and used for search/social previews.
+              Shown on the journal listing and used for search/social previews.
             </div>
           </Field>
 
@@ -144,12 +145,37 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
               style={{ ...inputStyle, minHeight: 220, fontFamily: "inherit" }}
               value={form.content}
               onChange={e => set("content", e.target.value)}
-              placeholder="Write the full guide here. Select text and click B or i to format it. Blank lines start a new paragraph."
+              placeholder="Write the full entry here. Select text and click B or i to format it. Blank lines start a new paragraph."
             />
             <div style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
-              Select text and click B (bold) or i (italic) — this inserts **bold** / *italic* markers that render as formatted text on the published guide.
+              Select text and click B (bold) or i (italic) — this inserts **bold** / *italic* markers that render as formatted text on the published entry.
             </div>
           </Field>
+
+          <label style={{
+            display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+            background: theme.colors.bgSurface, border: `1px solid ${theme.colors.borderLight}`,
+            borderRadius: theme.radii.md, padding: "14px 16px", marginTop: 4,
+          }}>
+            <input
+              type="checkbox"
+              checked={form.published}
+              onChange={e => set("published", e.target.checked)}
+              style={{ width: 16, height: 16, marginTop: 1, cursor: "pointer", flexShrink: 0 }}
+            />
+            <span>
+              <span style={{
+                display: "block", fontSize: 14, color: theme.colors.textPrimary,
+                fontWeight: theme.typography.weightBold,
+              }}>
+                Published
+              </span>
+              <span style={{ fontSize: 12.5, color: theme.colors.textMuted }}>
+                Unchecked keeps this a draft — it stays in the dashboard and is not
+                reachable at /journal, even by direct link.
+              </span>
+            </span>
+          </label>
 
           {error && (
             <div style={{
@@ -176,7 +202,7 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
               fontWeight: theme.typography.weightBold, color: "white",
               cursor: saving ? "not-allowed" : "pointer", fontFamily: theme.typography.fontBody,
             }}>
-              {saving ? "Saving..." : isEdit ? "Save Changes" : "Create Guide"}
+              {saving ? "Saving..." : isEdit ? "Save Changes" : "Create Entry"}
             </button>
           </div>
         </form>
@@ -185,4 +211,4 @@ const GuideForm = ({ guide, onClose, onSaved }) => {
   );
 };
 
-export default GuideForm;
+export default JournalForm;

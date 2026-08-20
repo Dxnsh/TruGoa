@@ -4,7 +4,8 @@ import {
   Waves, Landmark, UtensilsCrossed, Mountain, Music2, Flower2,
   ArrowRight, ChevronRight, MousePointer2, Menu,
   PenLine, BookOpen, Backpack, Camera, Bell, Search, SlidersHorizontal,
-  Heart, Wind, MoreHorizontal, User, Palmtree, ArrowUp, LogOut,
+  Heart, Wind, MoreHorizontal, User, ArrowUp, LogOut,
+  ChevronLeft, MapPin,
 } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
@@ -47,6 +48,12 @@ const JOURNEY_WAY_STEPS = [
   { Icon: Camera,   title: "Create Memories", desc: "That last a lifetime" },
 ];
 
+// Sample exchange shown in the GoaGuide panel. It's a static illustration of
+// what the assistant sounds like — the real conversation happens on /goaguide.
+const GUIDE_TOPICS = ["Hidden beaches", "Local food", "2-day itinerary"];
+
+const GUIDE_PROMPTS = ["Rainy-day plan", "Local seafood shack", "North vs South?"];
+
 const STATS = [
   { value: "20+", label: "Verified Places",     sub: "Handpicked by locals" },
   { value: "95%",  label: "Recommended",         sub: "By real travellers" },
@@ -88,8 +95,27 @@ const Homepage = () => {
 
   const [placesRef,  placesVisible ] = useScrollReveal();
   const [journeyRef, journeyVisible] = useScrollReveal();
+  const [guideRef,   guideVisible  ] = useScrollReveal();
   const [storiesRef, storiesVisible] = useScrollReveal();
   const [statsRef,   statsVisible  ] = useScrollReveal();
+
+  // Journey steps are a card deck rather than a static row — one step is in
+  // focus at a time, and the rest stack behind it.
+  const [stepIndex, setStepIndex] = useState(0);
+  const swipeStartX = useRef(null);
+
+  const stepCount = JOURNEY_WAY_STEPS.length;
+  const goToStep = (delta) =>
+    setStepIndex((i) => (i + delta + stepCount) % stepCount);
+
+  // Horizontal drag past 40px flips the deck; anything shorter counts as a tap.
+  const onDeckPointerDown = (e) => { swipeStartX.current = e.clientX; };
+  const onDeckPointerUp = (e) => {
+    if (swipeStartX.current === null) return;
+    const dx = e.clientX - swipeStartX.current;
+    swipeStartX.current = null;
+    if (Math.abs(dx) > 40) goToStep(dx < 0 ? 1 : -1);
+  };
 
   // Featured Places pulls the same "featured" businesses shown on the
   // Explore page, so marking/unmarking a place there (or from the admin
@@ -328,67 +354,137 @@ const Homepage = () => {
       </section>
 
       {/* ══ YOUR GOA JOURNEY, YOUR WAY ════════════════════ */}
-      <section ref={journeyRef} className="journey-way-section">
-        <div className={`journey-way-wrap reveal ${journeyVisible ? "visible" : ""}`}
-          style={{ flexDirection: isMobile ? "column" : "row" }}>
-          <div className="split-left" style={{ maxWidth: 300 }}>
-            <p className="journey-way-eyebrow">Plan Your Trip</p>
-            <h2 className="split-heading">Your Goa Journey, Your Way</h2>
-            <p className="split-body">
-              Tell us what you love and we'll craft the perfect itinerary for you.
+      <section ref={journeyRef} className="dark-band jw-section">
+        <span className="jw-arcs" aria-hidden="true" />
+
+        <div className={`jw-wrap reveal ${journeyVisible ? "visible" : ""}`}>
+          <div className="jw-copy">
+            <p className="db-eyebrow">Plan Your Trip &middot; {stepCount} Steps</p>
+            <h2 className="db-heading">
+              Your Goa Journey,<br />
+              <span className="db-heading-accent">Your Way.</span>
+            </h2>
+            <p className="db-sub">
+              Tell us what you love, swipe through how it comes together, and
+              we&rsquo;ll craft an itinerary that actually feels like yours &mdash;
+              not a template.
             </p>
-            <button className="btn-dark-solid" onClick={() => navigate("/itinerary")}>
-              Create My Itinerary <ArrowRight size={14} strokeWidth={2} />
+            <button className="jw-cta" onClick={() => navigate("/itinerary")}>
+              Create My Itinerary <ArrowRight size={16} strokeWidth={2} />
             </button>
           </div>
 
-          <div className="journey-way-steps">
-            {JOURNEY_WAY_STEPS.map(({ Icon, title, desc }, i) => (
-              <div key={title} className="journey-way-step">
-                <div className="journey-way-circle"><Icon size={22} strokeWidth={1.6} /></div>
-                {i < JOURNEY_WAY_STEPS.length - 1 && <span className="journey-way-line" />}
-                <div className="journey-way-title">{title}</div>
-                <div className="journey-way-desc">{desc}</div>
-              </div>
-            ))}
+          <div className="jw-deck-col">
+            <div
+              className="jw-deck"
+              onPointerDown={onDeckPointerDown}
+              onPointerUp={onDeckPointerUp}
+              onPointerCancel={() => { swipeStartX.current = null; }}
+            >
+              {JOURNEY_WAY_STEPS.map(({ Icon, title, desc }, i) => {
+                // How far back in the stack this card currently sits.
+                const offset = (i - stepIndex + stepCount) % stepCount;
+                return (
+                  <article
+                    key={title}
+                    className="jw-card"
+                    data-offset={offset}
+                    aria-hidden={offset !== 0}
+                    onClick={() => { if (offset === 0) goToStep(1); }}
+                  >
+                    <span className="jw-card-count">
+                      {String(i + 1).padStart(2, "0")} / {String(stepCount).padStart(2, "0")}
+                    </span>
+                    <span className="jw-card-icon"><Icon size={22} strokeWidth={1.6} /></span>
+                    <h3 className="jw-card-title">{title}</h3>
+                    <p className="jw-card-desc">{desc}</p>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="jw-deck-nav">
+              <span className="jw-deck-hint">
+                <ChevronLeft size={14} strokeWidth={2} />
+                swipe or tap to explore each step
+                <ChevronRight size={14} strokeWidth={2} />
+              </span>
+              <button className="jw-deck-btn" onClick={() => goToStep(-1)} aria-label="Previous step">
+                <ChevronLeft size={18} strokeWidth={2} />
+              </button>
+              <button className="jw-deck-btn" onClick={() => goToStep(1)} aria-label="Next step">
+                <ChevronRight size={18} strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══ GOAGUIDE AI BANNER ════════════════════════════ */}
-      <section className="goaguide-banner" onClick={() => navigate("/goaguide")}>
-        <Palmtree className="gg-leaf" size={220} strokeWidth={1} aria-hidden="true" />
+      {/* ══ GOAGUIDE AI ═══════════════════════════════════ */}
+      <section ref={guideRef} className="dark-band ga-section">
+        <div className={`ga-wrap reveal ${guideVisible ? "visible" : ""}`}>
+          <div className="ga-copy">
+            <span className="ga-badge">
+              <span className="ga-badge-dot" />
+              GoaGuide is online
+            </span>
 
-        <div className="gg-head">
-          <span className="gg-head-avatar">G</span>
-          <span className="gg-head-name">GoaGuide AI</span>
-          <span className="gg-head-status">
-            <span className="gg-head-dot" />
-            Online
-          </span>
-        </div>
+            <h2 className="db-heading ga-heading">
+              Not just answers.<br />
+              <span className="db-heading-accent">A local friend.</span>
+            </h2>
 
-        <div className="gg-body">
-          <h2 className="goaguide-banner-heading">
-            Not just answers.<br />
-            <span className="goaguide-banner-accent">A local friend.</span>
-          </h2>
+            <p className="db-sub">
+              Ask it anything &mdash; hidden beaches, rainy-day plans, where locals
+              actually eat. It knows Goa the way a friend who grew up here would.
+            </p>
 
-          <div className="goaguide-banner-chat">
-            <div className="gg-bubble gg-bubble-user">Best hidden beach near Palolem?</div>
-            <div className="gg-bubble gg-bubble-ai">
-              Rajbaug &mdash; locals go, tourists don&rsquo;t yet.
+            <div className="ga-topics">
+              {GUIDE_TOPICS.map((topic) => (
+                <button key={topic} className="ga-topic" onClick={() => navigate("/goaguide")}>
+                  {topic}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ga-panel">
+            <div className="ga-panel-head">
+              <span className="ga-panel-avatar">G</span>
+              <span className="ga-panel-id">
+                <span className="ga-panel-name">GoaGuide AI</span>
+                <span className="ga-panel-status">
+                  <span className="ga-panel-dot" />
+                  Online now
+                </span>
+              </span>
+            </div>
+
+            <div className="ga-thread">
+              <div className="ga-bubble ga-bubble-user">Best hidden beach near Palolem?</div>
+              <div className="ga-bubble ga-bubble-ai">
+                Rajbaug &mdash; locals go, tourists don&rsquo;t yet.
+                <span className="ga-bubble-meta">
+                  <MapPin size={12} strokeWidth={2} />
+                  12 min drive &middot; quiet at sunset
+                </span>
+              </div>
+            </div>
+
+            <div className="ga-chips">
+              {GUIDE_PROMPTS.map((prompt) => (
+                <button key={prompt} className="ga-chip" onClick={() => navigate("/goaguide")}>
+                  {prompt}
+                </button>
+              ))}
             </div>
 
             {/* Styled like an input but it's a button — GoaGuide has no way to
                 receive an opening question, so a real field would drop what
                 you typed on the way there. */}
-            <button
-              className="gg-ask"
-              onClick={(e) => { e.stopPropagation(); navigate("/goaguide"); }}
-            >
-              <span className="gg-ask-placeholder">Ask GoaGuide anything&hellip;</span>
-              <span className="gg-ask-send"><ArrowUp size={17} strokeWidth={2.5} /></span>
+            <button className="ga-ask" onClick={() => navigate("/goaguide")}>
+              <span className="ga-ask-placeholder">Ask GoaGuide anything&hellip;</span>
+              <span className="ga-ask-send"><ArrowUp size={17} strokeWidth={2.5} /></span>
             </button>
           </div>
         </div>

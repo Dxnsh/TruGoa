@@ -8,7 +8,7 @@ import itineraryRoutes from "./itineraryRoutes.js";
 import touristRoutes   from "./touristRoutes.js";
 import storyRoutes     from "./storyRoutes.js";
 import reviewRoutes    from "./reviewRoutes.js";
-import blogRoutes      from "./blogRoutes.js";
+import journalRoutes   from "./journalRoutes.js";
 
 const router = express.Router();
 
@@ -20,6 +20,9 @@ router.use("/itinerary",  itineraryRoutes);
 router.use("/tourist",    touristRoutes);
 router.use("/stories",    storyRoutes);
 router.use("/reviews",    reviewRoutes);
-router.use("/blogs",      blogRoutes);
+router.use("/journals",   journalRoutes);
+// Legacy alias — /blogs was the original path and may still be cached in
+// clients or bookmarks, so it keeps resolving to the same router.
+router.use("/blogs",      journalRoutes);
 
 export default router;

@@ -77,7 +77,7 @@ const AdminLogin = () => {
                 type="email"
                 value={form.email}
                 onChange={e => { setForm(p => ({ ...p, email: e.target.value })); setError(null); }}
-                placeholder="admin@trugoa.com"
+                placeholder="admin@trugoa.in"
                 style={inputStyle}
                 onFocus={e => e.target.style.borderColor = theme.colors.primary}
                 onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.15)"}
