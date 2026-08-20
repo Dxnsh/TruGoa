@@ -66,6 +66,17 @@ const areasForLatitude = (lat) =>
     ? ["north-goa", "panaji", "central-goa"]
     : ["south-goa", "central-goa"];
 
+// Goa's rough bounding box. areasForLatitude is a bare latitude comparison, so
+// on its own it happily buckets Pune, London or anywhere else north of 15.42°N
+// into "north-goa" and calls the result nearby. Checking the box first lets a
+// caller who simply isn't in Goa skip the regional guess and get the whole
+// catalogue instead, labelled as such.
+const GOA_BOUNDS = { minLat: 14.85, maxLat: 15.85, minLng: 73.6, maxLng: 74.35 };
+
+const isInGoa = (lat, lng) =>
+  lat >= GOA_BOUNDS.minLat && lat <= GOA_BOUNDS.maxLat &&
+  lng >= GOA_BOUNDS.minLng && lng <= GOA_BOUNDS.maxLng;
+
 // Exactly the fields the Discover swipe deck renders — card face, detail
 // panel and the link out to the full listing. `distance` and `gallery` are
 // added per query below, since $slice takes different arguments in an
@@ -106,51 +117,84 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
     ...(categories.length ? { category: { $in: categories } } : {}),
   };
 
-  // $geoNear must be the first stage of the pipeline, and unlike $near it
-  // hands back the computed distance — used to show "2.4 km away" on the card.
-  const businesses = await Business.aggregate([
-    {
-      $geoNear: {
-        near: { type: "Point", coordinates: [lng, lat] },
-        distanceField: "distance", // metres
-        maxDistance,
-        spherical: true,
-        // Filtering inside $geoNear (rather than a later $match) lets the
-        // index skip non-matching docs instead of over-fetching then discarding.
-        query: baseFilter,
-      },
-    },
-    { $limit: limit },
-    // The swipe deck is the only consumer, and it renders maybe a third of a
-    // business document. Shipping the rest (story, highlights, geo, contact,
-    // timestamps) roughly tripled the response for no visible benefit, and
-    // only gallery[0] is ever shown.
-    { $project: { ...DECK_FIELDS, distance: 1, gallery: { $slice: ["$gallery", 1] } } },
-  ]);
+  // Same trimmed shape in every tier below, so the client sees one payload
+  // regardless of how the results were found.
+  const deckProjection = { ...DECK_FIELDS, gallery: { $slice: 1 } };
+  const curatedFirst = { editorPick: -1, featured: -1, createdAt: -1 };
 
-  if (businesses.length > 0) {
-    return sendSuccess(res, { data: businesses });
+  // The deck narrows in three tiers, widening only when a tier comes back
+  // empty, and `scope` tells the client which one answered so it can say so
+  // instead of captioning region-wide results "near you". While the catalogue
+  // is small — and while most documents still have no coordinates at all —
+  // the last tier is what keeps the deck from being empty for everyone.
+  //
+  //   nearby → within maxDistance, ranked by distance
+  //   region → the Goa region the caller is standing in
+  //   goa    → the whole curated catalogue
+  //
+  // Callers outside Goa skip straight past the first two: a proximity search
+  // run from another state can only ever return nothing, and the regional
+  // guess would be a fiction.
+  const inGoa = isInGoa(lat, lng);
+
+  if (inGoa) {
+    // $geoNear must be the first stage of the pipeline, and unlike $near it
+    // hands back the computed distance — used to show "2.4 km away" on the card.
+    const nearby = await Business.aggregate([
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [lng, lat] },
+          distanceField: "distance", // metres
+          maxDistance,
+          spherical: true,
+          // Filtering inside $geoNear (rather than a later $match) lets the
+          // index skip non-matching docs instead of over-fetching then discarding.
+          query: baseFilter,
+        },
+      },
+      { $limit: limit },
+      // The swipe deck is the only consumer, and it renders maybe a third of a
+      // business document. Shipping the rest (story, highlights, geo, contact,
+      // timestamps) roughly tripled the response for no visible benefit, and
+      // only gallery[0] is ever shown.
+      { $project: { ...DECK_FIELDS, distance: 1, gallery: { $slice: ["$gallery", 1] } } },
+    ]);
+
+    if (nearby.length > 0) {
+      return sendSuccess(res, { data: { scope: "nearby", places: nearby } });
+    }
+
+    // Nothing within the radius. Most of the catalogue currently has no
+    // coordinates at all, and those documents can never match $geoNear — so
+    // falling back to the region the caller is standing in keeps the deck
+    // usable instead of showing an empty state for a coast that does have
+    // curated listings. Results carry no `distance`, which the client renders
+    // by simply omitting the "x km away" line.
+    const regional = await Business.find({
+      ...baseFilter,
+      area: { $in: areasForLatitude(lat) },
+    })
+      .select(deckProjection)
+      .sort(curatedFirst)
+      .limit(limit)
+      .lean();
+
+    if (regional.length > 0) {
+      return sendSuccess(res, { data: { scope: "region", places: regional } });
+    }
   }
 
-  // Nothing within the radius. Most of the catalogue currently has no
-  // coordinates at all, and those documents can never match $geoNear — so
-  // falling back to the region the caller is standing in keeps the deck
-  // usable instead of showing an empty state for a place that does have
-  // curated listings. Results carry no `distance`, which the client renders
-  // by simply omitting the "x km away" line.
-  const fallback = await Business.find({
-    ...baseFilter,
-    area: { $in: areasForLatitude(lat) },
-  })
-    // Same trimmed shape as the geo path, so the client sees one payload.
-    // No `distance` here — these results aren't ranked by proximity, and the
-    // card omits the "x km away" line when it's absent.
-    .select({ ...DECK_FIELDS, gallery: { $slice: 1 } })
-    .sort({ editorPick: -1, featured: -1, createdAt: -1 })
+  // Last tier: everything curated, anywhere in Goa. Reached when the caller is
+  // outside Goa, or when their own region has nothing in this category — with
+  // categories as thin as one or two places each, a mood filter empties a
+  // single region long before it empties the catalogue.
+  const anywhere = await Business.find(baseFilter)
+    .select(deckProjection)
+    .sort(curatedFirst)
     .limit(limit)
     .lean();
 
-  sendSuccess(res, { data: fallback });
+  sendSuccess(res, { data: { scope: "goa", places: anywhere } });
 });
 
 // GET /businesses/slug/:slug — public

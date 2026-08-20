@@ -39,7 +39,12 @@ export const getBusinesses = async (params = {}) => {
 };
 
 // GET curated places near a coordinate, nearest first.
-// Each result carries a `distance` field in metres (added by $geoNear).
+// Resolves to { scope, places }. `scope` says how wide the backend had to
+// look before it found anything — "nearby" (within maxDistance), "region"
+// (the caller's side of Goa) or "goa" (the whole catalogue) — so the UI can
+// caption the deck honestly rather than calling everything "near you".
+// Results carry a `distance` in metres only under scope "nearby"; the wider
+// tiers aren't ranked by proximity.
 export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit = 20, category } = {}) => {
   const query = new URLSearchParams({
     lat: String(lat),
@@ -51,7 +56,8 @@ export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit
 
   const res = await fetch(`${BUSINESS_URL}/nearby?${query.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch nearby places");
-  return unwrap(await res.json());
+  const data = unwrap(await res.json());
+  return { scope: data?.scope ?? "goa", places: data?.places ?? [] };
 };
 
 // GET single business by MongoDB ID
