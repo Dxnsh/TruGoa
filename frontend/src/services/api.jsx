@@ -3,7 +3,7 @@ const BUSINESS_URL  = `${BASE}/businesses`;
 const AUTH_URL      = `${BASE}/auth`;
 const ADMIN_URL     = `${BASE}/admin`;
 const STORIES_URL   = `${BASE}/stories`;
-const BLOGS_URL      = `${BASE}/blogs`;
+const JOURNALS_URL  = `${BASE}/journals`;
 const TOURIST_URL   = `${BASE}/tourist`;
 const REVIEWS_URL   = `${BASE}/reviews`;
 const ITINERARY_URL = `${BASE}/itinerary`;
@@ -84,19 +84,20 @@ export const getStoryBySlug = async (slug) => {
   return unwrap(await res.json());
 };
 
-// ─── BLOGS (Public) ───────────────────────────────────────────────────────────
+// ─── JOURNAL (Public) ─────────────────────────────────────────────────────────
+// Both routes return published entries only — drafts are admin-side.
 
-// GET all blogs (summary fields only)
-export const getBlogs = async () => {
-  const res = await fetch(BLOGS_URL);
-  if (!res.ok) throw new Error("Failed to fetch blogs");
+// GET all journal entries (summary fields only)
+export const getJournals = async () => {
+  const res = await fetch(JOURNALS_URL);
+  if (!res.ok) throw new Error("Failed to fetch journal entries");
   return unwrap(await res.json());
 };
 
-// GET a single blog (full detail) by slug
-export const getBlogBySlug = async (slug) => {
-  const res = await fetch(`${BLOGS_URL}/${slug}`);
-  if (!res.ok) throw new Error("Blog not found");
+// GET a single journal entry (full detail) by slug
+export const getJournalBySlug = async (slug) => {
+  const res = await fetch(`${JOURNALS_URL}/${slug}`);
+  if (!res.ok) throw new Error("Journal entry not found");
   return unwrap(await res.json());
 };
 
@@ -321,40 +322,54 @@ export const adminDeleteStory = async (id) => {
   return unwrap(await res.json());
 };
 
-export const adminCreateBlog = async (data) => {
-  const res = await fetch(`${ADMIN_URL}/blogs`, {
+// Unlike the public list, this one includes drafts.
+export const adminGetJournals = async () => {
+  const res = await fetch(`${ADMIN_URL}/journals`, { headers: adminHeader() });
+  if (!res.ok) throw new Error("Failed to fetch journal entries");
+  return unwrap(await res.json());
+};
+
+// Full detail by id, drafts included — the edit form loads through this.
+export const adminGetJournal = async (id) => {
+  const res = await fetch(`${ADMIN_URL}/journals/${id}`, { headers: adminHeader() });
+  if (!res.ok) throw new Error("Journal entry not found");
+  return unwrap(await res.json());
+};
+
+export const adminCreateJournal = async (data) => {
+  const res = await fetch(`${ADMIN_URL}/journals`, {
     method:  "POST",
     headers: adminHeader(),
     body:    JSON.stringify(data),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create blog");
+    throw new Error(err.message || "Failed to create journal entry");
   }
   return unwrap(await res.json());
 };
 
-export const adminUpdateBlog = async (id, data) => {
-  const res = await fetch(`${ADMIN_URL}/blogs/${id}`, {
+export const adminUpdateJournal = async (id, data) => {
+  const res = await fetch(`${ADMIN_URL}/journals/${id}`, {
     method:  "PUT",
     headers: adminHeader(),
     body:    JSON.stringify(data),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to update blog");
+    throw new Error(err.message || "Failed to update journal entry");
   }
   return unwrap(await res.json());
 };
 
-export const adminDeleteBlog = async (id) => {
-  const res = await fetch(`${ADMIN_URL}/blogs/${id}`, {
+export const adminDeleteJournal = async (id) => {
+  const res = await fetch(`${ADMIN_URL}/journals/${id}`, {
     method:  "DELETE",
     headers: adminHeader(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to delete blog");
+    throw new Error(err.message || "Failed to delete journal entry");
   }
   return unwrap(await res.json());
 };

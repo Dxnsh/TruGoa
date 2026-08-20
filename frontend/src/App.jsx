@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar/Navbar";
 import Homepage from "./pages/HomePage/Homepage";
@@ -12,14 +12,21 @@ import ItineraryPage from "./pages/ItineraryPage/ItineraryPage";
 import SavedPlacesPage from "./pages/SavedPlacesPage/SavedPlacesPage";
 import StoriesPage from "./pages/StoriesPage/StoriesPage";
 import StoryArticlePage from "./pages/StoryArticlePage/StoryArticlePage";
-import GuidesPage from "./pages/GuidesPage/GuidesPage";
-import GuidePostPage from "./pages/GuidePostPage/GuidePostPage";
+import JournalPage from "./pages/JournalPage/JournalPage";
+import JournalPostPage from "./pages/JournalPostPage/JournalPostPage";
 import JourneyPage from "./pages/JourneyPage/JourneyPage";
 import AdminRoute from "./routes/AdminRoute";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import AboutPage from "./pages/StaticPages/AboutPage";
 import ManifestoPage from "./pages/StaticPages/ManifestoPage";
 import ContactPage from "./pages/StaticPages/ContactPage";
+
+// The journal used to live at /guides. Anything already linked or indexed
+// there is forwarded rather than dropped on a 404.
+const GuideSlugRedirect = () => {
+  const { slug } = useParams();
+  return <Navigate to={`/journal/${slug}`} replace />;
+};
 
 function App() {
   return (
@@ -38,8 +45,10 @@ function App() {
         <Route path="/saved"       element={<SavedPlacesPage />} />
         <Route path="/stories/:slug" element={<StoriesPage />} />
         <Route path="/stories/:slug/:storySlug" element={<StoryArticlePage />} />
-        <Route path="/guides" element={<GuidesPage />} />
-        <Route path="/guides/:slug" element={<GuidePostPage />} />
+        <Route path="/journal" element={<JournalPage />} />
+        <Route path="/journal/:slug" element={<JournalPostPage />} />
+        <Route path="/guides" element={<Navigate to="/journal" replace />} />
+        <Route path="/guides/:slug" element={<GuideSlugRedirect />} />
         <Route path="/journey" element={<JourneyPage />} />
         <Route path="/about"       element={<AboutPage />} />
         <Route path="/manifesto"   element={<ManifestoPage />} />

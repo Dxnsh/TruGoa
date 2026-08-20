@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getBlogBySlug } from "../../services/api";
+import { getJournalBySlug } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
 import Footer from "../../components/Footer/Footer";
 import { theme } from "../../Theme";
@@ -45,12 +45,12 @@ const FormattedContent = ({ content }) => (
   </>
 );
 
-const GuidePostPage = () => {
+const JournalPostPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [guide, setGuide] = useState(null);
+  const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -58,26 +58,26 @@ const GuidePostPage = () => {
     let cancelled = false;
     setLoading(true);
     setNotFound(false);
-    setGuide(null);
+    setEntry(null);
 
-    getBlogBySlug(slug)
-      .then((data) => { if (!cancelled) setGuide(data); })
+    getJournalBySlug(slug)
+      .then((data) => { if (!cancelled) setEntry(data); })
       .catch(() => { if (!cancelled) setNotFound(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
   }, [slug]);
 
-  if (loading) return <LoadingState message="Loading guide..." />;
+  if (loading) return <LoadingState message="Loading entry..." />;
 
-  if (notFound || !guide) return (
+  if (notFound || !entry) return (
     <div style={{ textAlign: "center", padding: "100px 20px" }}>
       <p style={{ fontSize: 14, color: theme.colors.textMuted, marginBottom: 8 }}>404</p>
       <h1 style={{ fontFamily: theme.typography.fontDisplay, fontSize: 28, color: theme.colors.textPrimary }}>
-        This guide doesn't exist.
+        This entry doesn't exist.
       </h1>
       <button
-        onClick={() => navigate("/guides")}
+        onClick={() => navigate("/journal")}
         style={{
           marginTop: 20, background: theme.colors.primary, color: "white", border: "none",
           borderRadius: theme.radii.md, padding: "12px 24px", fontSize: 14,
@@ -85,7 +85,7 @@ const GuidePostPage = () => {
           fontFamily: theme.typography.fontBody,
         }}
       >
-        Back to Guides
+        Back to the Journal
       </button>
     </div>
   );
@@ -93,16 +93,16 @@ const GuidePostPage = () => {
   return (
     <div style={{ background: theme.colors.bgPage, minHeight: "100vh" }}>
       <SEO
-        path={`/guides/${slug}`}
-        title={guide.title}
-        description={guide.excerpt?.slice(0, 160) || `${guide.title} — from the TruGoa guides.`}
-        image={guide.coverImage}
+        path={`/journal/${slug}`}
+        title={entry.title}
+        description={entry.excerpt?.slice(0, 160) || `${entry.title} — from the TruGoa journal.`}
+        image={entry.coverImage}
         type="article"
       />
 
       <div style={{
         aspectRatio: isMobile ? "4 / 3" : "21 / 8",
-        backgroundImage: `url(${guide.coverImage})`,
+        backgroundImage: `url(${entry.coverImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }} />
@@ -119,25 +119,25 @@ const GuidePostPage = () => {
           lineHeight: 1.2,
           margin: "0 0 12px",
         }}>
-          {guide.title}
+          {entry.title}
         </h1>
 
         <div style={{
           display: "flex", alignItems: "center", gap: 8, marginBottom: 32,
           fontSize: 13, color: theme.colors.textMuted,
         }}>
-          {guide.author && <span>{guide.author}</span>}
-          {guide.author && guide.readTime && <span>·</span>}
-          {guide.readTime && <span>{guide.readTime}</span>}
+          {entry.author && <span>{entry.author}</span>}
+          {entry.author && entry.readTime && <span>·</span>}
+          {entry.readTime && <span>{entry.readTime}</span>}
         </div>
 
         <div style={{ fontSize: 16, lineHeight: 1.8, color: theme.colors.textBody }}>
-          <FormattedContent content={guide.content} />
+          <FormattedContent content={entry.content} />
         </div>
 
-        {guide.tags?.length > 0 && (
+        {entry.tags?.length > 0 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 36 }}>
-            {guide.tags.map((tag) => (
+            {entry.tags.map((tag) => (
               <span key={tag} style={{
                 background: theme.colors.primaryLight, color: theme.colors.primaryText,
                 borderRadius: theme.radii.pill, padding: "4px 12px", fontSize: 12,
@@ -155,4 +155,4 @@ const GuidePostPage = () => {
   );
 };
 
-export default GuidePostPage;
+export default JournalPostPage;

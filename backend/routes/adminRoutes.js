@@ -15,10 +15,12 @@ import {
   deleteStory,
 } from "../controllers/storyController.js";
 import {
-  createBlog,
-  updateBlog,
-  deleteBlog,
-} from "../controllers/blogController.js";
+  adminGetJournals,
+  adminGetJournal,
+  createJournal,
+  updateJournal,
+  deleteJournal,
+} from "../controllers/journalController.js";
 import { uploadImages } from "../controllers/uploadController.js";
 import adminAuth from "../middleware/adminAuth.js";
 import upload from "../middleware/upload.js";
@@ -36,10 +38,10 @@ import {
   storyIdParamRules,
 } from "../validators/storyValidators.js";
 import {
-  createBlogRules,
-  updateBlogRules,
-  blogIdParamRules,
-} from "../validators/blogValidators.js";
+  createJournalRules,
+  updateJournalRules,
+  journalIdParamRules,
+} from "../validators/journalValidators.js";
 import { validate } from "../middleware/validate.js";
 
 const router = express.Router();
@@ -58,9 +60,17 @@ router.post("/stories", adminAuth, createStoryRules, validate, createStory);
 router.put("/stories/:id", adminAuth, updateStoryRules, validate, updateStory);
 router.delete("/stories/:id", adminAuth, storyIdParamRules, validate, deleteStory);
 
-router.post("/blogs", adminAuth, createBlogRules, validate, createBlog);
-router.put("/blogs/:id", adminAuth, updateBlogRules, validate, updateBlog);
-router.delete("/blogs/:id", adminAuth, blogIdParamRules, validate, deleteBlog);
+// Journal — the admin list includes drafts, which the public routes hide.
+router.get("/journals", adminAuth, adminGetJournals);
+router.get("/journals/:id", adminAuth, journalIdParamRules, validate, adminGetJournal);
+router.post("/journals", adminAuth, createJournalRules, validate, createJournal);
+router.put("/journals/:id", adminAuth, updateJournalRules, validate, updateJournal);
+router.delete("/journals/:id", adminAuth, journalIdParamRules, validate, deleteJournal);
+
+// Legacy aliases for the pre-rename /admin/blogs paths.
+router.post("/blogs", adminAuth, createJournalRules, validate, createJournal);
+router.put("/blogs/:id", adminAuth, updateJournalRules, validate, updateJournal);
+router.delete("/blogs/:id", adminAuth, journalIdParamRules, validate, deleteJournal);
 
 router.post("/upload", adminAuth, upload.array("images", 10), validateFileContent, uploadImages);
 

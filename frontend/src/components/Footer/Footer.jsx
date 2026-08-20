@@ -37,11 +37,11 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Guides & GoaGuide AI",
+    title: "Journal & GoaGuide AI",
     links: [
-      ["Travel Guides", "/guides"],
-      ["Local Insights", "/guides"],
-      ["Journal", "/guides"],
+      ["The Journal", "/journal"],
+      ["Travel Notes", "/journal"],
+      ["Local Insights", "/journal"],
       ["GoaGuide AI", "/goaguide"],
       ["Ask Anything", "/goaguide"],
       ["Travel Tips", "/goaguide"],
