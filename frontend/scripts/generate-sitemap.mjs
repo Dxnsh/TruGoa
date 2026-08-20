@@ -1,10 +1,10 @@
 // Builds public/sitemap.xml before `vite build` picks up the public/ dir.
-// Static routes are always included; business/story slugs are pulled live
-// from the API so the sitemap never drifts from what's actually published.
+// Static routes are always included; business/story/journal slugs are pulled
+// live from the API so the sitemap never drifts from what's actually published.
 //
 // API base comes from SITEMAP_API_BASE_URL, falling back to VITE_API_BASE_URL
 // — set one of these in CI/deploy env to the production API origin
-// (e.g. https://api.trugoa.com/api/v1). Without it, dynamic URLs are skipped
+// (e.g. https://api.trugoa.in/api/v1). Without it, dynamic URLs are skipped
 // and only the static routes are written.
 
 import { writeFileSync } from "node:fs";
@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SITE_URL = "https://trugoa.com";
+const SITE_URL = "https://trugoa.in";
 const API_BASE = process.env.SITEMAP_API_BASE_URL || process.env.VITE_API_BASE_URL;
 
 const STATIC_ROUTES = [
@@ -21,6 +21,10 @@ const STATIC_ROUTES = [
   { path: "/goaguide", changefreq: "weekly", priority: "0.7" },
   { path: "/journey", changefreq: "weekly", priority: "0.6" },
   { path: "/itinerary", changefreq: "weekly", priority: "0.6" },
+  { path: "/journal", changefreq: "weekly", priority: "0.7" },
+  { path: "/about", changefreq: "monthly", priority: "0.5" },
+  { path: "/manifesto", changefreq: "monthly", priority: "0.5" },
+  { path: "/contact", changefreq: "monthly", priority: "0.5" },
 ];
 
 async function fetchJson(url) {
@@ -63,6 +67,17 @@ async function getDynamicRoutes() {
     }
   } catch (err) {
     console.warn("[sitemap] Failed to fetch stories:", err.message);
+  }
+
+  // The public journal endpoint returns published entries only, so drafts
+  // never reach the sitemap.
+  try {
+    const { data: journals = [] } = await fetchJson(`${API_BASE}/journals`);
+    for (const j of journals) {
+      if (j.slug) routes.push({ path: `/journal/${j.slug}`, changefreq: "monthly", priority: "0.7" });
+    }
+  } catch (err) {
+    console.warn("[sitemap] Failed to fetch journal entries:", err.message);
   }
 
   return routes;
