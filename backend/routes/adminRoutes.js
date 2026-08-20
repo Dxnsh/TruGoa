@@ -21,8 +21,16 @@ import {
   updateJournal,
   deleteJournal,
 } from "../controllers/journalController.js";
+import {
+  getAdminUsers,
+  createAdminUser,
+  updateAdminUser,
+  resetAdminPassword,
+  deleteAdminUser,
+  getCurrentAdmin,
+} from "../controllers/adminUserController.js";
 import { uploadImages } from "../controllers/uploadController.js";
-import adminAuth from "../middleware/adminAuth.js";
+import adminAuth, { ownerOnly } from "../middleware/adminAuth.js";
 import upload from "../middleware/upload.js";
 import { validateFileContent } from "../middleware/validateFileContent.js";
 import { adminLoginLimiter } from "../middleware/rateLimiter.js";
@@ -42,6 +50,12 @@ import {
   updateJournalRules,
   journalIdParamRules,
 } from "../validators/journalValidators.js";
+import {
+  createAdminUserRules,
+  updateAdminUserRules,
+  resetAdminPasswordRules,
+  adminUserIdParamRules,
+} from "../validators/adminUserValidators.js";
 import { validate } from "../middleware/validate.js";
 
 const router = express.Router();
@@ -71,6 +85,15 @@ router.delete("/journals/:id", adminAuth, journalIdParamRules, validate, deleteJ
 router.post("/blogs", adminAuth, createJournalRules, validate, createJournal);
 router.put("/blogs/:id", adminAuth, updateJournalRules, validate, updateJournal);
 router.delete("/blogs/:id", adminAuth, journalIdParamRules, validate, deleteJournal);
+
+// Team — any signed-in admin can ask who they are; only owners see or change
+// the roster.
+router.get("/me", adminAuth, getCurrentAdmin);
+router.get("/users", adminAuth, ownerOnly, getAdminUsers);
+router.post("/users", adminAuth, ownerOnly, createAdminUserRules, validate, createAdminUser);
+router.patch("/users/:id", adminAuth, ownerOnly, updateAdminUserRules, validate, updateAdminUser);
+router.put("/users/:id/password", adminAuth, ownerOnly, resetAdminPasswordRules, validate, resetAdminPassword);
+router.delete("/users/:id", adminAuth, ownerOnly, adminUserIdParamRules, validate, deleteAdminUser);
 
 router.post("/upload", adminAuth, upload.array("images", 10), validateFileContent, uploadImages);
 
