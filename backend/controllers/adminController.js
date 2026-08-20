@@ -1,50 +1,24 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Business from "../models/Business.js";
-import AdminUser from "../models/AdminUser.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
 // ── POST /admin/login ──────────────────────────────────────────────────────
-// Credentials live in the AdminUser collection, one document per person, so
-// access can be granted and revoked individually. See utils/bootstrapAdmin.js
-// for how the first owner gets created.
 export const adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const admin = await AdminUser.findOne({ email: email.trim().toLowerCase() })
-    .select("+passwordHash");
+  const isMatch = email === process.env.ADMIN_EMAIL
+    && await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH);
 
-  // Compare against a dummy hash when no account matched, so a missing email
-  // and a wrong password take the same time to answer. Skipping the compare
-  // would make unknown emails measurably faster and let someone enumerate
-  // which addresses are admins.
-  const hash = admin?.passwordHash || "$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv";
-  const passwordOk = await bcrypt.compare(password, hash);
-
-  // Deactivated accounts are rejected here rather than at the token check, so
-  // revoking someone takes effect on their next sign-in attempt immediately.
-  if (!admin || !passwordOk || !admin.active) {
+  if (!isMatch) {
     throw new ApiError(401, "Invalid admin credentials");
   }
 
-  const token = jwt.sign(
-    { sub: admin._id.toString(), role: admin.role },
-    process.env.ADMIN_JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+  const token = jwt.sign({ role: "admin" }, process.env.ADMIN_JWT_SECRET, { expiresIn: "1d" });
 
-  admin.lastLoginAt = new Date();
-  await admin.save();
-
-  sendSuccess(res, {
-    message: "Login successful",
-    data: {
-      token,
-      admin: { id: admin._id, name: admin.name, email: admin.email, role: admin.role },
-    },
-  });
+  sendSuccess(res, { message: "Login successful", data: { token } });
 });
 
 // enum fields whose schema definitions don't allow "" — an unselected
