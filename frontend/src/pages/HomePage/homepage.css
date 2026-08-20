@@ -510,230 +510,413 @@
 }
 
 /* ═══════════════════════════════════════════
-   YOUR GOA JOURNEY, YOUR WAY
+   SHARED DARK EDITORIAL BAND
+   Journey + GoaGuide sit on one continuous dark
+   panel, so they share a palette and a rhythm.
 ═══════════════════════════════════════════ */
-.journey-way-section {
+.dark-band {
+  --db-bg: #0E1A14;
+  --db-ink: #F6F2E8;
+  --db-ink-soft: rgba(246, 242, 232, 0.62);
+  --db-line: rgba(255, 255, 255, 0.09);
   position: relative;
-  background: var(--color-bg-surface);
-  background-image:
-    radial-gradient(circle at 1px 1px, var(--color-border-medium) 1px, transparent 1.5px);
-  background-size: 26px 26px;
-  background-position: center;
+  background: var(--db-bg);
   overflow: hidden;
-  padding: 88px clamp(48px,7vw,120px);
+  padding: clamp(60px, 8vw, 108px) clamp(24px, 7vw, 120px);
 }
-.journey-way-section::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 30%, var(--color-bg-surface) 78%);
-  pointer-events: none;
-}
-.journey-way-wrap {
-  position: relative;
-  z-index: 1;
+
+.db-eyebrow {
   display: flex;
-  gap: 56px;
   align-items: center;
-}
-.journey-way-eyebrow {
-  font-size: 11px;
-  color: var(--color-primary-dark);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: calc(var(--space-md) * 2);
+  gap: 14px;
   font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.8px;
+  text-transform: uppercase;
+  color: #E4BC6A;
+  margin-bottom: 26px;
 }
-.journey-way-steps {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.db-eyebrow::before {
+  content: "";
+  width: 30px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
 }
-.journey-way-step {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  flex: 1;
-  max-width: 160px;
-}
-.journey-way-circle {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border-light);
-  box-shadow: 0 2px 10px rgba(26,31,28,0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--hp-green-dark);
-  margin-bottom: 14px;
-  position: relative;
-  z-index: 2;
-}
-.journey-way-line {
-  position: absolute;
-  top: 32px;
-  left: calc(50% + 32px);
-  width: calc(100% - 8px);
-  height: 0;
-  border-top: 2px dashed var(--color-border-medium);
-  z-index: 1;
-}
-.journey-way-title {
+
+.db-heading {
   font-family: var(--font-display);
-  font-size: 16px;
   font-weight: 600;
-  color: var(--hp-green-dark);
-  margin-bottom: 4px;
+  line-height: 1.04;
+  letter-spacing: -1px;
+  color: var(--db-ink);
+  font-size: clamp(38px, 5vw, 62px);
 }
-.journey-way-desc {
-  font-size: 12px;
-  color: var(--color-text-body);
-  line-height: 1.5;
+.db-heading-accent {
+  color: var(--color-primary);
+  font-style: italic;
+}
+
+.db-sub {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--db-ink-soft);
+  max-width: 430px;
+  margin: 22px 0 34px;
 }
 
 /* ═══════════════════════════════════════════
-   GOAGUIDE AI BANNER
+   YOUR GOA JOURNEY, YOUR WAY
 ═══════════════════════════════════════════ */
-.goaguide-banner {
-  position: relative;
-  margin: 8px clamp(20px,5vw,64px) 0;
-  background: linear-gradient(158deg, #172A20 0%, #0C1813 100%);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  padding: clamp(24px, 4vw, 44px);
-  cursor: pointer;
-}
-
-/* Decorative frond bleeding off the top-right corner. */
-.gg-leaf {
+/* Faint concentric arcs bleeding off the top-right corner. */
+.jw-arcs {
   position: absolute;
-  top: -46px;
-  right: -52px;
-  color: rgba(255,255,255,0.05);
+  top: -22%;
+  right: -8%;
+  width: min(720px, 66%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 180, 41, 0.13);
   pointer-events: none;
 }
+.jw-arcs::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 180, 41, 0.07);
+}
 
-/* ── Identity row ── */
-.gg-head {
+.jw-wrap {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  gap: clamp(40px, 6vw, 88px);
+  align-items: center;
+}
+
+.jw-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-primary);
+  color: #3D2C05;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 16px 30px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 16px 42px rgba(240, 180, 41, 0.26);
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.jw-cta:hover {
+  background: #F5C244;
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(240, 180, 41, 0.34);
+}
+
+/* ── Swipeable step deck ── */
+.jw-deck-col {
+  border-left: 1px solid var(--db-line);
+  padding-left: clamp(28px, 4vw, 56px);
+}
+
+.jw-deck {
+  position: relative;
+  height: 330px;
+  max-width: 320px;
+  margin: 0 auto;
+  touch-action: pan-y;
+}
+
+.jw-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #F2EDE1;
+  border-radius: 26px;
+  padding: 28px 30px 30px;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.45);
+  transition: transform 0.5s cubic-bezier(0.22, 0.9, 0.3, 1), opacity 0.35s ease;
+}
+.jw-card[data-offset="0"] { transform: none;                              z-index: 4; opacity: 1;    }
+.jw-card[data-offset="1"] { transform: translate(26px, 16px) scale(0.96); z-index: 3; opacity: 0.85; }
+.jw-card[data-offset="2"] { transform: translate(48px, 30px) scale(0.92); z-index: 2; opacity: 0.5;  }
+.jw-card[data-offset="3"] { transform: translate(62px, 42px) scale(0.90); z-index: 1; opacity: 0;    }
+.jw-card[data-offset="0"]:hover { transform: translateY(-4px); }
+
+.jw-card-count {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: rgba(26, 50, 37, 0.5);
+}
+.jw-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #16241C;
+  color: var(--color-primary);
   display: flex;
   align-items: center;
-  gap: 11px;
-  margin-bottom: clamp(26px, 3vw, 34px);
+  justify-content: center;
+  margin: 22px 0 20px;
 }
-.gg-head-avatar {
+.jw-card-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #16241C;
+}
+.jw-card-desc {
+  margin-top: auto;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #8A6B33;
+}
+
+.jw-deck-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 34px;
+}
+.jw-deck-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: rgba(246, 242, 232, 0.42);
+  max-width: 190px;
+}
+.jw-deck-hint svg { flex-shrink: 0; opacity: 0.6; }
+
+.jw-deck-btn {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--db-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.jw-deck-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #3D2C05;
+}
+
+/* ═══════════════════════════════════════════
+   GOAGUIDE AI
+═══════════════════════════════════════════ */
+.ga-section { padding-top: clamp(20px, 3vw, 40px); }
+
+.ga-wrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(40px, 6vw, 88px);
+  align-items: center;
+}
+
+.ga-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 9px 17px;
+  font-size: 12.5px;
+  color: rgba(246, 242, 232, 0.8);
+  margin-bottom: 26px;
+}
+.ga-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ADE80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
+}
+
+.ga-heading { font-size: clamp(34px, 4.4vw, 52px); }
+
+.ga-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ga-topic {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(246, 242, 232, 0.75);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.ga-topic:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Chat panel ── */
+.ga-panel {
+  background: #0F1D16;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  padding: clamp(20px, 2.4vw, 28px);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+}
+.ga-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 20px;
+}
+.ga-panel-avatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--color-primary);
   color: #3D2C05;
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.gg-head-name {
-  font-size: 12px;
+.ga-panel-id { display: flex; flex-direction: column; gap: 3px; }
+.ga-panel-name {
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: var(--color-text-inverse);
+  color: var(--db-ink);
 }
-.gg-head-status {
-  margin-left: auto;
+.ga-panel-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #6FBF8F;
 }
-.gg-head-dot {
+.ga-panel-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #4ADE80;
 }
 
-/* ── Body: stacked on mobile, heading beside the chat on desktop ── */
-.gg-body { position: relative; z-index: 1; }
-
-.goaguide-banner-heading {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(28px, 3vw, 36px);
-  line-height: 1.18;
-  letter-spacing: -0.4px;
-  color: var(--color-text-inverse);
-  margin-bottom: 26px;
-}
-.goaguide-banner-accent {
-  color: var(--color-primary);
-  font-style: italic;
-}
-
-.goaguide-banner-chat {
+.ga-thread {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
-.gg-bubble {
-  font-size: 13.5px;
-  line-height: 1.5;
-  padding: 11px 15px;
-  border-radius: 14px;
+.ga-bubble {
   max-width: 82%;
+  padding: 13px 18px;
+  font-size: 14px;
+  line-height: 1.5;
   font-family: var(--font-body);
 }
-.gg-bubble-user {
+.ga-bubble-user {
   align-self: flex-end;
-  background: #2B302C;
-  color: rgba(255,255,255,0.92);
+  background: var(--color-primary);
+  color: #3D2C05;
+  font-weight: 600;
+  border-radius: 16px 16px 4px 16px;
 }
-.gg-bubble-ai {
+.ga-bubble-ai {
   align-self: flex-start;
-  background: #F7F5EF;
-  color: #16241C;
+  background: #0A1410;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(246, 242, 232, 0.92);
+  border-radius: 16px 16px 16px 4px;
+}
+.ga-bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: rgba(240, 180, 41, 0.78);
 }
 
-/* ── Ask bar ── */
-.gg-ask {
-  margin-top: 12px;
+.ga-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+.ga-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: rgba(246, 242, 232, 0.72);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.ga-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--db-ink);
+}
+
+/* Styled like an input but it's a button — GoaGuide has no way to receive an
+   opening question, so a real field would drop what you typed on the way there. */
+.ga-ask {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-pill);
   padding: 7px 7px 7px 20px;
   cursor: pointer;
   font-family: var(--font-body);
   transition: var(--transition-fast);
 }
-.gg-ask:hover {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.18);
+.ga-ask:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
 }
-.gg-ask-placeholder {
+.ga-ask-placeholder {
   flex: 1;
   text-align: left;
   font-size: 13.5px;
-  color: rgba(255,255,255,0.42);
+  color: rgba(246, 242, 232, 0.42);
 }
-.gg-ask-send {
+.ga-ask-send {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--color-primary);
   color: #3D2C05;
@@ -742,24 +925,21 @@
   justify-content: center;
   transition: var(--transition-fast);
 }
-.gg-ask:hover .gg-ask-send { background: var(--color-primary-dark); }
+.ga-ask:hover .ga-ask-send { background: var(--color-primary-dark); }
 
-/* Desktop keeps the identity row across the top and sets the headline
-   beside the conversation, rather than stretching one narrow column. */
-@media (min-width: 900px) {
-  .goaguide-banner { padding: clamp(32px, 4vw, 52px); }
-  .gg-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: clamp(36px, 5vw, 80px);
-    align-items: center;
+/* ── Dark band on small screens: single column, deck centred ── */
+@media (max-width: 900px) {
+  .jw-wrap, .ga-wrap { grid-template-columns: 1fr; }
+  .db-sub { max-width: none; }
+  .jw-deck-col {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--db-line);
+    padding-top: 34px;
   }
-  .goaguide-banner-heading {
-    margin-bottom: 0;
-    font-size: clamp(32px, 3.4vw, 44px);
-  }
-  .goaguide-banner-chat { max-width: 460px; }
-  .gg-leaf { top: -60px; right: -60px; }
+  .jw-deck { margin: 0 auto; max-width: 300px; }
+  .jw-deck-nav { justify-content: space-between; }
+  .jw-arcs { top: -12%; right: -32%; width: 90%; }
 }
 
 /* ═══════════════════════════════════════════
@@ -910,31 +1090,10 @@
 @media (max-width: 900px) {
   .tags-strip { grid-template-columns: repeat(3, 1fr); row-gap: 20px; }
   .places-grid { grid-template-columns: repeat(2, 1fr); }
-  .journey-way-wrap { gap: 32px; }
-  .journey-way-steps { flex-wrap: wrap; }
-  .journey-way-line { display: none; }
   .stats-testimonial { border-left: none; padding-left: 0; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 24px; }
 }
 
 @media (max-width: 768px) {
   .split-left { position: static; max-width: none !important; }
-
-  .journey-way-section { padding: 56px 24px; }
-  .journey-way-steps {
-    flex-wrap: nowrap;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 22px;
-    width: 100%;
-  }
-  .journey-way-step {
-    flex-direction: row;
-    align-items: center;
-    text-align: left;
-    max-width: none;
-    gap: 16px;
-  }
-  .journey-way-circle { margin-bottom: 0; flex-shrink: 0; }
-  .journey-way-title { margin-bottom: 2px; }
 }
 
