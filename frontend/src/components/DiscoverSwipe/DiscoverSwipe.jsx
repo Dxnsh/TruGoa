@@ -374,7 +374,7 @@ const DiscoverSwipe = () => {
   return (
     <div className="ds-shell">
       <div className="ds-meta">
-        <span className="ds-meta-right">
+        <span className="ds-meta-left">
           <span className="ds-filter" data-ds-filter>
             <button
               className={`ds-filter-btn ${mood !== "all" ? "ds-filter-btn--on" : ""}`}

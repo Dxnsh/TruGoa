@@ -76,13 +76,13 @@
 .ds-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 12px;
   padding: 0 4px;
 }
 
 /* ── Mood filter ── */
-.ds-meta-right {
+.ds-meta-left {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -125,7 +125,7 @@
 .ds-filter-menu {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   z-index: 20;
   min-width: 172px;
   display: flex;
