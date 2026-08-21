@@ -13,10 +13,13 @@ import { responseTime }                       from "./middleware/timing.js";
 import { sanitizeInput }                      from "./middleware/sanitize.js";
 import { logger, morganStream }               from "./utils/logger.js";
 import apiRouter                              from "./routes/index.js";
+import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 
 dotenv.config();
 
-connectDB();
+// Seeds the first owner from ADMIN_EMAIL / ADMIN_PASSWORD_HASH when no admin
+// accounts exist yet, so switching logins to the database can't lock everyone out.
+connectDB().then(bootstrapAdmin);
 
 const app = express();
 

@@ -1,20 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { adminGetBusinesses, adminDeleteBusiness } from "../../services/api";
+import { adminGetBusinesses, adminDeleteBusiness, adminGetMe } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
 import BusinessForm from "./BusinessForm";
 import StoriesManager from "./StoriesManager";
 import JournalManager from "./JournalManager";
+import TeamManager from "./TeamManager";
 import BeachForm from "./forms/BeachForm";
 import FoodForm from "./forms/FoodForm";
 import StayForm from "./forms/StayForm";
 import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
 
-const SECTIONS = ["businesses", "stories", "journal"];
-const SECTION_LABELS = { businesses: "Businesses", stories: "Stories", journal: "Journal" };
+// Team is owner-only, so the tab list is built per signed-in admin rather
+// than being a constant. Hiding it is cosmetic — the API enforces the rule.
+const BASE_SECTIONS = ["businesses", "stories", "journal"];
+const SECTION_LABELS = {
+  businesses: "Businesses", stories: "Stories", journal: "Journal", team: "Team",
+};
 
 // which clean, category-specific form to open for each listing type
 const FORM_TYPES = [
@@ -48,6 +53,9 @@ const AdminDashboard = () => {
   const [editingBusiness, setEditingBusiness] = useState(null); // null = create mode
   const [activeFormType, setActiveFormType] = useState(null); // one of FORM_TYPES keys, or "other", or null = closed
   const [showAddMenu, setShowAddMenu] = useState(false);
+  // Who is signed in — drives whether the Team tab is offered at all.
+  const [me, setMe] = useState(null);
+  const SECTIONS = me?.role === "owner" ? [...BASE_SECTIONS, "team"] : BASE_SECTIONS;
 
   useEffect(() => {
     const token = localStorage.getItem("trugoa_admin_token");
@@ -56,6 +64,11 @@ const AdminDashboard = () => {
       return;
     }
     fetchBusinesses();
+    adminGetMe()
+      .then(setMe)
+      // A token that no longer resolves to an active account means access was
+      // revoked (or it expired), so send them back to the login screen.
+      .catch(() => { localStorage.removeItem("trugoa_admin_token"); navigate("/admin"); });
   }, []);
 
   const fetchBusinesses = async () => {
@@ -212,6 +225,8 @@ const AdminDashboard = () => {
           <StoriesManager isMobile={isMobile} />
         ) : section === "journal" ? (
           <JournalManager isMobile={isMobile} />
+        ) : section === "team" ? (
+          <TeamManager isMobile={isMobile} me={me} />
         ) : (
         <>
           {/* ── HEADER ─────────────────────────────────── */}
