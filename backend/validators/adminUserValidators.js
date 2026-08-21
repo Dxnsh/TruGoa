@@ -6,7 +6,15 @@ const PASSWORD_MIN = 10;
 
 export const createAdminUserRules = [
   body("name").isString().trim().notEmpty().withMessage("Name is required"),
-  body("email").isEmail().withMessage("A valid email is required").normalizeEmail(),
+  // Deliberately not normalizeEmail(): its Gmail defaults strip dots and
+  // +tags from the local part, so "a.b@gmail.com" was stored as "ab@gmail.com"
+  // while login looked up the address as typed — the account existed but
+  // could never be found. Store what was entered, lowercased, and let login
+  // do the same.
+  body("email")
+    .isEmail().withMessage("A valid email is required")
+    .trim()
+    .toLowerCase(),
   body("password")
     .isString()
     .isLength({ min: PASSWORD_MIN })
