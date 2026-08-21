@@ -29,6 +29,12 @@ export const adminLogin = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid admin credentials");
   }
 
+  // Checked here rather than letting jwt.sign throw, so a missing variable
+  // reports itself instead of arriving as an unexplained 500.
+  if (!process.env.ADMIN_JWT_SECRET) {
+    throw new ApiError(500, "Server misconfigured: ADMIN_JWT_SECRET is not set");
+  }
+
   const token = jwt.sign(
     { sub: admin._id.toString(), role: admin.role },
     process.env.ADMIN_JWT_SECRET,
