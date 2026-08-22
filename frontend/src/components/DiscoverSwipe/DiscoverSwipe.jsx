@@ -24,6 +24,14 @@ const REGION_CENTRES = {
 const SEARCH_RADIUS_M = 15000;
 const DECK_LIMIT = 20;
 
+// How far the deck can be widened once the first radius runs dry. 15 km is
+// walking-or-short-drive distance and the right default for "what's around
+// me", but a thin catalogue empties it in a few swipes -- South Goa currently
+// holds three places -- and the honest next question is "what if I travel a
+// bit". 100 km covers Goa end to end, so there is no step beyond it.
+const RADIUS_STEPS_M = [SEARCH_RADIUS_M, 40000, 100000];
+const nextRadius = (current) => RADIUS_STEPS_M.find((r) => r > current) ?? null;
+
 // What you're in the mood for. `category` is sent straight to
 // /businesses/nearby, which filters inside $geoNear — so the deck is narrowed
 // by the database, not by discarding cards after they arrive. Values must be
@@ -170,6 +178,11 @@ const DiscoverSwipe = () => {
   // real fix or a region they picked by hand — "within 15 km of you" is only
   // true for the former.
   const [centre, setCentre] = useState(null);
+  // How far the current deck reached. Mirrored into a ref so runFetch can read
+  // the latest value without being rebuilt on every change -- it's a dependency
+  // of the position watch, which must not resubscribe.
+  const [radius, setRadius] = useState(SEARCH_RADIUS_M);
+  const radiusRef = useRef(SEARCH_RADIUS_M);
   // A retry is in flight, and whether the browser refused outright. A refusal
   // can't be fixed by asking again — once someone blocks the site the prompt
   // never reappears — so it needs saying rather than silently doing nothing.
@@ -229,7 +242,7 @@ const DiscoverSwipe = () => {
 
     try {
       const { scope: resultScope, places: results } = await getNearbyBusinesses({
-        lat, lng, maxDistance: SEARCH_RADIUS_M, limit: DECK_LIMIT, category,
+        lat, lng, maxDistance: radiusRef.current, limit: DECK_LIMIT, category,
       });
       if (seq !== fetchSeq.current) return; // superseded while we waited
       setPlaces(results);
@@ -285,6 +298,19 @@ const DiscoverSwipe = () => {
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }, [runFetch]);
+
+  // Re-runs the same query with the next radius out. Kept as a deliberate
+  // action rather than widening on its own: a deck that quietly starts
+  // returning places an hour away stops meaning "near me", and the header would
+  // be the only thing saying so.
+  const widen = useCallback(async () => {
+    const at = origin.current;
+    const next = nextRadius(radiusRef.current);
+    if (!at || !next) return;
+    radiusRef.current = next;
+    setRadius(next);
+    await runFetch(at.lat, at.lng, at.label, at.precise, categoryFor(mood), "inline");
+  }, [mood, runFetch]);
 
   // "You've moved — refresh": rebuilds the deck from wherever they are now.
   const refreshHere = useCallback(async () => {
@@ -609,7 +635,7 @@ const DiscoverSwipe = () => {
   // "you" rather than naming the region that was picked by hand.
   const hereTitle =
     scope === "nearby"
-      ? `Within ${SEARCH_RADIUS_M / 1000} km of ${centre?.precise ? "you" : centre?.label ?? "here"}`
+      ? `Within ${radius / 1000} km of ${centre?.precise ? "you" : centre?.label ?? "here"}`
       : SCOPE_NOTE[scope] ?? "Across Goa";
 
   const atLimit = places.length >= DECK_LIMIT;
@@ -720,9 +746,12 @@ const DiscoverSwipe = () => {
         <div className="ds-inline-state">
           <Heart size={26} strokeWidth={1.5} className="ds-state-icon" />
           <p className="ds-state-title">
-            {mood === "all"
-              ? `That's everything ${scope === "nearby" ? "nearby" : "we've curated"}`
-              : `That's every ${labelFor(mood).toLowerCase().replace(/s$/, "")} ${scope === "nearby" ? "nearby" : "we've curated"}`}
+            {(() => {
+              const reach = scope === "nearby" ? `within ${radius / 1000} km` : "we've curated";
+              return mood === "all"
+                ? `That's everything ${reach}`
+                : `That's every ${labelFor(mood).toLowerCase().replace(/s$/, "")} ${reach}`;
+            })()}
           </p>
           <p className="ds-state-sub">
             {savedCount > 0
@@ -730,8 +759,24 @@ const DiscoverSwipe = () => {
               : "You didn't save any this time."}
           </p>
           <div className="ds-region-picker">
+            {/* Running out is exactly when "what if I go a bit further" is the
+                live question, so widening leads here — ahead of saved places
+                and starting over, which both end the session rather than
+                continue it. Only offered while there's a wider step left and
+                the deck is actually distance-bound; the region and Goa tiers
+                already searched everything a radius could reach. */}
+            {scope === "nearby" && nextRadius(radius) && (
+              <button
+                className="ds-region-btn ds-region-btn--solid"
+                onClick={widen}
+                disabled={refetching}
+              >
+                <Compass size={14} strokeWidth={2} />
+                Look within {nextRadius(radius) / 1000} km
+              </button>
+            )}
             {savedCount > 0 && (
-              <button className="ds-region-btn ds-region-btn--solid" onClick={() => navigate("/saved")}>
+              <button className="ds-region-btn" onClick={() => navigate("/saved")}>
                 View saved places
               </button>
             )}
