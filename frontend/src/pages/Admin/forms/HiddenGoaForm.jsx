@@ -4,7 +4,7 @@ import { Field, Row, SectionHeading, ModalShell } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
-const CATEGORIES = ["beach", "activity", "market", "heritage", "restaurant", "cafe", "hotel", "stay"];
+const CATEGORIES = ["beach", "activity", "market", "heritage", "spiritual", "restaurant", "cafe", "hotel", "stay"];
 
 const blank = {
   name: "", location: "", area: "", googleMapUrl: "", category: "activity",

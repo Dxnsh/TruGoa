@@ -1,4 +1,4 @@
-import { Palmtree, Utensils, BedDouble, Map, Martini, LayoutGrid } from "lucide-react";
+import { Palmtree, Utensils, BedDouble, Map, Martini, Church, LayoutGrid } from "lucide-react";
 
 // Shared by the homepage shortcut row and the Explore page's own category
 // strip. Both render the same set and the homepage links into Explore using
@@ -10,6 +10,7 @@ export const CATEGORIES = [
   { key: "stays",     label: "Stays",       sub: "Hotels & homestays",   icon: BedDouble },
   { key: "hidden",    label: "Hidden Goa",  sub: "Off the beaten path",  icon: Map },
   { key: "nightlife", label: "Nightlife",   sub: "After dark",           icon: Martini },
+  { key: "temples",   label: "Temples",     sub: "Temples & holy places", icon: Church },
   { key: "all",       label: "View All",    sub: "All categories",       icon: LayoutGrid },
 ];
 

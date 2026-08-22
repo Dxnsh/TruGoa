@@ -17,6 +17,16 @@ import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 
 dotenv.config();
 
+// Every admin session token is signed with this. Without it jwt.sign throws
+// on an otherwise correct login, which surfaces as a bare 500 and looks like a
+// server fault rather than a missing variable — so say so at boot instead.
+if (!process.env.ADMIN_JWT_SECRET) {
+  logger.error(
+    "ADMIN_JWT_SECRET is not set — admin login will fail with a 500 even when " +
+    "the email and password are correct. Set it and restart."
+  );
+}
+
 // Seeds the first owner from ADMIN_EMAIL / ADMIN_PASSWORD_HASH when no admin
 // accounts exist yet, so switching logins to the database can't lock everyone out.
 connectDB().then(bootstrapAdmin);

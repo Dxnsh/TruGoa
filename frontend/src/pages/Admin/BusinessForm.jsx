@@ -4,7 +4,7 @@ import { adminCreateBusiness, adminUpdateBusiness } from "../../services/api";
 import { inputStyle, labelStyle, toList } from "./adminFormKit";
 import { SingleImageUpload, GalleryUpload } from "./ImageUpload";
 
-const CATEGORIES = ["restaurant", "cafe", "hotel", "stay", "beach", "activity", "market", "heritage", "nightlife"];
+const CATEGORIES = ["restaurant", "cafe", "hotel", "stay", "beach", "activity", "market", "heritage", "spiritual", "nightlife"];
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 const PRICE_LEVELS = ["budget", "mid", "premium"];
 

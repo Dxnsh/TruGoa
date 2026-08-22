@@ -228,15 +228,16 @@ const TeamManager = ({ isMobile, me }) => {
                   </div>
                 </div>
 
-                {/* Your own row has no controls: every one of them would be
-                    rejected by the server anyway, since locking yourself out
-                    is never intentional. */}
+                {/* Changing your own password is fine — it is the rest that
+                    would lock you out, so only those are hidden on your own row
+                    (the server rejects them there regardless). */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+                  <button disabled={busy} onClick={() => handlePassword(user)}
+                    style={btn(theme.colors.bgSurface, theme.colors.textBody, theme.colors.borderLight)}>
+                    {isMe ? "Change my password" : "Set password"}
+                  </button>
                 {!isMe && (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-                    <button disabled={busy} onClick={() => handlePassword(user)}
-                      style={btn(theme.colors.bgSurface, theme.colors.textBody, theme.colors.borderLight)}>
-                      Set password
-                    </button>
+                  <>
                     <button disabled={busy}
                       onClick={() => act(user._id, () => adminUpdateUser(user._id, {
                         role: user.role === "owner" ? "editor" : "owner",
@@ -259,8 +260,9 @@ const TeamManager = ({ isMobile, me }) => {
                       style={btn(theme.colors.dangerBg, theme.colors.danger, `${theme.colors.danger}40`)}>
                       Delete
                     </button>
-                  </div>
+                  </>
                 )}
+                </div>
               </div>
             );
           })}

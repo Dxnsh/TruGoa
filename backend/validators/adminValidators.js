@@ -2,7 +2,7 @@ import { body, param } from "express-validator";
 
 const BUSINESS_CATEGORIES = [
   "restaurant", "cafe", "hotel", "stay", "beach",
-  "activity", "market", "heritage", "nightlife",
+  "activity", "market", "heritage", "nightlife", "spiritual",
 ];
 const BUSINESS_AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 const PRICE_LEVELS = ["budget", "mid", "premium"];

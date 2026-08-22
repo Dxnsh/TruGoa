@@ -13,6 +13,7 @@ import FoodForm from "./forms/FoodForm";
 import StayForm from "./forms/StayForm";
 import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
+import TempleForm from "./forms/TempleForm";
 
 // Team is owner-only, so the tab list is built per signed-in admin rather
 // than being a constant. Hiding it is cosmetic — the API enforces the rule.
@@ -28,9 +29,10 @@ const FORM_TYPES = [
   { key: "stays",     label: "Stay",         Component: StayForm },
   { key: "hidden",    label: "Hidden Goa",   Component: HiddenGoaForm },
   { key: "nightlife", label: "Nightlife",    Component: NightlifeForm },
+  { key: "temples",   label: "Temples & Holy Places", Component: TempleForm },
 ];
 
-// existing listings that don't fit one of the 5 clean forms (e.g. activity, market, heritage)
+// existing listings that don't fit one of the clean forms (e.g. activity, market, heritage)
 // keep opening in the original full-field form so nothing becomes uneditable
 const resolveFormType = (biz) => {
   if (!biz) return null;
@@ -39,6 +41,7 @@ const resolveFormType = (biz) => {
   if (["restaurant", "cafe"].includes(biz.category)) return "food";
   if (["hotel", "stay"].includes(biz.category)) return "stays";
   if (biz.category === "nightlife") return "nightlife";
+  if (biz.category === "spiritual") return "temples";
   return "other";
 };
 
