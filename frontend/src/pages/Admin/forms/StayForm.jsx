@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { inputStyle, toList, saveBusiness } from "../adminFormKit";
-import { Field, Row, SectionHeading, ModalShell } from "./formUI";
+import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
@@ -8,7 +8,7 @@ const TYPES = ["hotel", "stay"];
 const PRICE_LEVELS = ["budget", "mid", "premium"];
 
 const blank = {
-  name: "", location: "", area: "", googleMapUrl: "", category: "hotel", subCategory: "",
+  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "hotel", subCategory: "",
   tagline: "", description: "", localTip: "",
   highlights: "", idealFor: "",
   priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
@@ -98,6 +98,12 @@ const StayForm = ({ business, onClose, onSaved }) => {
       <Field label="Google Maps URL">
         <input style={inputStyle} value={form.googleMapUrl} onChange={e => set("googleMapUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." />
       </Field>
+      <PinField
+        latitude={form.latitude}
+        longitude={form.longitude}
+        mapUrl={form.googleMapUrl}
+        onChange={(lat, lng) => setForm(f => ({ ...f, latitude: lat, longitude: lng }))}
+      />
 
       <SectionHeading>Story</SectionHeading>
       <Field label="Tagline">

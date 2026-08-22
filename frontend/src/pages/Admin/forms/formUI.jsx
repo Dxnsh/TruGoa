@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { theme } from "../../../Theme";
-import { labelStyle } from "../adminFormKit";
+import {
+  labelStyle, inputStyle,
+  parseCoordinates, isShortMapLink, isInGoa, formatCoordinates,
+} from "../adminFormKit";
 
 export const Field = ({ label, children }) => (
   <div style={{ marginBottom: 16 }}>
@@ -17,6 +21,110 @@ export const SectionHeading = ({ children }) => (
     {children}
   </div>
 );
+
+// A listing with no pin is invisible to the "near me" deck — $geoNear can only
+// see documents that have coordinates — so this sits in every listing form
+// rather than being tucked away as an advanced option. It accepts anything
+// Google Maps hands you and does the extracting itself; see parseCoordinates.
+export const PinField = ({ latitude, longitude, mapUrl, onChange }) => {
+  const [draft, setDraft] = useState("");
+  const [note, setNote] = useState(null);
+
+  const pinned = typeof latitude === "number" && typeof longitude === "number";
+  const offMap = pinned && !isInGoa({ lat: latitude, lng: longitude });
+
+  // Most listings already carry a Maps URL, and some of those have the
+  // coordinates sitting in them. Offering it as one click beats making someone
+  // fetch the same link again — but it stays an offer rather than filling
+  // itself in, because a URL can point somewhere the listing doesn't.
+  const fromUrl = !pinned && mapUrl ? parseCoordinates(mapUrl) : null;
+
+  const apply = (text) => {
+    setDraft(text);
+    if (!text.trim()) { setNote(null); return; }
+
+    const found = parseCoordinates(text);
+    if (!found) {
+      setNote(
+        isShortMapLink(text)
+          ? "Short Maps links don't carry the coordinates. Open it first, then copy the full URL from the address bar."
+          : 'No coordinates in that. Paste a Google Maps URL, or type them directly as "15.5439, 73.7553".'
+      );
+      return;
+    }
+
+    onChange(found.lat, found.lng);
+    setDraft("");   // the pin below is the confirmation; leaving the paste in place just clutters
+    setNote(null);
+  };
+
+  return (
+    <Field label="Map Pin">
+      {pinned ? (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+          padding: "9px 12px", borderRadius: theme.radii.md,
+          background: offMap ? theme.colors.dangerBg : theme.colors.bgSurface,
+          border: `1px solid ${offMap ? `${theme.colors.danger}40` : theme.colors.borderLight}`,
+        }}>
+          <span style={{ fontSize: 14 }}>📍</span>
+          <span style={{ flex: 1, fontSize: 13, color: theme.colors.textPrimary }}>
+            {formatCoordinates(latitude, longitude)}
+            {offMap && (
+              <span style={{ display: "block", fontSize: 11.5, color: theme.colors.danger, marginTop: 2 }}>
+                That&rsquo;s outside Goa — are the two numbers the right way round?
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => { onChange(null, null); setNote(null); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 12, color: theme.colors.textMuted,
+              fontFamily: theme.typography.fontBody,
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      ) : null}
+
+      <input
+        style={inputStyle}
+        value={draft}
+        onChange={(e) => apply(e.target.value)}
+        placeholder={pinned ? "Paste a new Maps link to move the pin" : "Paste a Google Maps link, or 15.5439, 73.7553"}
+      />
+
+      {fromUrl && (
+        <button
+          type="button"
+          onClick={() => onChange(fromUrl.lat, fromUrl.lng)}
+          style={{
+            display: "block", width: "100%", marginTop: 8, padding: "9px 12px",
+            borderRadius: theme.radii.md, cursor: "pointer", textAlign: "left",
+            border: `1.5px dashed ${theme.colors.secondary}`,
+            background: theme.colors.secondaryLight,
+            color: theme.colors.secondaryText,
+            fontFamily: theme.typography.fontBody, fontSize: 12.5,
+          }}
+        >
+          Use the pin from the Maps URL above — {formatCoordinates(fromUrl.lat, fromUrl.lng)}
+        </button>
+      )}
+
+      <p style={{
+        fontSize: 11.5, lineHeight: 1.55, marginTop: 6,
+        color: note ? theme.colors.danger : theme.colors.textMuted,
+      }}>
+        {note || (pinned
+          ? "This is what puts the place on the “near me” deck."
+          : "Without a pin this place can’t appear in nearby search — only in browse.")}
+      </p>
+    </Field>
+  );
+};
 
 export const Row = ({ children }) => (
   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

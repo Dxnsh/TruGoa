@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { inputStyle, toList, saveBusiness } from "../adminFormKit";
-import { Field, Row, SectionHeading, ModalShell } from "./formUI";
+import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 const CATEGORIES = ["beach", "activity", "market", "heritage", "spiritual", "restaurant", "cafe", "hotel", "stay"];
 
 const blank = {
-  name: "", location: "", area: "", googleMapUrl: "", category: "activity",
+  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "activity",
   tagline: "", description: "", story: "", localTip: "",
   highlights: "", bestTime: "",
   heroImage: "", gallery: [], tags: "",
@@ -90,6 +90,12 @@ const HiddenGoaForm = ({ business, onClose, onSaved }) => {
       <Field label="Google Maps URL">
         <input style={inputStyle} value={form.googleMapUrl} onChange={e => set("googleMapUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." />
       </Field>
+      <PinField
+        latitude={form.latitude}
+        longitude={form.longitude}
+        mapUrl={form.googleMapUrl}
+        onChange={(lat, lng) => setForm(f => ({ ...f, latitude: lat, longitude: lng }))}
+      />
 
       <SectionHeading>Story</SectionHeading>
       <Field label="Tagline">

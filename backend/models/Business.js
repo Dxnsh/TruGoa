@@ -171,7 +171,12 @@ businessSchema.pre(["findOneAndUpdate", "updateOne"], function () {
   if (typeof lat === "number" && typeof lng === "number") {
     $set.geo = { type: "Point", coordinates: [lng, lat] };
   } else {
-    $set.geo = undefined;
+    // Assigning undefined here looks like it clears the point, but Mongoose
+    // strips undefined out while casting the update — so the old geo survived
+    // and the listing kept matching $geoNear at coordinates it no longer
+    // claimed. $unset is the only thing that actually removes it.
+    delete $set.geo;
+    update.$unset = { ...update.$unset, geo: "" };
   }
   this.setUpdate(update);
 });
