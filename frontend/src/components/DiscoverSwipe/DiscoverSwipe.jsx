@@ -504,14 +504,22 @@ const DiscoverSwipe = () => {
   const fromUser = liveDistance !== null || Boolean(centre?.precise);
 
   // A card shows its distance when we have one, and otherwise says which wider
-  // net caught it. Never both — the two answer the same question. When the
-  // measurement isn't from the person it names its origin instead of saying
-  // "away", which would be a straightforward lie about how far they'd travel.
+  // net caught it. Never both — the two answer the same question.
+  //
+  // A measurement taken from a picked region is dropped rather than relabelled.
+  // The origin is a fixed centroid — North Goa's sits near Assagao — so the
+  // number is the distance from a point the reader never chose and cannot see.
+  // Several places cluster within a few kilometres of it, which puts a row of
+  // "3.5 km" captions in front of someone standing an hour's drive south, and
+  // naming the origin doesn't stop that reading as "everything is close".
+  // Where they are is the only origin that makes a distance worth printing.
   const measured = formatDistance(distanceNow);
   const caption = !current
     ? null
-    : measured
-    ? (fromUser ? `${measured} away` : `${measured} from ${centre?.label ?? "here"}`)
+    : fromUser && measured
+    ? `${measured} away`
+    : centre && !centre.precise
+    ? `In ${centre.label}`
     : SCOPE_NOTE[scope] ?? null;
 
   // ── "You are here" ─────────────────────────────────────────────────────────
