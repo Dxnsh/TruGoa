@@ -14,6 +14,7 @@ import { sanitizeInput }                      from "./middleware/sanitize.js";
 import { logger, morganStream }               from "./utils/logger.js";
 import apiRouter                              from "./routes/index.js";
 import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
+import { isCloudinaryConfigured }             from "./config/cloudinary.js";
 
 dotenv.config();
 
@@ -109,6 +110,16 @@ app.get("/health", healthLimiter, (req, res) => {
     uptime:    Math.floor(process.uptime()),
     db:        dbState[mongoose.connection.readyState],
     memory:    `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+    // Which optional integrations actually have credentials here. Booleans
+    // only — never the values. Since .env is gitignored, a deployment's
+    // variables are set by hand and there is otherwise no way to tell a
+    // missing one from a broken feature: the request just 500s with its
+    // message stripped. This turns that into one request.
+    configured: {
+      cloudinary: isCloudinaryConfigured,       // image uploads
+      groq:       Boolean(process.env.GROQ_API_KEY),        // AI itineraries
+      google:     Boolean(process.env.GOOGLE_CLIENT_ID),    // Google sign-in
+    },
     timestamp: new Date().toISOString(),
   });
 });
