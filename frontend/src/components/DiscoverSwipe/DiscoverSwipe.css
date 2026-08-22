@@ -72,6 +72,85 @@
 }
 .ds-region-btn--solid:hover { background: var(--ds-accent-dark); border-color: var(--ds-accent-dark); }
 
+/* ── "You are here" header ──
+   Says what the deck is anchored to and whether it's still following the
+   person. Unlike .ds-meta this stays visible at every width — on desktop it's
+   the only thing telling you the cards are keyed to your position. */
+.ds-here {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+}
+
+/* Hollow when the watch has stopped delivering, filled and pulsing while
+   fixes are still arriving — the difference between "these are where you are"
+   and "these are where you were". */
+.ds-here-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-text-muted);
+  background: transparent;
+}
+.ds-here-dot--live {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  animation: ds-pulse 2s ease-out infinite;
+}
+@keyframes ds-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(229,80,42,0.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(229,80,42,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229,80,42,0); }
+}
+
+.ds-here-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.ds-here-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-here-sub {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-here-refresh {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--ds-accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.ds-here-refresh:hover:not(:disabled) { background: var(--ds-accent-dark); }
+.ds-here-refresh:disabled { opacity: 0.55; cursor: default; }
+
 /* ── Deck header ── */
 .ds-meta {
   display: flex;
@@ -419,5 +498,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ds-spin { animation: none; }
+  .ds-here-dot--live { animation: none; }
   .ds-card--out-left, .ds-card--out-right { transition-duration: 0.01ms; }
 }

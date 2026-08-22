@@ -4,6 +4,7 @@ import {
   Heart, X, Info, MapPin, Star, Loader2, Compass,
   RotateCcw, ArrowLeft, Sparkles, Palmtree, Coffee, UtensilsCrossed,
   BedDouble, Martini, Landmark, Church, ShoppingBag, SlidersHorizontal, Check,
+  RefreshCw,
 } from "lucide-react";
 import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
@@ -16,6 +17,12 @@ const REGION_CENTRES = {
   "north-goa": { lat: 15.5937, lng: 73.7554, label: "North Goa" },
   "south-goa": { lat: 15.0100, lng: 74.0200, label: "South Goa" },
 };
+
+// How far out the deck looks, and how many cards it asks for. Both get quoted
+// back to the visitor ("within 15 km"), so they live here rather than being
+// repeated as bare numbers at each call site.
+const SEARCH_RADIUS_M = 15000;
+const DECK_LIMIT = 20;
 
 // What you're in the mood for. `category` is sent straight to
 // /businesses/nearby, which filters inside $geoNear — so the deck is narrowed
@@ -47,11 +54,43 @@ const SWIPE_COMMIT_PX = 110;
 // can't be zero.
 const TAP_SLOP_PX = 10;
 
+// How far someone has to travel before the deck is worth re-querying. Inside a
+// 15 km radius a couple of hundred metres barely changes which places are in
+// range, and GPS jitters by that much while sitting still — so a low threshold
+// would mean constant refetches that return the same twenty cards. Two
+// kilometres is roughly where the answer genuinely starts to differ.
+const REFETCH_MOVE_M = 2000;
+
+// High-accuracy fixes land about once a second and jitter by a few metres
+// while standing still. Ignoring the ones that don't really move anyone keeps
+// the deck from re-rendering on noise; the card quotes distance to the nearest
+// 100 m, so nothing below this would be visible anyway.
+const LIVE_MOVE_M = 10;
+
+// ── Distance ────────────────────────────────────────────────────────────────
+// $geoNear measures from wherever the deck was fetched, which starts going
+// stale the moment someone walks off. Given a live fix and the place's own
+// coordinates we can recompute it here on every position update, so the card
+// counts down as they approach instead of freezing at whatever it said when
+// the query ran.
+const EARTH_RADIUS_M = 6371000;
+const toRad = (deg) => (deg * Math.PI) / 180;
+
+const metresBetween = (a, b) => {
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
 // Waiting on a position fix is what actually makes the deck feel slow — the
 // query behind it takes a few hundred ms, while acquiring a location can take
 // seconds (or the whole timeout, if the permission prompt goes unanswered).
 // Remembering the last one for the session means every visit after the first
-// starts fetching immediately instead of locating first.
+// starts fetching immediately instead of locating first; the live watch below
+// then corrects it as soon as a real fix lands.
 const ORIGIN_KEY = "trugoa_discover_origin";
 const ORIGIN_TTL_MS = 30 * 60 * 1000;
 
@@ -66,9 +105,9 @@ const readStoredOrigin = () => {
   }
 };
 
-const storeOrigin = (lat, lng, label) => {
+const storeOrigin = (lat, lng, label, precise) => {
   try {
-    sessionStorage.setItem(ORIGIN_KEY, JSON.stringify({ lat, lng, label, at: Date.now() }));
+    sessionStorage.setItem(ORIGIN_KEY, JSON.stringify({ lat, lng, label, precise, at: Date.now() }));
   } catch {
     /* storage unavailable — we just locate again next time */
   }
@@ -113,9 +152,27 @@ const DiscoverSwipe = () => {
   // its own flag rather than dropping back to the full-page "loading" status.
   const [refetching, setRefetching] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  // Wherever the deck is currently centred, so switching mood can re-query
-  // the same spot without asking the browser for a fix again.
+
+  // ── Live location ──────────────────────────────────────────────────────────
+  // The latest fix from watchPosition, held in state because the card's
+  // distance is derived from it and has to re-render as the person moves.
+  const [livePos, setLivePos] = useState(null);
+  // Whether fixes are still arriving. False means the deck is no longer
+  // following anyone — worth saying in the header, not worth an error screen.
+  const [tracking, setTracking] = useState(false);
+  // Set when someone has travelled far enough that the deck no longer reflects
+  // where they are, but they're part-way through it. See handleFix.
+  const [moved, setMoved] = useState(false);
+  // Where the deck on screen was fetched from, and whether that came from a
+  // real fix or a region they picked by hand — "within 15 km of you" is only
+  // true for the former.
+  const [centre, setCentre] = useState(null);
   const origin = useRef(null);
+  // The remembered-origin fetch on mount and the one triggered by the first
+  // real fix can be in flight at once, and they don't necessarily come back in
+  // the order they went out. Stamping each query lets a late reply from a
+  // superseded origin be dropped instead of overwriting fresher results.
+  const fetchSeq = useRef(0);
 
   // Close the filter menu on any tap outside it.
   useEffect(() => {
@@ -140,23 +197,51 @@ const DiscoverSwipe = () => {
   const current = places[index];
   const hasMore = index < places.length;
 
+  // The position watch is subscribed once and needs to see the current deck to
+  // judge whether refreshing would interrupt anyone. Reading that through a ref
+  // keeps the subscription stable — re-subscribing on every swipe would drop
+  // and re-acquire the fix continuously.
+  const deckRef = useRef({ index: 0, count: 0, mood: "all" });
+  useEffect(() => {
+    deckRef.current = { index, count: places.length, mood };
+  }, [index, places.length, mood]);
+
   // ── Fetching ───────────────────────────────────────────────────────────────
-  const loadNearby = useCallback(async (lat, lng, label, category = null) => {
-    origin.current = { lat, lng, label };
-    storeOrigin(lat, lng, label);
-    setStatus("loading");
+  // One query behind every entry point. `mode` picks how the wait is shown:
+  // "full" drops the whole panel to a spinner (there's nothing on screen to
+  // protect yet), "inline" keeps the shell and its controls put.
+  const runFetch = useCallback(async (lat, lng, label, precise, category, mode) => {
+    const seq = ++fetchSeq.current;
+    origin.current = { lat, lng, label, precise };
+    setCentre({ label, precise });
+    storeOrigin(lat, lng, label, precise);
+
+    if (mode === "full") setStatus("loading");
+    else setRefetching(true);
+
     try {
       const { scope: resultScope, places: results } = await getNearbyBusinesses({
-        lat, lng, maxDistance: 15000, limit: 20, category,
+        lat, lng, maxDistance: SEARCH_RADIUS_M, limit: DECK_LIMIT, category,
       });
+      if (seq !== fetchSeq.current) return; // superseded while we waited
       setPlaces(results);
       setScope(resultScope);
       setIndex(0);
-      setStatus("ready");
+      setShowInfo(false);
+      setMoved(false);
+      if (mode === "full") setStatus("ready");
     } catch {
-      setStatus("error");
+      if (seq === fetchSeq.current) setStatus("error");
+    } finally {
+      if (mode !== "full" && seq === fetchSeq.current) setRefetching(false);
     }
   }, []);
+
+  const loadNearby = useCallback(
+    (lat, lng, label, precise, category = null) =>
+      runFetch(lat, lng, label, precise, category, "full"),
+    [runFetch]
+  );
 
   // Switching mood re-queries the same coordinates with a new category.
   const applyMood = useCallback(async (key) => {
@@ -164,58 +249,89 @@ const DiscoverSwipe = () => {
     setShowFilter(false);
     const at = origin.current;
     if (!at) return;
+    await runFetch(at.lat, at.lng, at.label, at.precise, categoryFor(key), "inline");
+  }, [runFetch]);
 
-    setRefetching(true);
-    try {
-      const { scope: resultScope, places: results } = await getNearbyBusinesses({
-        lat: at.lat,
-        lng: at.lng,
-        maxDistance: 15000,
-        limit: 20,
-        category: categoryFor(key),
-      });
-      setPlaces(results);
-      setScope(resultScope);
-      setIndex(0);
-      setShowInfo(false);
-    } catch {
-      setStatus("error");
-    } finally {
-      setRefetching(false);
+  // "You've moved — refresh": rebuilds the deck from wherever they are now.
+  const refreshHere = useCallback(async () => {
+    if (!livePos) return;
+    await runFetch(livePos.lat, livePos.lng, "Near you", true, categoryFor(mood), "inline");
+  }, [livePos, mood, runFetch]);
+
+  // ── Live position tracking ─────────────────────────────────────────────────
+  const handleFix = useCallback((pos) => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    // Returning the previous object unchanged makes React skip the render, so
+    // a phone sitting on a table costs nothing however often it reports in.
+    setLivePos((prev) =>
+      prev && metresBetween(prev, { lat, lng }) < LIVE_MOVE_M ? prev : { lat, lng }
+    );
+    setTracking(true);
+
+    const at = origin.current;
+
+    // First fix of the session — there's nothing on screen to disturb.
+    if (!at) {
+      loadNearby(lat, lng, "Near you", true, categoryFor(deckRef.current.mood));
+      return;
     }
+
+    // Still essentially where the deck was built from. The card distance
+    // already follows the new fix; the deck itself doesn't need rebuilding.
+    if (metresBetween(at, { lat, lng }) < REFETCH_MOVE_M) return;
+
+    const { index: seen, count } = deckRef.current;
+
+    // Nobody is part-way through — either they haven't started or they've
+    // reached the end — so swapping the deck for their new surroundings is
+    // exactly what they'd want.
+    if (seen === 0 || seen >= count) {
+      runFetch(lat, lng, "Near you", true, categoryFor(deckRef.current.mood), "inline");
+      return;
+    }
+
+    // Mid-deck. Replacing the cards now would pull one out from under a
+    // half-finished swipe and lose their place, so offer the refresh rather
+    // than taking it.
+    setMoved(true);
+  }, [loadNearby, runFetch]);
+
+  const handleFixFailure = useCallback(() => {
+    setTracking(false);
+    // Denial, timeout and position-unavailable alike. It's only a dead end if
+    // we never got a position at all — once a deck is on screen, losing the
+    // signal just means it stops following them, which the header already says.
+    if (!origin.current) setStatus("denied");
   }, []);
 
-  // ── Geolocation on mount ───────────────────────────────────────────────────
   useEffect(() => {
-    let cancelled = false;
-
-    // Been here already this session — skip locating and fetch straight away.
-    const remembered = readStoredOrigin();
-    if (remembered) {
-      loadNearby(remembered.lat, remembered.lng, remembered.label);
-      return () => { cancelled = true; };
-    }
-
     if (!("geolocation" in navigator)) return; // already parked on the picker
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (cancelled) return;
-        loadNearby(pos.coords.latitude, pos.coords.longitude, "Near you");
-      },
-      () => {
-        // Covers denial, timeout and position-unavailable alike — in every
-        // case the user still needs a way through, so we show the region picker
-        // rather than an error dead end.
-        if (!cancelled) setStatus("denied");
-      },
-      // 5s, not 8: past a few seconds a fix usually isn't coming, and the
-      // region picker gets people moving sooner than a longer spinner does.
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 10 * 60 * 1000 }
-    );
+    // Been here already this session — fetch from the remembered spot straight
+    // away, so there's a deck to look at while the first real fix lands.
+    const remembered = readStoredOrigin();
+    if (remembered) {
+      loadNearby(
+        remembered.lat, remembered.lng,
+        remembered.label, remembered.precise ?? false,
+        categoryFor(deckRef.current.mood)
+      );
+    }
 
-    return () => { cancelled = true; };
-  }, [loadNearby]);
+    // watchPosition rather than getCurrentPosition: the deck is meant to
+    // follow the person around Goa, so it keeps listening and reacts when they
+    // actually go somewhere. High accuracy is worth the battery here — the
+    // whole feature is "what's around me right now".
+    const watchId = navigator.geolocation.watchPosition(handleFix, handleFixFailure, {
+      enableHighAccuracy: true,
+      maximumAge: 15000,
+      // Longer than the old one-shot 5s: there's a deck on screen (or the
+      // region picker) either way, so a slow first fix costs nobody anything.
+      timeout: 20000,
+    });
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [loadNearby, handleFix, handleFixFailure]);
 
   // ── Advancing the deck ─────────────────────────────────────────────────────
   const advance = useCallback(() => {
@@ -339,7 +455,7 @@ const DiscoverSwipe = () => {
             <button
               key={key}
               className="ds-region-btn"
-              onClick={() => loadNearby(r.lat, r.lng, r.label, categoryFor(mood))}
+              onClick={() => loadNearby(r.lat, r.lng, r.label, false, categoryFor(mood))}
             >
               {r.label}
             </button>
@@ -363,17 +479,64 @@ const DiscoverSwipe = () => {
 
   const next = places[index + 1];
   const image = current ? current.heroImage || current.gallery?.[0] || null : null;
+
+  // Recomputed against the live fix when we have one, so it counts down as the
+  // person walks; the server's own figure is the fallback for places saved
+  // without coordinates, and for the moments before the first fix arrives.
+  const distanceNow =
+    current && livePos &&
+    typeof current.latitude === "number" && typeof current.longitude === "number"
+      ? metresBetween(livePos, { lat: current.latitude, lng: current.longitude })
+      : current?.distance;
+
   // A card shows its real distance when we have one, and otherwise says which
   // wider net caught it. Never both — the two answer the same question.
   const caption = current
-    ? formatDistance(current.distance) ?? SCOPE_NOTE[scope] ?? null
+    ? formatDistance(distanceNow) ?? SCOPE_NOTE[scope] ?? null
     : null;
 
-  // Past this point the deck is live. The meta row — and the filter button in
-  // it — renders in every branch below: an empty result is exactly when you
-  // most need the filter, so it must not disappear along with the cards.
+  // ── "You are here" ─────────────────────────────────────────────────────────
+  // What the deck is actually showing, phrased so it never overstates: only
+  // the proximity tier gets to claim a radius, and only a real fix gets to say
+  // "you" rather than naming the region that was picked by hand.
+  const hereTitle =
+    scope === "nearby"
+      ? `Within ${SEARCH_RADIUS_M / 1000} km of ${centre?.precise ? "you" : centre?.label ?? "here"}`
+      : SCOPE_NOTE[scope] ?? "Across Goa";
+
+  const atLimit = places.length >= DECK_LIMIT;
+  const hereSub =
+    places.length === 0
+      ? "Nothing curated here yet"
+      : `${places.length}${atLimit ? "+" : ""} ${places.length === 1 ? "place" : "places"}` +
+        (scope === "nearby" ? " · nearest first" : "");
+
+  // Past this point the deck is live. The header and the meta row — and the
+  // filter button in it — render in every branch below: an empty result is
+  // exactly when you most need the filter, so it must not disappear along with
+  // the cards.
   return (
     <div className="ds-shell">
+      {/* Where the deck is anchored, and whether it's still following them. */}
+      <div className="ds-here">
+        <span
+          className={`ds-here-dot${tracking ? " ds-here-dot--live" : ""}`}
+          aria-hidden="true"
+        />
+        <span className="ds-here-copy">
+          <span className="ds-here-title">{hereTitle}</span>
+          <span className="ds-here-sub">
+            {moved ? "You’ve moved since these loaded" : hereSub}
+          </span>
+        </span>
+        {moved && (
+          <button className="ds-here-refresh" onClick={refreshHere} disabled={refetching}>
+            <RefreshCw size={12} strokeWidth={2.4} />
+            Refresh
+          </button>
+        )}
+      </div>
+
       <div className="ds-meta">
         <span className="ds-meta-left">
           <span className="ds-filter" data-ds-filter>

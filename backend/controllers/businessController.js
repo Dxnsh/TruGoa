@@ -86,6 +86,11 @@ const DECK_FIELDS = {
   heroImage: 1, location: 1, rating: 1,
   tagline: 1, description: 1, localTip: 1, bestTime: 1,
   mustTry: 1, priceRange: 1, openingHours: 1, scamAlert: 1,
+  // The deck follows a live position, and the distance $geoNear computes is
+  // measured from wherever the query ran — so it's already stale by the time
+  // someone has walked a street. These let the client recompute it against the
+  // current fix on every update, and cost two numbers per card.
+  latitude: 1, longitude: 1,
 };
 
 // GET /businesses/nearby?lat=&lng=&maxDistance=&limit=&category=
