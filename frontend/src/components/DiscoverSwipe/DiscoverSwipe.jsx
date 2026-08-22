@@ -4,7 +4,7 @@ import {
   Heart, X, Info, MapPin, Star, Loader2, Compass,
   RotateCcw, ArrowLeft, Sparkles, Palmtree, Coffee, UtensilsCrossed,
   BedDouble, Martini, Landmark, Church, ShoppingBag, SlidersHorizontal, Check,
-  RefreshCw,
+  RefreshCw, LocateFixed,
 } from "lucide-react";
 import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
@@ -113,11 +113,14 @@ const storeOrigin = (lat, lng, label, precise) => {
   }
 };
 
+// Returns the bare measurement. What it's measured *from* differs -- the
+// person, or the centre of a region they picked -- and the caller says which,
+// so the wording can't be baked in here.
 const formatDistance = (metres) => {
   if (typeof metres !== "number") return null;
   return metres < 1000
-    ? `${Math.round(metres)} m away`
-    : `${(metres / 1000).toFixed(1)} km away`;
+    ? `${Math.round(metres)} m`
+    : `${(metres / 1000).toFixed(1)} km`;
 };
 
 // How wide the backend had to look before it found anything. Only the
@@ -167,6 +170,11 @@ const DiscoverSwipe = () => {
   // real fix or a region they picked by hand — "within 15 km of you" is only
   // true for the former.
   const [centre, setCentre] = useState(null);
+  // A retry is in flight, and whether the browser refused outright. A refusal
+  // can't be fixed by asking again — once someone blocks the site the prompt
+  // never reappears — so it needs saying rather than silently doing nothing.
+  const [retrying, setRetrying] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const origin = useRef(null);
   // The remembered-origin fetch on mount and the one triggered by the first
   // real fix can be in flight at once, and they don't necessarily come back in
@@ -250,6 +258,32 @@ const DiscoverSwipe = () => {
     const at = origin.current;
     if (!at) return;
     await runFetch(at.lat, at.lng, at.label, at.precise, categoryFor(key), "inline");
+  }, [runFetch]);
+
+  // Asks for a position on demand. The watch below covers the normal case, but
+  // once it has failed it stays failed: nothing retries, and a visitor who
+  // denied by reflex or was somewhere with no signal has no way back to the
+  // thing the deck is actually for. This gives them one.
+  const useMyLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) return;
+    setRetrying(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setRetrying(false);
+        setBlocked(false);
+        setLivePos({ lat, lng });
+        setTracking(true);
+        runFetch(lat, lng, "Near you", true, categoryFor(deckRef.current.mood), "full");
+      },
+      (err) => {
+        setRetrying(false);
+        // PERMISSION_DENIED (1) is the one worth calling out — a timeout or a
+        // missing fix is worth trying again, a block is not.
+        setBlocked(err && err.code === 1);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   }, [runFetch]);
 
   // "You've moved — refresh": rebuilds the deck from wherever they are now.
@@ -446,15 +480,34 @@ const DiscoverSwipe = () => {
     return (
       <div className="ds-shell ds-shell--state">
         <Compass size={26} strokeWidth={1.5} className="ds-state-icon" />
-        <p className="ds-state-title">Where shall we look?</p>
+        <p className="ds-state-title">Where are you?</p>
         <p className="ds-state-sub">
-          We couldn&rsquo;t read your location. Pick a coast and we&rsquo;ll start there.
+          {blocked
+            ? "Your browser is blocking location for this site. Allow it from the padlock in the address bar, then try again."
+            : "This deck is built around wherever you're standing — we just need your location to read it."}
         </p>
+
+        {/* The point of the feature, so it leads. Picking a coast is the
+            consolation prize: it anchors the deck to a fixed centroid, which
+            can't tell you what's near you and won't say a distance. */}
         <div className="ds-region-picker">
+          <button
+            className="ds-region-btn ds-region-btn--solid"
+            onClick={useMyLocation}
+            disabled={retrying}
+          >
+            {retrying
+              ? <><Loader2 className="ds-spin" size={14} strokeWidth={2} /> Finding you</>
+              : <><LocateFixed size={14} strokeWidth={2} /> Use my location</>}
+          </button>
+        </div>
+
+        <p className="ds-state-hint">or browse a coast &mdash; without distances</p>
+        <div className="ds-region-picker ds-region-picker--tight">
           {Object.entries(REGION_CENTRES).map(([key, r]) => (
             <button
               key={key}
-              className="ds-region-btn"
+              className="ds-region-btn ds-region-btn--quiet"
               onClick={() => loadNearby(r.lat, r.lng, r.label, false, categoryFor(mood))}
             >
               {r.label}
@@ -481,19 +534,43 @@ const DiscoverSwipe = () => {
   const image = current ? current.heroImage || current.gallery?.[0] || null : null;
 
   // Recomputed against the live fix when we have one, so it counts down as the
-  // person walks; the server's own figure is the fallback for places saved
+  // person walks. The server's own figure is the fallback for places saved
   // without coordinates, and for the moments before the first fix arrives.
-  const distanceNow =
+  const liveDistance =
     current && livePos &&
     typeof current.latitude === "number" && typeof current.longitude === "number"
       ? metresBetween(livePos, { lat: current.latitude, lng: current.longitude })
-      : current?.distance;
+      : null;
 
-  // A card shows its real distance when we have one, and otherwise says which
-  // wider net caught it. Never both — the two answer the same question.
-  const caption = current
-    ? formatDistance(distanceNow) ?? SCOPE_NOTE[scope] ?? null
-    : null;
+  const serverDistance = typeof current?.distance === "number" ? current.distance : null;
+  const distanceNow = liveDistance ?? serverDistance;
+
+  // Whether that number was measured from the person or from somewhere else.
+  // A live fix is their own position by definition. The server's figure is
+  // measured from wherever the deck was anchored, which is only them when that
+  // came from a real fix — pick "North Goa" while standing in the south and
+  // $geoNear measures from the middle of North Goa, so a place an hour's drive
+  // away comes back as 2 km.
+  const fromUser = liveDistance !== null || Boolean(centre?.precise);
+
+  // A card shows its distance when we have one, and otherwise says which wider
+  // net caught it. Never both — the two answer the same question.
+  //
+  // A measurement taken from a picked region is dropped rather than relabelled.
+  // The origin is a fixed centroid — North Goa's sits near Assagao — so the
+  // number is the distance from a point the reader never chose and cannot see.
+  // Several places cluster within a few kilometres of it, which puts a row of
+  // "3.5 km" captions in front of someone standing an hour's drive south, and
+  // naming the origin doesn't stop that reading as "everything is close".
+  // Where they are is the only origin that makes a distance worth printing.
+  const measured = formatDistance(distanceNow);
+  const caption = !current
+    ? null
+    : fromUser && measured
+    ? `${measured} away`
+    : centre && !centre.precise
+    ? `In ${centre.label}`
+    : SCOPE_NOTE[scope] ?? null;
 
   // ── "You are here" ─────────────────────────────────────────────────────────
   // What the deck is actually showing, phrased so it never overstates: only
@@ -529,12 +606,20 @@ const DiscoverSwipe = () => {
             {moved ? "You’ve moved since these loaded" : hereSub}
           </span>
         </span>
-        {moved && (
+        {moved ? (
           <button className="ds-here-refresh" onClick={refreshHere} disabled={refetching}>
             <RefreshCw size={12} strokeWidth={2.4} />
             Refresh
           </button>
-        )}
+        ) : centre && !centre.precise ? (
+          // Anchored to a picked coast. Without this the only way back to a
+          // real position is a page reload, so anyone who tapped a region once
+          // stays on centroid results for the rest of the session.
+          <button className="ds-here-refresh" onClick={useMyLocation} disabled={retrying}>
+            <LocateFixed size={12} strokeWidth={2.4} />
+            {retrying ? "Finding" : "Use my location"}
+          </button>
+        ) : null}
       </div>
 
       <div className="ds-meta">

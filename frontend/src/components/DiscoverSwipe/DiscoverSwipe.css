@@ -72,6 +72,29 @@
 }
 .ds-region-btn--solid:hover { background: var(--ds-accent-dark); border-color: var(--ds-accent-dark); }
 
+/* Separates the real answer (use my location) from the fallback beneath it,
+   so the two don't read as equal choices. */
+.ds-state-hint {
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+.ds-region-picker--tight { margin-top: 8px; }
+
+/* Quieter than the default pill — browsing a coast is the consolation path. */
+.ds-region-btn--quiet {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  border-width: 1px;
+  color: var(--color-text-body);
+}
+.ds-region-btn--quiet:hover { border-color: var(--ds-ink); color: var(--ds-ink); }
+
+.ds-region-btn:disabled { opacity: 0.6; cursor: default; }
+.ds-region-btn:disabled:hover { border-color: var(--ds-accent); }
+
 /* ── "You are here" header ──
    Says what the deck is anchored to and whether it's still following the
    person. Unlike .ds-meta this stays visible at every width — on desktop it's
