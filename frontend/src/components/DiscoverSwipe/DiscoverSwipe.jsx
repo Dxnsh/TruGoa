@@ -197,6 +197,11 @@ const DiscoverSwipe = () => {
   // never reappears — so it needs saying rather than silently doing nothing.
   const [retrying, setRetrying] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  // "unavailable" | "timeout" | null. A refusal and a phone that simply can't
+  // get a fix are different problems with different fixes, and saying
+  // "we couldn't read your location" to both sends half of them to check a
+  // permission that was never the issue.
+  const [geoIssue, setGeoIssue] = useState(null);
   const origin = useRef(null);
   // The remembered-origin fetch on mount and the one triggered by the first
   // real fix can be in flight at once, and they don't necessarily come back in
@@ -294,15 +299,21 @@ const DiscoverSwipe = () => {
         const { latitude: lat, longitude: lng } = pos.coords;
         setRetrying(false);
         setBlocked(false);
+        setGeoIssue(null);
         setLivePos({ lat, lng });
         setTracking(true);
         runFetch(lat, lng, "Near you", true, categoryFor(deckRef.current.mood), "full");
       },
       (err) => {
         setRetrying(false);
-        // PERMISSION_DENIED (1) is the one worth calling out — a timeout or a
-        // missing fix is worth trying again, a block is not.
-        setBlocked(err && err.code === 1);
+        // 1 PERMISSION_DENIED — the site or the browser refused; asking again
+        //   changes nothing until a setting does.
+        // 2 POSITION_UNAVAILABLE — permission was fine, the fix wasn't: the
+        //   phone's location is off, or there's nothing to lock onto.
+        // 3 TIMEOUT — nothing wrong, just slow. Worth another go.
+        const code = err?.code;
+        setBlocked(code === 1);
+        setGeoIssue(code === 2 ? "unavailable" : code === 3 ? "timeout" : null);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -396,8 +407,11 @@ const DiscoverSwipe = () => {
     setMoved(true);
   }, [loadNearby, runFetch]);
 
-  const handleFixFailure = useCallback(() => {
+  const handleFixFailure = useCallback((err) => {
     setTracking(false);
+    const code = err?.code;
+    if (code === 1) setBlocked(true);
+    else setGeoIssue(code === 2 ? "unavailable" : code === 3 ? "timeout" : null);
     // Denial, timeout and position-unavailable alike. It's only a dead end if
     // we never got a position at all — once a deck is on screen, losing the
     // signal just means it stops following them, which the header already says.
@@ -548,7 +562,11 @@ const DiscoverSwipe = () => {
         <Compass size={26} strokeWidth={1.5} className="ds-state-icon" />
         <p className="ds-state-title">Where are you?</p>
         <p className="ds-state-sub">
-          {!blocked
+          {blocked === false && geoIssue === "unavailable"
+            ? "Your phone couldn’t get a fix. Check Location is switched on in its own settings — permission for this site is fine."
+            : blocked === false && geoIssue === "timeout"
+            ? "That took too long. Try again — a fix comes quicker outdoors or by a window."
+            : !blocked
             ? "This deck is built around wherever you're standing — we just need your location to read it."
             : isInAppBrowser
             ? "This app’s built-in browser won’t share your location. Tap ⋮ at the top and choose “Open in Chrome”."
