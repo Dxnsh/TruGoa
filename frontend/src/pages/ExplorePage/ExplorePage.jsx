@@ -35,6 +35,7 @@ const CATEGORY_FILTERS = {
   stays:     (b) => isCategory(b, ["hotel", "resort", "homestay", "stay"]),
   hidden:    (b) => hasTag(b, "hidden"),
   nightlife: (b) => isCategory(b, ["nightlife"]),
+  temples:   (b) => isCategory(b, ["spiritual"]),
 };
 
 // The whole hero — artwork and words — is dressed per category, so picking a
@@ -76,6 +77,12 @@ const CATEGORY_HEROES = {
     eyebrow: "Hidden Goa",
     title: "The Goa that isn't\non the map.",
     sub: "Back lanes and quiet corners you'd only find if a local pointed you there.",
+  },
+  temples: {
+    ...DEFAULT_HERO,
+    eyebrow: "Temples & Holy Places",
+    title: "Where Goa goes\nquiet.",
+    sub: "Hilltop temples, whitewashed churches and roadside shrines — the older Goa, still in daily use.",
   },
   nightlife: {
     src: "/images/drinks.jpg",

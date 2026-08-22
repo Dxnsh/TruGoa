@@ -1,6 +1,6 @@
 import {
   Utensils, Waves, Coffee, Compass,
-  ShoppingBag, Hotel, MapPin, Moon, Landmark,
+  ShoppingBag, Hotel, MapPin, Moon, Landmark, Church,
 } from "lucide-react";
 
 // Maps a raw MongoDB Business document → clean frontend object
@@ -19,6 +19,7 @@ export const mapBusiness = (biz, index) => {
     beach:      <Waves     size={24} />,
     nightlife:  <Moon      size={24} />,
     heritage:   <Landmark  size={24} />,
+    spiritual:  <Church    size={24} />,
     general:    <MapPin    size={24} />,
   };
 

@@ -18,6 +18,7 @@ const businessSchema = new mongoose.Schema({
       "activity",
       "market",
       "heritage",
+      "spiritual",   // temples, churches, chapels, mosques, shrines
       "nightlife",
     ],
   },

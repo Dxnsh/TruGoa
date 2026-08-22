@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Heart, X, Info, MapPin, Star, Loader2, Compass,
   RotateCcw, ArrowLeft, Sparkles, Palmtree, Coffee, UtensilsCrossed,
-  BedDouble, Martini, Landmark, ShoppingBag, SlidersHorizontal, Check,
+  BedDouble, Martini, Landmark, Church, ShoppingBag, SlidersHorizontal, Check,
 } from "lucide-react";
 import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
@@ -30,6 +30,7 @@ const MOODS = [
   { key: "stay",      label: "Stays",        category: "hotel,stay", Icon: BedDouble },
   { key: "nightlife", label: "Nightlife",    category: "nightlife",  Icon: Martini },
   { key: "heritage",  label: "Heritage",     category: "heritage",   Icon: Landmark },
+  { key: "temples",   label: "Temples",      category: "spiritual",  Icon: Church },
   { key: "market",    label: "Markets",      category: "market",     Icon: ShoppingBag },
   { key: "activity",  label: "Things to do", category: "activity",   Icon: Compass },
 ];
