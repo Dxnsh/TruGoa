@@ -113,11 +113,14 @@ const storeOrigin = (lat, lng, label, precise) => {
   }
 };
 
+// Returns the bare measurement. What it's measured *from* differs -- the
+// person, or the centre of a region they picked -- and the caller says which,
+// so the wording can't be baked in here.
 const formatDistance = (metres) => {
   if (typeof metres !== "number") return null;
   return metres < 1000
-    ? `${Math.round(metres)} m away`
-    : `${(metres / 1000).toFixed(1)} km away`;
+    ? `${Math.round(metres)} m`
+    : `${(metres / 1000).toFixed(1)} km`;
 };
 
 // How wide the backend had to look before it found anything. Only the
@@ -481,19 +484,35 @@ const DiscoverSwipe = () => {
   const image = current ? current.heroImage || current.gallery?.[0] || null : null;
 
   // Recomputed against the live fix when we have one, so it counts down as the
-  // person walks; the server's own figure is the fallback for places saved
+  // person walks. The server's own figure is the fallback for places saved
   // without coordinates, and for the moments before the first fix arrives.
-  const distanceNow =
+  const liveDistance =
     current && livePos &&
     typeof current.latitude === "number" && typeof current.longitude === "number"
       ? metresBetween(livePos, { lat: current.latitude, lng: current.longitude })
-      : current?.distance;
+      : null;
 
-  // A card shows its real distance when we have one, and otherwise says which
-  // wider net caught it. Never both — the two answer the same question.
-  const caption = current
-    ? formatDistance(distanceNow) ?? SCOPE_NOTE[scope] ?? null
-    : null;
+  const serverDistance = typeof current?.distance === "number" ? current.distance : null;
+  const distanceNow = liveDistance ?? serverDistance;
+
+  // Whether that number was measured from the person or from somewhere else.
+  // A live fix is their own position by definition. The server's figure is
+  // measured from wherever the deck was anchored, which is only them when that
+  // came from a real fix — pick "North Goa" while standing in the south and
+  // $geoNear measures from the middle of North Goa, so a place an hour's drive
+  // away comes back as 2 km.
+  const fromUser = liveDistance !== null || Boolean(centre?.precise);
+
+  // A card shows its distance when we have one, and otherwise says which wider
+  // net caught it. Never both — the two answer the same question. When the
+  // measurement isn't from the person it names its origin instead of saying
+  // "away", which would be a straightforward lie about how far they'd travel.
+  const measured = formatDistance(distanceNow);
+  const caption = !current
+    ? null
+    : measured
+    ? (fromUser ? `${measured} away` : `${measured} from ${centre?.label ?? "here"}`)
+    : SCOPE_NOTE[scope] ?? null;
 
   // ── "You are here" ─────────────────────────────────────────────────────────
   // What the deck is actually showing, phrased so it never overstates: only
