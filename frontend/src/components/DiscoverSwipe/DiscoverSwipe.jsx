@@ -50,6 +50,15 @@ const MOODS = [
   { key: "activity",  label: "Things to do", category: "activity",   Icon: Compass },
 ];
 
+// Facebook, Messenger, Instagram and the like render pages inside their own
+// webview, which commonly refuses geolocation whatever the site's permission
+// says. There's no fixing that from within the page — or from site settings,
+// which is why pointing someone there sends them somewhere that cannot help.
+// Leaving the webview is the only route, so that's the only thing worth saying.
+const IN_APP_BROWSER = /\b(FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|Snapchat|Twitter|Pinterest|GSA)\b|;\s*wv\)/i;
+const isInAppBrowser =
+  typeof navigator !== "undefined" && IN_APP_BROWSER.test(navigator.userAgent || "");
+
 const categoryFor = (key) => MOODS.find((m) => m.key === key)?.category ?? null;
 const labelFor    = (key) => MOODS.find((m) => m.key === key)?.label ?? "places";
 
@@ -539,9 +548,11 @@ const DiscoverSwipe = () => {
         <Compass size={26} strokeWidth={1.5} className="ds-state-icon" />
         <p className="ds-state-title">Where are you?</p>
         <p className="ds-state-sub">
-          {blocked
-            ? "Location is switched off for this site. If you opened this from inside another app, tap ⋮ and choose “Open in Chrome” — in-app browsers usually refuse location outright. Otherwise turn Location on for trugoa.in in your browser’s site settings."
-            : "This deck is built around wherever you're standing — we just need your location to read it."}
+          {!blocked
+            ? "This deck is built around wherever you're standing — we just need your location to read it."
+            : isInAppBrowser
+            ? "This app’s built-in browser won’t share your location. Tap ⋮ at the top and choose “Open in Chrome”."
+            : "Location is switched off for this site. Turn it on for trugoa.in in your browser’s site settings, then try again."}
         </p>
 
         {/* The point of the feature, so it leads. Picking a coast is the
