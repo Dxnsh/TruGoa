@@ -264,7 +264,7 @@ const DiscoverSwipe = () => {
   // once it has failed it stays failed: nothing retries, and a visitor who
   // denied by reflex or was somewhere with no signal has no way back to the
   // thing the deck is actually for. This gives them one.
-  const useMyLocation = useCallback(() => {
+  const requestLocation = useCallback(() => {
     if (!("geolocation" in navigator)) return;
     setRetrying(true);
     navigator.geolocation.getCurrentPosition(
@@ -291,6 +291,37 @@ const DiscoverSwipe = () => {
     if (!livePos) return;
     await runFetch(livePos.lat, livePos.lng, "Near you", true, categoryFor(mood), "inline");
   }, [livePos, mood, runFetch]);
+
+  // A denial is remembered per-site and the prompt never reappears, so asking
+  // again achieves nothing until the setting itself changes. Reading the
+  // permission up front lets the screen say so immediately, instead of after a
+  // tap that appears to do nothing — and the change event brings someone
+  // straight back the moment they fix it, with no reload.
+  useEffect(() => {
+    if (!navigator.permissions?.query) return; // older Safari — nothing to read
+    let live = null;
+    let cancelled = false;
+
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((permission) => {
+        if (cancelled) return;
+        live = permission;
+        setBlocked(permission.state === "denied");
+        permission.onchange = () => {
+          setBlocked(permission.state === "denied");
+          if (permission.state === "granted") requestLocation();
+        };
+      })
+      .catch(() => {
+        /* some browsers reject the geolocation descriptor — the tap still works */
+      });
+
+    return () => {
+      cancelled = true;
+      if (live) live.onchange = null;
+    };
+  }, [requestLocation]);
 
   // ── Live position tracking ─────────────────────────────────────────────────
   const handleFix = useCallback((pos) => {
@@ -483,7 +514,7 @@ const DiscoverSwipe = () => {
         <p className="ds-state-title">Where are you?</p>
         <p className="ds-state-sub">
           {blocked
-            ? "Your browser is blocking location for this site. Allow it from the padlock in the address bar, then try again."
+            ? "Location is switched off for this site. If you opened this from inside another app, tap ⋮ and choose “Open in Chrome” — in-app browsers usually refuse location outright. Otherwise turn Location on for trugoa.in in your browser’s site settings."
             : "This deck is built around wherever you're standing — we just need your location to read it."}
         </p>
 
@@ -493,7 +524,7 @@ const DiscoverSwipe = () => {
         <div className="ds-region-picker">
           <button
             className="ds-region-btn ds-region-btn--solid"
-            onClick={useMyLocation}
+            onClick={requestLocation}
             disabled={retrying}
           >
             {retrying
@@ -615,7 +646,7 @@ const DiscoverSwipe = () => {
           // Anchored to a picked coast. Without this the only way back to a
           // real position is a page reload, so anyone who tapped a region once
           // stays on centroid results for the rest of the session.
-          <button className="ds-here-refresh" onClick={useMyLocation} disabled={retrying}>
+          <button className="ds-here-refresh" onClick={requestLocation} disabled={retrying}>
             <LocateFixed size={12} strokeWidth={2.4} />
             {retrying ? "Finding" : "Use my location"}
           </button>
