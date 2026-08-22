@@ -18,8 +18,8 @@ export const createBusinessRules = [
   body("category").isString().trim().toLowerCase().isIn(BUSINESS_CATEGORIES).withMessage("Invalid category"),
   body("area").optional().isIn(BUSINESS_AREAS),
   body("priceLevel").optional().isIn(PRICE_LEVELS),
-  body("latitude").optional().isFloat(),
-  body("longitude").optional().isFloat(),
+  body("latitude").optional({ values: "null" }).isFloat(),
+  body("longitude").optional({ values: "null" }).isFloat(),
   body("highlights").optional().isArray(),
   body("mustTry").optional().isArray(),
   body("idealFor").optional().isArray(),
@@ -36,8 +36,8 @@ export const updateBusinessRules = [
   body("category").optional().isString().trim().toLowerCase().isIn(BUSINESS_CATEGORIES).withMessage("Invalid category"),
   body("area").optional().isIn(BUSINESS_AREAS),
   body("priceLevel").optional().isIn(PRICE_LEVELS),
-  body("latitude").optional().isFloat(),
-  body("longitude").optional().isFloat(),
+  body("latitude").optional({ values: "null" }).isFloat(),
+  body("longitude").optional({ values: "null" }).isFloat(),
 ];
 
 export const businessIdParamRules = [
