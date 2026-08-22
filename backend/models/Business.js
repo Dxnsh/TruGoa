@@ -157,25 +157,55 @@ businessSchema.pre("save", function () {
   }
 });
 
+// A coordinate can arrive as a number or as a numeric string depending on
+// which form saved it, and the schema casts strings on the way in either way.
+// Treating a string as "no coordinates" would store the pin and drop the point
+// that makes it findable — the listing would look correct and match nothing.
+const asNumber = (value) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 // The admin dashboard saves via findByIdAndUpdate, which skips document
 // middleware entirely, so the same sync has to be repeated for update queries.
-businessSchema.pre(["findOneAndUpdate", "updateOne"], function () {
+businessSchema.pre(["findOneAndUpdate", "updateOne", "updateMany"], function () {
   const update = this.getUpdate();
-  if (!update) return;
+  // An aggregation-pipeline update states its own $set stages; rewriting one
+  // here would corrupt it.
+  if (!update || Array.isArray(update)) return;
 
-  const $set = update.$set || update;
-  const lat = $set.latitude;
-  const lng = $set.longitude;
-  if (lat === undefined && lng === undefined) return;
+  // Both bags have to be read. The admin controller passes plain top-level
+  // fields, but Mongoose's timestamps plugin gets here first and adds a $set
+  // of its own for updatedAt — so `update.$set` exists while the coordinates
+  // sit outside it. Reading only $set found nothing, returned early, and left
+  // geo unset: the listing saved its latitude and longitude and stayed
+  // invisible to every proximity search, which is exactly what it looked like
+  // in the data.
+  const $set = update.$set || {};
+  const sentLat = $set.latitude !== undefined ? $set.latitude : update.latitude;
+  const sentLng = $set.longitude !== undefined ? $set.longitude : update.longitude;
+  if (sentLat === undefined && sentLng === undefined) return;
 
-  if (typeof lat === "number" && typeof lng === "number") {
-    $set.geo = { type: "Point", coordinates: [lng, lat] };
+  const lat = asNumber(sentLat);
+  const lng = asNumber(sentLng);
+
+  // Mongoose folds stray top-level fields into $set while casting, so writing
+  // the point there keeps the whole update in one shape.
+  update.$set = $set;
+
+  if (lat !== null && lng !== null) {
+    update.$set.geo = { type: "Point", coordinates: [lng, lat] };
   } else {
     // Assigning undefined here looks like it clears the point, but Mongoose
     // strips undefined out while casting the update — so the old geo survived
     // and the listing kept matching $geoNear at coordinates it no longer
     // claimed. $unset is the only thing that actually removes it.
-    delete $set.geo;
+    delete update.$set.geo;
+    delete update.geo;
     update.$unset = { ...update.$unset, geo: "" };
   }
   this.setUpdate(update);
