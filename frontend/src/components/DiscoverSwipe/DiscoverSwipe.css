@@ -334,6 +334,7 @@
   text-transform: uppercase;
   padding: 6px 12px;
   border-radius: var(--radius-pill);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 .ds-card-cat { left: 14px; background: rgba(229,80,42,0.92); color: #fff; }
@@ -349,6 +350,7 @@
   padding: 5px 11px;
   border-radius: var(--radius-pill);
   background: rgba(10,20,14,0.55);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   color: rgba(255,255,255,0.95);
   font-size: 11px;
@@ -394,6 +396,7 @@
   position: absolute;
   inset: 0;
   background: rgba(12,22,16,0.97);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   padding: 46px 20px 22px;
   overflow-y: auto;
