@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Heart, X, Info, MapPin, Star, Loader2, Compass,
+  Heart, X, Info, MapPin, Loader2, Compass,
   RotateCcw, ArrowLeft, Sparkles, Palmtree, Coffee, UtensilsCrossed,
   BedDouble, Martini, Landmark, Church, ShoppingBag, SlidersHorizontal, Check,
   RefreshCw, LocateFixed,
@@ -841,23 +841,20 @@ const DiscoverSwipe = () => {
           <div className="ds-card-scrim" />
 
           <span className="ds-card-cat">{current.category}</span>
+          {/* Directly under the category, where it reads as a property of the
+              place rather than as the last line of a paragraph about it. */}
+          {caption && <span className="ds-card-near">{caption}</span>}
           {current.verified && <span className="ds-card-verified">Verified</span>}
 
+          {/* Name and location only. Everything else the card used to carry —
+              rating, tagline — is a swipe away behind the "i" button, and the
+              photo does more work without text competing with it. */}
           <div className="ds-card-body">
             <h3 className="ds-card-name">{current.name}</h3>
             <div className="ds-card-line">
               <MapPin size={12} strokeWidth={2} />
               <span>{current.location}</span>
-              {current.rating > 0 && (
-                <span className="ds-card-rating">
-                  <Star size={12} fill="currentColor" strokeWidth={0} /> {current.rating.toFixed(1)}
-                </span>
-              )}
             </div>
-            {caption && <p className="ds-card-distance">{caption}</p>}
-            <p className="ds-card-desc">
-              {current.tagline || current.description || "A place worth your time."}
-            </p>
           </div>
 
           {/* Detail panel — the "i" button reveals what the card can't show */}
