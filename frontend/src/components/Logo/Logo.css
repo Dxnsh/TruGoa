@@ -1,0 +1,30 @@
+/* TruGoa lockup — mark + wordmark.
+   The wordmark is live text rather than paths so it renders with the site's
+   own font stack and stays selectable and searchable. --font-body is the
+   geometric sans here; --font-display is a serif and would read as a
+   different brand entirely. */
+
+.tg-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tg-logo-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
+.tg-logo-word {
+  font-family: var(--font-body);
+  font-weight: 700;
+  /* Sized against the mark rather than fixed, so one `size` prop scales the
+     whole lockup and the two halves keep their proportions. */
+  font-size: 0.82em;
+  letter-spacing: 0.01em;
+  color: #12372A;
+  /* The cap-height sits a touch high against the mark's optical centre. */
+  transform: translateY(0.02em);
+}

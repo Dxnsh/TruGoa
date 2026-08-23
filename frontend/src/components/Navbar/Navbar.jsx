@@ -6,6 +6,7 @@ import useIsMobile from "../../hooks/useIsMobile";
 import LoginModal from "../LoginModal/LoginModal";
 import MobileMenu from "../MobileMenu/MobileMenu";
 import { Map, Bot, Route, Compass, Menu, Heart, LogOut } from "lucide-react";
+import Logo from "../Logo/Logo";
 
 const NAV_LINKS = [
   { label: "Explore",     path: "/explore",              icon: <Compass size={16} strokeWidth={2} /> },
@@ -73,16 +74,9 @@ const Navbar = () => {
             navigate("/");
           }
       }}
-      style={{
-        fontFamily: theme.typography.fontDisplay,
-        fontWeight: theme.typography.weightBlack,
-        fontSize: isMobile ? 20 : 22,
-        cursor: "pointer",
-        letterSpacing: "-0.5px",
-      }}
+      style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
     >
-      <span style={{ color: theme.colors.secondary }}>Tru</span>
-      <span style={{ color: theme.colors.primary }}>Goa</span>
+      <Logo size={isMobile ? 26 : 30} />
     </div>
 
       {/* RIGHT SIDE */}

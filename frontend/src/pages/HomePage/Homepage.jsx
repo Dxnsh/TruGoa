@@ -11,6 +11,7 @@ import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
 import { CATEGORIES } from "../../constants/categories";
 import DiscoverSwipe from "../../components/DiscoverSwipe/DiscoverSwipe";
+import Logo from "../../components/Logo/Logo";
 import { getBusinesses, getStories } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
@@ -168,10 +169,7 @@ const Homepage = () => {
             </button>
 
             <div className="hd-logo-block">
-              <span className="hd-eyebrow">Discover</span>
-              <span className="hd-logo">
-                <span className="hd-logo-tru">Tru</span><span className="hd-logo-goa">Goa</span>
-              </span>
+              <Logo size={30} />
             </div>
 
             <div className="hd-header-actions">
