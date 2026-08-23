@@ -159,17 +159,20 @@ const Homepage = () => {
             Navbar covers this, so rendering both would duplicate the logo. */}
         {isMobile && (
           <div className="hd-header">
-            <button
-              className="hd-icon-btn"
-              onClick={() => setShowMobileMenu(true)}
-              aria-label="Open menu"
-              aria-expanded={showMobileMenu}
-            >
-              <Menu size={20} strokeWidth={2} />
-            </button>
+            {/* Menu and logo travel together on the left; the actions hold the
+                right edge. Centring the logo left it drifting as the actions
+                changed width between signed-in and signed-out. */}
+            <div className="hd-header-left">
+              <button
+                className="hd-icon-btn"
+                onClick={() => setShowMobileMenu(true)}
+                aria-label="Open menu"
+                aria-expanded={showMobileMenu}
+              >
+                <Menu size={20} strokeWidth={2} />
+              </button>
 
-            <div className="hd-logo-block">
-              <Logo size={30} />
+              <Logo size={28} />
             </div>
 
             <div className="hd-header-actions">
