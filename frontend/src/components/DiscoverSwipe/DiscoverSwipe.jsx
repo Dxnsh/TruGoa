@@ -59,6 +59,15 @@ const IN_APP_BROWSER = /\b(FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|Snapch
 const isInAppBrowser =
   typeof navigator !== "undefined" && IN_APP_BROWSER.test(navigator.userAgent || "");
 
+// Getting out of a webview, and turning a site permission back on, are done in
+// completely different places on the two platforms — there is no "Open in
+// Chrome" and no address-bar padlock on an iPhone. iPadOS reports itself as a
+// Mac, so the touch-point count is what separates it from a desktop Safari.
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
 const categoryFor = (key) => MOODS.find((m) => m.key === key)?.category ?? null;
 const labelFor    = (key) => MOODS.find((m) => m.key === key)?.label ?? "places";
 
@@ -348,8 +357,18 @@ const DiscoverSwipe = () => {
     let live = null;
     let cancelled = false;
 
-    navigator.permissions
-      .query({ name: "geolocation" })
+    // Safari exposes the Permissions API but rejects the geolocation
+    // descriptor, and some builds throw synchronously rather than returning a
+    // rejected promise — which would escape the .catch below and take the
+    // effect (and the deck) down with it.
+    let query;
+    try {
+      query = navigator.permissions.query({ name: "geolocation" });
+    } catch {
+      return; // nothing readable here; the button still works
+    }
+
+    query
       .then((permission) => {
         if (cancelled) return;
         live = permission;
@@ -569,7 +588,11 @@ const DiscoverSwipe = () => {
             : !blocked
             ? "This deck is built around wherever you're standing — we just need your location to read it."
             : isInAppBrowser
-            ? "This app’s built-in browser won’t share your location. Tap ⋮ at the top and choose “Open in Chrome”."
+            ? isIOS
+              ? "This app’s built-in browser won’t share your location. Tap the share icon and choose “Open in Safari”."
+              : "This app’s built-in browser won’t share your location. Tap ⋮ at the top and choose “Open in Chrome”."
+            : isIOS
+            ? "Location is switched off for this site. Check Settings › Privacy › Location Services is on and your browser is allowed. In Safari you can also tap “AA” in the address bar → Website Settings → Location."
             : "Location is switched off for this site. Turn it on for trugoa.in in your browser’s site settings, then try again."}
         </p>
 
