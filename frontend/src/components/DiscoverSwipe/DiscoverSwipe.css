@@ -97,8 +97,8 @@
 
 /* ── "You are here" header ──
    Says what the deck is anchored to and whether it's still following the
-   person. Mobile only, like .ds-meta — see the media query below, which keeps
-   it on desktop just when it's carrying a button. */
+   person, and the mood filter on its right. Mobile only — see the media query
+   below, which keeps it on desktop just when it's carrying a button. */
 .ds-here {
   display: flex;
   align-items: center;
@@ -174,31 +174,18 @@
 .ds-here-refresh:hover:not(:disabled) { background: var(--ds-accent-dark); }
 .ds-here-refresh:disabled { opacity: 0.55; cursor: default; }
 
-/* ── Deck header ── */
-.ds-meta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-  padding: 0 4px;
-}
-
-/* ── Mood filter ── */
-.ds-meta-left {
+/* ── Mood filter — lives on the right of the header bar ── */
+.ds-filter {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  flex-shrink: 0;
 }
 
-.ds-filter { position: relative; display: inline-flex; }
-
-/* Desktop drops the filter entirely. From 900px up the deck sits in the
-   homepage's two-column hero, where Explore's own category filters are a
-   click away — and the meta row holds nothing else, so it goes with it
-   rather than leaving an empty strip above the cards. */
+/* From 900px up the deck sits in the homepage's two-column hero, where
+   Explore's own category filters are a click away, so the bar goes — taking
+   the filter with it. It stays when it has a button to offer; see the note in
+   the component. */
 @media (min-width: 900px) {
-  .ds-meta { display: none; }
-  /* Status only, no button to offer — nothing a desktop reader needs. */
   .ds-here--info { display: none; }
 }
 
@@ -219,6 +206,9 @@
   transition: var(--transition-fast);
 }
 .ds-filter-btn:hover:not(:disabled) { border-color: var(--ds-ink); }
+/* Sits on --color-bg-surface now rather than the page, so it keeps the card
+   background to stay distinguishable from the bar it's inside. */
+.ds-here .ds-filter-btn { padding: 6px 10px; }
 .ds-filter-btn:disabled { opacity: 0.55; cursor: default; }
 .ds-filter-btn--on {
   background: var(--ds-ink);
