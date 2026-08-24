@@ -97,8 +97,8 @@
 
 /* ── "You are here" header ──
    Says what the deck is anchored to and whether it's still following the
-   person. Unlike .ds-meta this stays visible at every width — on desktop it's
-   the only thing telling you the cards are keyed to your position. */
+   person. Mobile only, like .ds-meta — see the media query below, which keeps
+   it on desktop just when it's carrying a button. */
 .ds-here {
   display: flex;
   align-items: center;
@@ -198,6 +198,8 @@
    rather than leaving an empty strip above the cards. */
 @media (min-width: 900px) {
   .ds-meta { display: none; }
+  /* Status only, no button to offer — nothing a desktop reader needs. */
+  .ds-here--info { display: none; }
 }
 
 .ds-filter-btn {
