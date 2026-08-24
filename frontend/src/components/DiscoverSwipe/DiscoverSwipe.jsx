@@ -703,8 +703,13 @@ const DiscoverSwipe = () => {
   // the cards.
   return (
     <div className="ds-shell">
-      {/* Where the deck is anchored, and whether it's still following them. */}
-      <div className="ds-here">
+      {/* Where the deck is anchored, and whether it's still following them.
+          Desktop drops this the way it drops the filter row -- the deck sits in
+          the homepage's two-column hero there and doesn't need a status line.
+          It stays when it's carrying a button, though: hiding it outright would
+          take "Use my location" with it and leave a desktop visitor who picked
+          a coast with no way back to a real position short of a reload. */}
+      <div className={`ds-here${moved || (centre && !centre.precise) ? "" : " ds-here--info"}`}>
         <span
           className={`ds-here-dot${tracking ? " ds-here-dot--live" : ""}`}
           aria-hidden="true"
