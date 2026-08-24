@@ -178,7 +178,7 @@
 .ds-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   margin-bottom: 12px;
   padding: 0 4px;
 }
@@ -227,7 +227,7 @@
 .ds-filter-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   z-index: 20;
   min-width: 172px;
   display: flex;
