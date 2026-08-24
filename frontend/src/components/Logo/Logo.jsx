@@ -27,7 +27,6 @@ const Logo = ({ size = 28, withWord = true, className = "" }) => {
   // mask ids, and the second would inherit the first's definitions.
   const uid = useId().replace(/:/g, "");
   const sun = `tg-sun-${uid}`;
-  const slice = `tg-slice-${uid}`;
 
   return (
     <span className={`tg-logo ${className}`.trim()}>
@@ -39,24 +38,30 @@ const Logo = ({ size = 28, withWord = true, className = "" }) => {
         aria-label={withWord ? "TruGoa" : "TruGoa home"}
       >
         <defs>
-          <linearGradient id={sun} x1="0" y1="0" x2="0" y2="1">
+          {/* userSpaceOnUse, not the default bounding box, so one gradient runs
+              continuously across four separate shapes instead of restarting
+              inside each one. */}
+          <linearGradient id={sun} gradientUnits="userSpaceOnUse" x1="28" y1="5" x2="28" y2="43">
             <stop offset="0%" stopColor={SUN_TOP} />
             <stop offset="55%" stopColor={SUN_MID} />
             <stop offset="100%" stopColor={SUN_LOW} />
           </linearGradient>
-
-          {/* White keeps, black cuts — so the gaps are genuinely transparent
-              and the mark works on any background. */}
-          <mask id={slice}>
-            <rect width="56" height="56" fill="#fff" />
-            <rect x="0" y="30.6" width="56" height="3.1" fill="#000" />
-            <rect x="0" y="37.0" width="56" height="3.1" fill="#000" />
-            <rect x="0" y="43.0" width="56" height="3.1" fill="#000" />
-          </mask>
         </defs>
 
-        <circle cx="28" cy="26" r="20" fill={`url(#${sun})`} mask={`url(#${slice})`} />
-        <rect x="4" y="49" width="48" height="4.6" rx="2.3" fill={INK} />
+        {/* The dome, then the bands the horizon leaves behind. Drawn as real
+            shapes rather than a circle with a mask cut out of it: Safari is
+            unreliable about SVG masks, and when it declines one the entire
+            mark disappears rather than degrading. Each band is as wide as the
+            circle is at its own mid-height, so the stack tapers with the
+            curve. Geometry from r=19 about (28,24). */}
+        <g fill={`url(#${sun})`}>
+          <path d="M9.43 28 A19 19 0 1 1 46.57 28 Z" />
+          <rect x="10.86" y="30.4" width="34.28" height="3.6" rx="1.8" />
+          <rect x="15.05" y="36.4" width="25.91" height="3.0" rx="1.5" />
+          <rect x="21.92" y="41.0" width="12.17" height="2.0" rx="1.0" />
+        </g>
+
+        <rect x="4" y="47" width="48" height="4.6" rx="2.3" fill={INK} />
       </svg>
 
       {withWord && <span className="tg-logo-word">TRUGOA</span>}
