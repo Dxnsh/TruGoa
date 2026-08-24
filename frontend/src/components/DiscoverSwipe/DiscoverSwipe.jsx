@@ -703,12 +703,14 @@ const DiscoverSwipe = () => {
   // the cards.
   return (
     <div className="ds-shell">
-      {/* Where the deck is anchored, and whether it's still following them.
-          Desktop drops this the way it drops the filter row -- the deck sits in
-          the homepage's two-column hero there and doesn't need a status line.
-          It stays when it's carrying a button, though: hiding it outright would
-          take "Use my location" with it and leave a desktop visitor who picked
-          a coast with no way back to a real position short of a reload. */}
+      {/* Where the deck is anchored, whether it's still following them, and the
+          mood filter — one row rather than a status panel with a control
+          stranded on its own line beneath it.
+          Desktop drops the whole thing: the deck sits in the homepage's
+          two-column hero there, where Explore's category filters are a click
+          away. It stays when it's carrying a button, though — hiding it
+          outright would take "Use my location" with it and leave a desktop
+          visitor who picked a coast with no way back short of a reload. */}
       <div className={`ds-here${moved || (centre && !centre.precise) ? "" : " ds-here--info"}`}>
         <span
           className={`ds-here-dot${tracking ? " ds-here-dot--live" : ""}`}
@@ -734,40 +736,36 @@ const DiscoverSwipe = () => {
             {retrying ? "Finding" : "Use my location"}
           </button>
         ) : null}
-      </div>
 
-      <div className="ds-meta">
-        <span className="ds-meta-left">
-          <span className="ds-filter" data-ds-filter>
-            <button
-              className={`ds-filter-btn ${mood !== "all" ? "ds-filter-btn--on" : ""}`}
-              onClick={() => setShowFilter((v) => !v)}
-              aria-label="Filter by mood"
-              aria-expanded={showFilter}
-              disabled={refetching}
-            >
-              <SlidersHorizontal size={13} strokeWidth={2.2} />
-              {mood !== "all" && <span>{labelFor(mood)}</span>}
-            </button>
+        <span className="ds-filter" data-ds-filter>
+          <button
+            className={`ds-filter-btn ${mood !== "all" ? "ds-filter-btn--on" : ""}`}
+            onClick={() => setShowFilter((v) => !v)}
+            aria-label="Filter by mood"
+            aria-expanded={showFilter}
+            disabled={refetching}
+          >
+            <SlidersHorizontal size={13} strokeWidth={2.2} />
+            {mood !== "all" && <span>{labelFor(mood)}</span>}
+          </button>
 
-            {showFilter && (
-              <span className="ds-filter-menu" role="menu">
-                {MOODS.map(({ key, label, Icon }) => (
-                  <button
-                    key={key}
-                    role="menuitemradio"
-                    aria-checked={mood === key}
-                    className={`ds-filter-item ${mood === key ? "ds-filter-item--on" : ""}`}
-                    onClick={() => applyMood(key)}
-                  >
-                    <Icon size={14} strokeWidth={2} className="ds-filter-item-icon" />
-                    <span className="ds-filter-item-label">{label}</span>
-                    {mood === key && <Check size={13} strokeWidth={2.6} />}
-                  </button>
-                ))}
-              </span>
-            )}
-          </span>
+          {showFilter && (
+            <span className="ds-filter-menu" role="menu">
+              {MOODS.map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  role="menuitemradio"
+                  aria-checked={mood === key}
+                  className={`ds-filter-item ${mood === key ? "ds-filter-item--on" : ""}`}
+                  onClick={() => applyMood(key)}
+                >
+                  <Icon size={14} strokeWidth={2} className="ds-filter-item-icon" />
+                  <span className="ds-filter-item-label">{label}</span>
+                  {mood === key && <Check size={13} strokeWidth={2.6} />}
+                </button>
+              ))}
+            </span>
+          )}
         </span>
       </div>
 
