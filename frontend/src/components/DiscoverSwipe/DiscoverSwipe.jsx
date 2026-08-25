@@ -120,6 +120,31 @@ const metresBetween = (a, b) => {
 const ORIGIN_KEY = "trugoa_discover_origin";
 const ORIGIN_TTL_MS = 30 * 60 * 1000;
 
+// Every place swiped past this visit. Widening the radius re-runs the same
+// query from the same spot, so the wider result is a superset of the narrower
+// one — without this the first cards back are the ones just dismissed, and
+// asking for 40 km looks like it did nothing. sessionStorage rather than
+// localStorage: "already seen" means this visit, and someone returning
+// tomorrow should get the full deck again.
+const SEEN_KEY = "trugoa_discover_seen";
+
+const readSeen = () => {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(SEEN_KEY) || "[]");
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set(); // private mode, or someone hand-edited the value
+  }
+};
+
+const storeSeen = (ids) => {
+  try {
+    sessionStorage.setItem(SEEN_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* storage unavailable — the set still works for this page view */
+  }
+};
+
 const readStoredOrigin = () => {
   try {
     const stored = JSON.parse(sessionStorage.getItem(ORIGIN_KEY) || "null");
@@ -201,6 +226,12 @@ const DiscoverSwipe = () => {
   // of the position watch, which must not resubscribe.
   const [radius, setRadius] = useState(SEARCH_RADIUS_M);
   const radiusRef = useRef(SEARCH_RADIUS_M);
+  // A ref, not state: runFetch reads it and must stay stable, and nothing
+  // renders from it directly.
+  const seen = useRef(readSeen());
+  // The query found places but every one had already been swiped. Different
+  // from finding nothing at all, and it needs different words.
+  const [allSeen, setAllSeen] = useState(false);
   // A retry is in flight, and whether the browser refused outright. A refusal
   // can't be fixed by asking again — once someone blocks the site the prompt
   // never reappears — so it needs saying rather than silently doing nothing.
@@ -268,7 +299,10 @@ const DiscoverSwipe = () => {
         lat, lng, maxDistance: radiusRef.current, limit: DECK_LIMIT, category,
       });
       if (seq !== fetchSeq.current) return; // superseded while we waited
-      setPlaces(results);
+      // Drop anything already swiped, so a wider search only ever adds.
+      const fresh = results.filter((place) => !seen.current.has(place._id));
+      setAllSeen(fresh.length === 0 && results.length > 0);
+      setPlaces(fresh);
       setScope(resultScope);
       setIndex(0);
       setShowInfo(false);
@@ -478,6 +512,13 @@ const DiscoverSwipe = () => {
   const commitSwipe = useCallback((direction, place) => {
     setFlyOut(direction);
 
+    // Seen either way — skipping a place is as much a decision as saving it,
+    // and re-offering something already turned down is the annoying half.
+    if (place?._id) {
+      seen.current.add(place._id);
+      storeSeen(seen.current);
+    }
+
     if (direction === "right" && place) {
       // Optimistic: the card leaves immediately and the count ticks up, so a
       // slow network never stalls the deck. A failed save is surfaced by the
@@ -553,7 +594,15 @@ const DiscoverSwipe = () => {
     }
   };
 
-  const restart = () => { setIndex(0); setSavedCount(0); };
+  // Explicitly asking for another pass, so the seen set is cleared too —
+  // otherwise "Start over" would widen into an empty deck later on.
+  const restart = () => {
+    seen.current = new Set();
+    storeSeen(seen.current);
+    setAllSeen(false);
+    setIndex(0);
+    setSavedCount(0);
+  };
 
   // Slug URLs are canonical, but DetailPage falls back to an ID lookup, so
   // a place without one still opens.
@@ -774,6 +823,38 @@ const DiscoverSwipe = () => {
           <Loader2 className="ds-spin" size={24} strokeWidth={1.8} />
           <p className="ds-state-sub">Finding {labelFor(mood).toLowerCase()} near you.</p>
         </div>
+      ) : allSeen ? (
+        /* The search found places — they'd all been swiped already. Saying
+           "nothing curated" here would be wrong twice over: there is
+           something, and they've seen it. */
+        <div className="ds-inline-state">
+          <Check size={26} strokeWidth={1.5} className="ds-state-icon" />
+          <p className="ds-state-title">
+            {scope === "nearby"
+              ? `You've seen everything within ${radius / 1000} km`
+              : "You've seen everything we've curated"}
+          </p>
+          <p className="ds-state-sub">
+            {nextRadius(radius)
+              ? "Try looking a little further out."
+              : "Start over to go through them again."}
+          </p>
+          <div className="ds-region-picker">
+            {nextRadius(radius) && (
+              <button
+                className="ds-region-btn ds-region-btn--solid"
+                onClick={widen}
+                disabled={refetching}
+              >
+                <Compass size={14} strokeWidth={2} />
+                Look within {nextRadius(radius) / 1000} km
+              </button>
+            )}
+            <button className="ds-region-btn" onClick={restart}>
+              <RotateCcw size={14} strokeWidth={2} /> Start over
+            </button>
+          </div>
+        </div>
       ) : places.length === 0 ? (
         <div className="ds-inline-state">
           <MapPin size={26} strokeWidth={1.5} className="ds-state-icon" />
@@ -820,7 +901,7 @@ const DiscoverSwipe = () => {
                 continue it. Only offered while there's a wider step left and
                 the deck is actually distance-bound; the region and Goa tiers
                 already searched everything a radius could reach. */}
-            {scope === "nearby" && nextRadius(radius) && (
+            {nextRadius(radius) && (
               <button
                 className="ds-region-btn ds-region-btn--solid"
                 onClick={widen}
