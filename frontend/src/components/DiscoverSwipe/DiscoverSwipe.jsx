@@ -128,6 +128,32 @@ const ORIGIN_TTL_MS = 30 * 60 * 1000;
 // tomorrow should get the full deck again.
 const SEEN_KEY = "trugoa_discover_seen";
 
+// The card that was on top when someone tapped through to a place's full page.
+// Opening a listing unmounts the deck, and coming back remounts it and refetches
+// — so without this you land on whatever is first in the new results rather than
+// the place you were just looking at, and have to swipe your way back to it.
+// Stored as an id, not an index: the deck is re-queried on the way back and the
+// seen filter can drop places out from in front of it, so a position wouldn't
+// survive the round trip.
+const RESUME_KEY = "trugoa_discover_resume";
+
+const readResumeId = () => {
+  try {
+    return sessionStorage.getItem(RESUME_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+
+const writeResumeId = (id) => {
+  try {
+    if (id) sessionStorage.setItem(RESUME_KEY, id);
+    else sessionStorage.removeItem(RESUME_KEY);
+  } catch {
+    /* storage unavailable — the deck just starts from the top */
+  }
+};
+
 const readSeen = () => {
   try {
     const stored = JSON.parse(sessionStorage.getItem(SEEN_KEY) || "[]");
@@ -229,6 +255,10 @@ const DiscoverSwipe = () => {
   // A ref, not state: runFetch reads it and must stay stable, and nothing
   // renders from it directly.
   const seen = useRef(readSeen());
+  // Read once on mount rather than every render — this is touched on each
+  // position update, and sessionStorage is synchronous.
+  const resumeId = useRef(undefined);
+  if (resumeId.current === undefined) resumeId.current = readResumeId();
   // The query found places but every one had already been swiped. Different
   // from finding nothing at all, and it needs different words.
   const [allSeen, setAllSeen] = useState(false);
@@ -302,9 +332,21 @@ const DiscoverSwipe = () => {
       // Drop anything already swiped, so a wider search only ever adds.
       const fresh = results.filter((place) => !seen.current.has(place._id));
       setAllSeen(fresh.length === 0 && results.length > 0);
+
+      // Coming back from a place's page: pick up on the card that was open.
+      // Consumed once, so changing mood or widening still starts from the top —
+      // those are requests for a different deck, not a return to this one.
+      let startAt = 0;
+      if (resumeId.current) {
+        const at = fresh.findIndex((place) => place._id === resumeId.current);
+        if (at >= 0) startAt = at;
+        resumeId.current = null;
+        writeResumeId(null);
+      }
+
       setPlaces(fresh);
       setScope(resultScope);
-      setIndex(0);
+      setIndex(startAt);
       setShowInfo(false);
       setMoved(false);
       if (mode === "full") setStatus("ready");
@@ -608,6 +650,9 @@ const DiscoverSwipe = () => {
   // a place without one still opens.
   const openCurrent = useCallback(() => {
     if (!current) return;
+    // Noted before leaving, so the deck can come back to this card. Not marked
+    // as seen — opening a place is interest in it, the opposite of dismissing it.
+    writeResumeId(current._id);
     navigate(`/listings/${current.slug || current._id}`);
   }, [current, navigate]);
 
