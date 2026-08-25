@@ -13,6 +13,7 @@ import {
   getFavorites, addFavorite, removeFavorite,
 } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
+import { metresBetween, formatDistance, hasCoordinates, pointOf } from "../../utils/distance";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import SEO, { SITE_URL } from "../../components/SEO/SEO";
@@ -459,12 +460,25 @@ export default function DetailPage() {
           navigate(`/listings/${mapped.slug}`, { replace: true });
         }
 
-        const sim = allBiz
-          .filter(b => String(b._id) !== String(bizData._id) &&
-            b.category?.toLowerCase() === bizData.category?.toLowerCase()
-          )
-          .slice(0, 4)
-          .map((b, i) => mapBusiness(b, i));
+        // "Nearest Places" used to mean "same category, first four in whatever
+        // order the API returned" — distance was never consulted. Arika in
+        // Sanguem listed Lar Amorosa in Bardez because both are stays, and a
+        // cafe in Siolim listed a cafe an hour away. Category is not proximity.
+        //
+        // Ranked by actual distance from this place now, category ignored:
+        // what's near a homestay is worth knowing whether it's a beach, a
+        // temple or somewhere to eat.
+        const sim = hasCoordinates(bizData)
+          ? allBiz
+              .filter(b => String(b._id) !== String(bizData._id) && hasCoordinates(b))
+              .map(b => ({ b, metres: metresBetween(pointOf(bizData), pointOf(b)) }))
+              .sort((a, z) => a.metres - z.metres)
+              .slice(0, 4)
+              .map(({ b, metres }, i) => ({ ...mapBusiness(b, i), metres }))
+          // No pin on this listing, so nothing can honestly be called nearest.
+          // The row hides itself when empty rather than falling back to a
+          // category match wearing a proximity label.
+          : [];
         setSimilar(sim);
       } catch (err) {
         setError(err.message);
@@ -508,7 +522,10 @@ export default function DetailPage() {
 
   const heroHeadline = biz.tagline || biz.name;
   const heroDescription = biz.desc;
-  const nearbyNames = similar.slice(0, 2).map(s => s.name).join(", ");
+  const nearbyNames = similar
+    .slice(0, 2)
+    .map(s => `${s.name} (${formatDistance(s.metres)})`)
+    .join(", ");
 
   const scrollToContent = () => {
     contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

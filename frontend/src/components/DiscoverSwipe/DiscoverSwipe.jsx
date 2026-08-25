@@ -9,6 +9,11 @@ import {
 import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../LoginModal/LoginModal";
+// $geoNear measures from wherever the deck was fetched, which goes stale the
+// moment someone walks off; with a live fix and the place's own coordinates the
+// card recomputes as they move. Shared with the detail page, which ranks what's
+// near a place — the two must not disagree.
+import { metresBetween, formatDistance } from "../../utils/distance";
 import "./DiscoverSwipe.css";
 
 // Approximate centroids used when the browser won't give us a real fix.
@@ -93,24 +98,6 @@ const REFETCH_MOVE_M = 2000;
 // 100 m, so nothing below this would be visible anyway.
 const LIVE_MOVE_M = 10;
 
-// ── Distance ────────────────────────────────────────────────────────────────
-// $geoNear measures from wherever the deck was fetched, which starts going
-// stale the moment someone walks off. Given a live fix and the place's own
-// coordinates we can recompute it here on every position update, so the card
-// counts down as they approach instead of freezing at whatever it said when
-// the query ran.
-const EARTH_RADIUS_M = 6371000;
-const toRad = (deg) => (deg * Math.PI) / 180;
-
-const metresBetween = (a, b) => {
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
-};
-
 // Waiting on a position fix is what actually makes the deck feel slow — the
 // query behind it takes a few hundred ms, while acquiring a location can take
 // seconds (or the whole timeout, if the permission prompt goes unanswered).
@@ -190,16 +177,6 @@ const storeOrigin = (lat, lng, label, precise) => {
   }
 };
 
-// Returns the bare measurement. What it's measured *from* differs -- the
-// person, or the centre of a region they picked -- and the caller says which,
-// so the wording can't be baked in here.
-const formatDistance = (metres) => {
-  if (typeof metres !== "number") return null;
-  return metres < 1000
-    ? `${Math.round(metres)} m`
-    : `${(metres / 1000).toFixed(1)} km`;
-};
-
 // How wide the backend had to look before it found anything. Only the
 // "nearby" tier is ranked by proximity and carries a distance, so the other
 // two say where the results actually come from rather than leaving the card
@@ -262,6 +239,13 @@ const DiscoverSwipe = () => {
   // The query found places but every one had already been swiped. Different
   // from finding nothing at all, and it needs different words.
   const [allSeen, setAllSeen] = useState(false);
+  // Sources that failed to load. A dead URL otherwise leaves the browser's
+  // broken-image icon sitting in the middle of the card, which looks like the
+  // app is broken rather than one photo being unavailable.
+  const [failedImages, setFailedImages] = useState(() => new Set());
+  const markImageFailed = useCallback((src) => {
+    setFailedImages((prev) => (prev.has(src) ? prev : new Set(prev).add(src)));
+  }, []);
   // A retry is in flight, and whether the browser refused outright. A refusal
   // can't be fixed by asking again — once someone blocks the site the prompt
   // never reappears — so it needs saying rather than silently doing nothing.
@@ -330,7 +314,27 @@ const DiscoverSwipe = () => {
       });
       if (seq !== fetchSeq.current) return; // superseded while we waited
       // Drop anything already swiped, so a wider search only ever adds.
-      const fresh = results.filter((place) => !seen.current.has(place._id));
+      const filtered = results.filter((place) => !seen.current.has(place._id));
+
+      // $geoNear returns nearest-first, but it only runs on the proximity
+      // tier — the region and Goa fallbacks sort by curation instead. Since
+      // every card carries coordinates and prints a distance, those arrive
+      // visibly out of order: filtering to temples from Palolem put 53.7 km
+      // first and the nearest at 21.1 km last. Sorting here by the distance
+      // we can measure makes "nearest first" true in every tier. Places
+      // without coordinates can't be placed, so they go last rather than
+      // being assumed close.
+      const distanceFrom = (place) => {
+        if (typeof place.latitude === "number" && typeof place.longitude === "number") {
+          return metresBetween({ lat, lng }, { lat: place.latitude, lng: place.longitude });
+        }
+        return typeof place.distance === "number" ? place.distance : Infinity;
+      };
+      const fresh = filtered
+        .map((place) => ({ place, metres: distanceFrom(place) }))
+        .sort((a, b) => a.metres - b.metres)
+        .map((entry) => entry.place);
+
       setAllSeen(fresh.length === 0 && results.length > 0);
 
       // Coming back from a place's page: pick up on the card that was open.
@@ -734,7 +738,9 @@ const DiscoverSwipe = () => {
   }
 
   const next = places[index + 1];
-  const image = current ? current.heroImage || current.gallery?.[0] || null : null;
+  const rawImage = current ? current.heroImage || current.gallery?.[0] || null : null;
+  const image = rawImage && !failedImages.has(rawImage) ? rawImage : null;
+  const nextImage = next ? next.heroImage || next.gallery?.[0] || null : null;
 
   // Recomputed against the live fix when we have one, so it counts down as the
   // person walks. The server's own figure is the fallback for places saved
@@ -972,8 +978,13 @@ const DiscoverSwipe = () => {
         {/* Peek of the next card, so the deck reads as a stack */}
         {next && (
           <article className="ds-card ds-card--behind" aria-hidden="true">
-            {(next.heroImage || next.gallery?.[0]) && (
-              <img src={next.heroImage || next.gallery?.[0]} alt="" className="ds-card-img" />
+            {nextImage && !failedImages.has(nextImage) && (
+              <img
+                src={nextImage}
+                alt=""
+                className="ds-card-img"
+                onError={() => markImageFailed(nextImage)}
+              />
             )}
             <div className="ds-card-scrim" />
           </article>
@@ -988,7 +999,13 @@ const DiscoverSwipe = () => {
           onPointerCancel={onPointerUp}
         >
           {image
-            ? <img src={image} alt={current.name} className="ds-card-img" draggable="false" />
+            ? <img
+                src={image}
+                alt={current.name}
+                className="ds-card-img"
+                draggable="false"
+                onError={() => markImageFailed(image)}
+              />
             : <div className="ds-card-img ds-card-img--empty" />}
           <div className="ds-card-scrim" />
 
