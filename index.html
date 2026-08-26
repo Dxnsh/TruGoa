@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TruGoa — Product UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="studio">
+      <aside class="studio-rail">
+        <p class="studio-kicker">TruGoa product</p>
+        <h1>Discover Goa the way locals do.</h1>
+        <p class="studio-lede">
+          A complete mobile UI — swipe discovery at the core, then plan, map,
+          saved places, itinerary, journal, and GoaGuide AI.
+        </p>
+        <nav class="screen-nav" id="screenNav"></nav>
+      </aside>
+
+      <main class="studio-stage">
+        <div class="device">
+          <div class="device-notch"></div>
+          <div class="phone" id="app">
+            <div class="status-bar">
+              <span>9:41</span>
+              <div class="status-icons" aria-hidden="true">
+                <span class="sig"></span>
+                <span class="wifi"></span>
+                <span class="batt"></span>
+              </div>
+            </div>
+
+            <!-- DISCOVER -->
+            <section class="screen is-active" data-screen="discover">
+              <header class="app-header">
+                <button class="icon-btn" data-go="menu" aria-label="Menu">
+                  <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h12" /></svg>
+                </button>
+                <div class="brand">
+                  <span class="mark" aria-hidden="true"></span>
+                  <span>TRUGOA</span>
+                </div>
+                <div class="header-right">
+                  <button class="icon-btn" aria-label="Notifications">
+                    <svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 7 3 7 3 7H3s3 0 3-7" /><path d="M10 19a2 2 0 0 0 4 0" /></svg>
+                    <i class="dot"></i>
+                  </button>
+                  <button class="avatar" data-go="profile" aria-label="Profile">A</button>
+                </div>
+              </header>
+
+              <button class="near-bar" data-go="map" type="button">
+                <span class="live"></span>
+                <span>
+                  <strong>Within 15 km of you</strong>
+                  <small>3 places · nearest first</small>
+                </span>
+                <svg class="sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4" /><circle cx="16" cy="6" r="2" /><circle cx="8" cy="12" r="2" /><circle cx="14" cy="18" r="2" /></svg>
+              </button>
+
+              <div class="chips" id="categoryChips"></div>
+
+              <div class="deck-wrap">
+                <div class="deck" id="deck"></div>
+              </div>
+
+              <div class="actions">
+                <button class="fab skip" id="btnSkip" aria-label="Skip">
+                  <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>
+                </button>
+                <button class="fab info" id="btnInfo" aria-label="Details">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 8h.01" /></svg>
+                </button>
+                <button class="fab heart" id="btnSave" aria-label="Save">
+                  <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-8.2C1 8.8 2.4 5.5 5.6 5.1 7.8 4.8 9.7 6 12 8.2 14.3 6 16.2 4.8 18.4 5.1c3.2.4 4.6 3.7 2.8 6.7C19 15.6 12 20 12 20z" /></svg>
+                </button>
+              </div>
+              <p class="hint">Swipe left to pass · right to save</p>
+            </section>
+
+            <!-- DETAIL -->
+            <section class="screen" data-screen="detail">
+              <div class="detail-hero" id="detailHero">
+                <img id="detailImg" alt="" />
+                <button class="icon-btn glass" data-go="discover" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+                <button class="icon-btn glass save-float" id="detailSave" aria-label="Save">
+                  <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-8.2C1 8.8 2.4 5.5 5.6 5.1 7.8 4.8 9.7 6 12 8.2 14.3 6 16.2 4.8 18.4 5.1c3.2.4 4.6 3.7 2.8 6.7C19 15.6 12 20 12 20z" /></svg>
+                </button>
+              </div>
+              <div class="detail-body" id="detailBody"></div>
+              <div class="detail-cta">
+                <button class="btn ghost" data-go="map">Directions</button>
+                <button class="btn solid" data-go="plan">Add to trip</button>
+              </div>
+            </section>
+
+            <!-- MAP -->
+            <section class="screen" data-screen="map">
+              <header class="app-header overlay">
+                <button class="icon-btn glass" data-go="discover" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+                <div class="search-pill">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" /><path d="M20 20l-3.5-3.5" /></svg>
+                  Hidden places near you
+                </div>
+                <button class="icon-btn glass" aria-label="Layers">
+                  <svg viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4 8-4zM4 12l8 4 8-4M4 16l8 4 8-4" /></svg>
+                </button>
+              </header>
+              <div class="map-art" aria-hidden="true">
+                <div class="water"></div>
+                <div class="land"></div>
+                <button class="pin p1 is-on" data-pin="0"></button>
+                <button class="pin p2" data-pin="1"></button>
+                <button class="pin p3" data-pin="2"></button>
+                <div class="you">You</div>
+              </div>
+              <article class="sheet" id="mapSheet"></article>
+            </section>
+
+            <!-- PLAN -->
+            <section class="screen" data-screen="plan">
+              <header class="app-header">
+                <button class="icon-btn" data-go="discover" aria-label="Close">
+                  <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>
+                </button>
+                <div class="plan-progress" id="planProgress"></div>
+                <span class="tiny">Skip</span>
+              </header>
+              <div class="plan-hero">
+                <p class="kicker">Plan your trip · 4 steps</p>
+                <h2 id="planTitle">Your Goa journey, your way.</h2>
+              </div>
+              <div class="plan-step" id="planStep"></div>
+              <div class="plan-footer">
+                <button class="btn solid full" id="planNext">Continue</button>
+              </div>
+            </section>
+
+            <!-- ITINERARY -->
+            <section class="screen" data-screen="itinerary">
+              <header class="app-header">
+                <button class="icon-btn" data-go="plan" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+                <strong>Your itinerary</strong>
+                <button class="icon-btn" aria-label="Share">
+                  <svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14" /></svg>
+                </button>
+              </header>
+              <div class="scroll">
+                <article class="trip-card">
+                  <div>
+                    <p class="kicker gold">Friends · Mid-range</p>
+                    <h3>Goa, unhurried</h3>
+                    <p>12–16 Sep · 4 nights · North + South</p>
+                  </div>
+                  <button class="text-link" data-go="plan">Edit</button>
+                </article>
+                <div class="stats">
+                  <div><b>14</b><span>Places</span></div>
+                  <div><b>3</b><span>Experiences</span></div>
+                  <div><b>2</b><span>Stays</span></div>
+                </div>
+                <h4 class="section-h">Day-wise plan</h4>
+                <article class="day">
+                  <div class="day-meta"><span>Day 1</span><small>North Goa vibes</small></div>
+                  <div class="thumbs">
+                    <img src="https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=240&q=80" alt="" />
+                    <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?w=240&q=80" alt="" />
+                    <img src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=240&q=80" alt="" />
+                  </div>
+                </article>
+                <article class="day">
+                  <div class="day-meta"><span>Day 2</span><small>Spice, cliffs, sunset</small></div>
+                  <ul class="timeline">
+                    <li><em>09:30</em> Breakfast at Cafe Bodega</li>
+                    <li><em>12:00</em> Vagator cliff walk</li>
+                    <li><em>17:40</em> Sunset at Chapora</li>
+                  </ul>
+                </article>
+                <button class="btn ghost full" data-go="discover">+ Add a day</button>
+              </div>
+            </section>
+
+            <!-- SAVED -->
+            <section class="screen" data-screen="saved">
+              <header class="app-header">
+                <strong>Saved</strong>
+                <button class="text-link">New list</button>
+              </header>
+              <div class="tabs" id="savedTabs">
+                <button class="is-on">Places</button>
+                <button>Experiences</button>
+                <button>Stays</button>
+              </div>
+              <div class="scroll" id="savedList"></div>
+            </section>
+
+            <!-- JOURNAL -->
+            <section class="screen" data-screen="journal">
+              <header class="app-header">
+                <button class="icon-btn" data-go="menu" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+                <strong>Journal</strong>
+                <span></span>
+              </header>
+              <div class="scroll journal">
+                <p class="kicker">Editor’s pick</p>
+                <h2>Stories that inspire travel.</h2>
+                <p class="muted">Reads, local insights and hidden tales from Goa.</p>
+                <article class="story">
+                  <img src="https://images.unsplash.com/photo-1593693397690-362cb9666fc2?w=800&q=80" alt="Heritage church in Goa" />
+                  <p class="kicker gold">Heritage & culture</p>
+                  <h3>The church that holds a saint</h3>
+                  <small>5 min read</small>
+                </article>
+                <article class="story">
+                  <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80" alt="Boats at dusk" />
+                  <p class="kicker gold">Destinations</p>
+                  <h3>Where Goa still breathes</h3>
+                  <small>6 min read</small>
+                </article>
+              </div>
+            </section>
+
+            <!-- GUIDE -->
+            <section class="screen dark" data-screen="guide">
+              <header class="app-header dark">
+                <button class="icon-btn light" data-go="discover" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+                <div class="guide-id">
+                  <span class="g-avatar">G</span>
+                  <div>
+                    <strong>GoaGuide AI</strong>
+                    <small><i class="online"></i> Online now</small>
+                  </div>
+                </div>
+                <span></span>
+              </header>
+              <div class="guide-intro">
+                <h2>Not just answers.<em> A local friend.</em></h2>
+                <div class="quick" id="quickAsks"></div>
+              </div>
+              <div class="chat" id="chatLog"></div>
+              <form class="composer" id="chatForm">
+                <input id="chatInput" placeholder="Ask GoaGuide anything…" autocomplete="off" />
+                <button type="submit" aria-label="Send">↑</button>
+              </form>
+            </section>
+
+            <!-- PROFILE -->
+            <section class="screen" data-screen="profile">
+              <header class="app-header">
+                <strong>You</strong>
+                <button class="icon-btn" aria-label="Settings">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a7.8 7.8 0 0 0 .1-2 7.8 7.8 0 0 0-.1-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L15 2h-4l-.3 2.5a8 8 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0-.1 2 7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 1.7 1L11 22h4l.3-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5z" /></svg>
+                </button>
+              </header>
+              <div class="scroll">
+                <div class="profile-hero">
+                  <div class="avatar xl">A</div>
+                  <h2>Ananya</h2>
+                  <p>Pune · 3 trips to Goa</p>
+                </div>
+                <div class="stats">
+                  <div><b>18</b><span>Saved</span></div>
+                  <div><b>2</b><span>Trips</span></div>
+                  <div><b>6</b><span>Badges</span></div>
+                </div>
+                <h4 class="section-h">Badges</h4>
+                <div class="badges">
+                  <div class="badge"><span>🌅</span>Sunset chaser</div>
+                  <div class="badge"><span>🛕</span>Temple walker</div>
+                  <div class="badge"><span>🦐</span>Seafood first</div>
+                  <div class="badge"><span>🗺️</span>Hidden Goa</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- MENU -->
+            <section class="screen" data-screen="menu">
+              <header class="app-header">
+                <button class="icon-btn" data-go="discover" aria-label="Close">
+                  <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>
+                </button>
+                <div class="brand">
+                  <span class="mark"></span>
+                  <span>TRUGOA</span>
+                </div>
+                <span></span>
+              </header>
+              <nav class="menu-list">
+                <button data-go="discover">Discover</button>
+                <button data-go="plan">Plan a trip</button>
+                <button data-go="journal">Journal</button>
+                <button data-go="guide">GoaGuide AI</button>
+                <button data-go="profile">Account</button>
+              </nav>
+              <p class="tagline">Curating the soul of Goa — one honest place at a time.</p>
+            </section>
+
+            <nav class="tabbar" id="tabbar">
+              <button data-go="discover" class="is-on">
+                <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8z" /></svg>
+                Home
+              </button>
+              <button data-go="map">
+                <svg viewBox="0 0 24 24"><path d="M9 4l6 2 5-2v16l-5 2-6-2-5 2V6l5-2z" /><path d="M9 4v16M15 6v16" /></svg>
+                Map
+              </button>
+              <button class="plus" data-go="plan" aria-label="Plan trip">+</button>
+              <button data-go="saved">
+                <svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v16l-6-3-6 3V5a1 1 0 0 1 1-1z" /></svg>
+                Saved
+              </button>
+              <button data-go="profile">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" /><path d="M5 19a7 7 0 0 1 14 0" /></svg>
+                You
+              </button>
+            </nav>
+          </div>
+        </div>
+        <p class="studio-foot">Interactive prototype · swipe the card · tap screens on the left</p>
+      </main>
+    </div>
+    <div class="toast" id="toast" hidden></div>
+    <script src="js/app.js"></script>
+  </body>
+</html>
