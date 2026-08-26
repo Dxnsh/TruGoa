@@ -82,12 +82,17 @@ const JournalPage = () => {
                   transition: theme.transitions.fast,
                 }}
               >
+                {/* backgroundColor, not the `background` shorthand: shorthand
+                    resets every background sub-property, so declaring it after
+                    backgroundImage wiped the image out and left a flat tile.
+                    It's here as the colour behind a photo that's still
+                    loading, or missing. */}
                 <div style={{
                   aspectRatio: "16 / 10",
-                  backgroundImage: `url(${entry.coverImage})`,
+                  backgroundColor: theme.colors.bgSurface,
+                  backgroundImage: entry.coverImage ? `url(${entry.coverImage})` : "none",
                   backgroundSize: "cover",
                   backgroundPosition: "center",
-                  background: theme.colors.bgSurface,
                 }} />
                 <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                   <h2 style={{

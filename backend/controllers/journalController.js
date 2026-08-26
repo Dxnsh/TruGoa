@@ -5,6 +5,32 @@ import { ApiError } from "../utils/ApiError.js";
 
 const SUMMARY_FIELDS = "slug title excerpt coverImage author readTime tags published createdAt";
 
+// A slug is one path segment. Lowercasing and trimming isn't enough: a slug
+// entered as "/things-to-do-in-goa", or pasted as a whole URL, saves without
+// complaint and is then unreachable forever — the browser normalises the path
+// before sending it, so the stored value can never be matched and every visit
+// 404s while the entry sits there published.
+//
+// Takes the last path segment, so a pasted URL keeps the part that identifies
+// the entry, then strips anything that can't survive in a URL.
+const normaliseSlug = (value) => {
+  const lastSegment = String(value ?? "").split("/").filter(Boolean).pop() ?? "";
+  return lastSegment
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s-]+/g, "-")
+    .replace(/^-|-$/g, "");
+};
+
+// Refused rather than stored empty: "!!!" normalises to nothing, and an entry
+// with no slug is exactly as unreachable as one with a bad slug.
+const requireSlug = (value) => {
+  const slug = normaliseSlug(value);
+  if (!slug) throw new ApiError(400, "Slug must contain at least one letter or number");
+  return slug;
+};
+
 // Public read routes ----------------------------------------------------
 
 // GET /journals — published entries only, summary fields
@@ -52,7 +78,7 @@ export const createJournal = asyncHandler(async (req, res) => {
 
   try {
     const journal = await Journal.create({
-      slug: slug.trim().toLowerCase(),
+      slug: requireSlug(slug),
       title: title.trim(),
       excerpt, content, coverImage, author, readTime,
       tags: tags || [],
@@ -78,7 +104,7 @@ export const updateJournal = asyncHandler(async (req, res) => {
   for (const field of JOURNAL_EDITABLE_FIELDS) {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
   }
-  if (updates.slug) updates.slug = updates.slug.trim().toLowerCase();
+  if (updates.slug) updates.slug = requireSlug(updates.slug);
 
   try {
     const journal = await Journal.findByIdAndUpdate(req.params.id, updates, {

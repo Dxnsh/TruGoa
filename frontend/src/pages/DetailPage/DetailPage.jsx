@@ -597,7 +597,7 @@ export default function DetailPage() {
           </div>
         )}
 
-        <div className="dp-hero-content">
+        {/* <div className="dp-hero-content">
           <div className="dp-hero-ctas">
             <button className="dp-hero-cta-primary" onClick={scrollToContent}>
               Explore {biz.name} <ChevronRight size={14} />
@@ -617,7 +617,7 @@ export default function DetailPage() {
             <span><Clock size={14} /> {biz.visitDuration || categoryLabel}</span>
             <span><Sparkles size={14} /> {biz.highlights?.[0] || (biz.trust === "verified" ? "Locally Verified" : "Editorial Pick")}</span>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* ══════════════════════════════════════════════════
