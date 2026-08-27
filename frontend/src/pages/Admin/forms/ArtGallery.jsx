@@ -4,7 +4,7 @@ import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
-const TYPES = ["restaurant", "cafe"];
+const TYPES = ["Art-Library", " Muesem", "Library",];
 const PRICE_LEVELS = ["budget", "mid", "premium"];
 
 const blank = {
@@ -63,7 +63,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
 
   return (
     <ModalShell
-      title={isEdit ? `Edit ${business.name}` : "Add Food & Drink"}
+      title={isEdit ? `Edit ${business.name}` : "Add Art Gallery"}
       onClose={onClose}
       onSubmit={handleSubmit}
       error={error}
@@ -73,7 +73,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
       <SectionHeading>Basics</SectionHeading>
       <Row>
         <Field label="Name *">
-          <input style={inputStyle} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Fisherman's Wharf" />
+          <input style={inputStyle} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Art gallery name" />
         </Field>
         <Field label="Type *">
           <select style={inputStyle} value={form.category} onChange={e => set("category", e.target.value)}>
@@ -93,7 +93,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
         </Field>
       </Row>
       <Field label="Sub-category">
-        <input style={inputStyle} value={form.subCategory} onChange={e => set("subCategory", e.target.value)} placeholder="seafood, bakery, Goan..." />
+        <input style={inputStyle} value={form.subCategory} onChange={e => set("subCategory", e.target.value)} placeholder="Library,Art-gallery" />
       </Field>
       <Field label="Google Maps URL">
         <input style={inputStyle} value={form.googleMapUrl} onChange={e => set("googleMapUrl", e.target.value)} placeholder="https://maps.google.com/?q=..." />
@@ -107,7 +107,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
 
       <SectionHeading>Story</SectionHeading>
       <Field label="Tagline">
-        <input style={inputStyle} value={form.tagline} onChange={e => set("tagline", e.target.value)} placeholder="Best prawn curry on Baga Beach" />
+        <input style={inputStyle} value={form.tagline} onChange={e => set("tagline", e.target.value)} placeholder="Best library in a town" />
       </Field>
       <Field label="Description">
         <textarea style={{ ...inputStyle, minHeight: 70 }} value={form.description} onChange={e => set("description", e.target.value)} />
@@ -116,12 +116,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
         <textarea style={{ ...inputStyle, minHeight: 50 }} value={form.localTip} onChange={e => set("localTip", e.target.value)} />
       </Field>
       <Row>
-        <Field label="Must Try (comma separated)">
-          <input style={inputStyle} value={form.mustTry} onChange={e => set("mustTry", e.target.value)} placeholder="Prawn balchão, Bebinca" />
-        </Field>
-        <Field label="Highlights (comma separated)">
-          <input style={inputStyle} value={form.highlights} onChange={e => set("highlights", e.target.value)} placeholder="Fresh catch daily, no tourist markup" />
-        </Field>
+
       </Row>
 
       <SectionHeading>Pricing & Hours</SectionHeading>

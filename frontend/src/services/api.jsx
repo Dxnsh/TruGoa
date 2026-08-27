@@ -516,3 +516,62 @@ export const markReviewHelpful = async (reviewId) => {
   if (!res.ok) throw new Error("Failed to mark review helpful");
   return unwrap(await res.json()); // { helpfulCount }
 };
+
+// Public
+export const getTrendingPlaces = async () => {
+  const res = await fetch(`${API_BASE}/trending`);
+  if (!res.ok) throw new Error("Failed to fetch trending places");
+  return res.json();
+};
+
+export const getTrendingPlaceBySlug = async (slug) => {
+  const res = await fetch(`${API_BASE}/trending/${slug}`);
+  if (!res.ok) throw new Error("Failed to fetch trending place");
+  return res.json();
+};
+
+// Admin
+export const getAdminTrendingPlaces = async () => {
+  const res = await fetch(`${API_BASE}/trending/admin/all`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch trending places");
+  return res.json();
+};
+
+export const createTrendingPlace = async (data) => {
+  const res = await fetch(`${API_BASE}/trending`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create trending place");
+  return res.json();
+};
+
+export const updateTrendingPlace = async (id, data) => {
+  const res = await fetch(`${API_BASE}/trending/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update trending place");
+  return res.json();
+};
+
+export const deleteTrendingPlace = async (id) => {
+  const res = await fetch(`${API_BASE}/trending/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to delete trending place");
+  return res.json();
+};
+
+export const reorderTrendingPlaces = async (order) => {
+  const res = await fetch(`${API_BASE}/trending/reorder`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ order }),
+  });
+  if (!res.ok) throw new Error("Failed to reorder");
+  return res.json();
+};

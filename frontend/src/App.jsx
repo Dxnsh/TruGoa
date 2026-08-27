@@ -20,7 +20,7 @@ import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import AboutPage from "./pages/StaticPages/AboutPage";
 import ManifestoPage from "./pages/StaticPages/ManifestoPage";
 import ContactPage from "./pages/StaticPages/ContactPage";
-
+import TrendingDetail from "./pages/TrendingDetail/TrendingDetail";
 // The journal used to live at /guides. Anything already linked or indexed
 // there is forwarded rather than dropped on a 404.
 const GuideSlugRedirect = () => {
@@ -53,6 +53,8 @@ function App() {
         <Route path="/about"       element={<AboutPage />} />
         <Route path="/manifesto"   element={<ManifestoPage />} />
         <Route path="/contact"     element={<ContactPage />} />
+        <Route path="/trending/:slug"     element={<TrendingDetail />} />
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Analytics />

@@ -15,6 +15,7 @@ import { logger, morganStream }               from "./utils/logger.js";
 import apiRouter                              from "./routes/index.js";
 import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 import { isCloudinaryConfigured }             from "./config/cloudinary.js";
+import trendingRoutes from "./routes/trendingRoutes.js"; 
 
 dotenv.config();
 
@@ -92,7 +93,7 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // ── 5b. SANITIZATION ──────────────────────────────────────────────────────────
 // Strips $/. keys to block NoSQL operator injection — must run after body parsing.
 app.use(sanitizeInput);
-
+app.use("/api/trending", trendingRoutes);
 // ── 6. TIMING ─────────────────────────────────────────────────────────────────
 app.use(responseTime);
 
@@ -136,6 +137,9 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
 });
+
+
+
 
 // Guard against slow-loris style connection exhaustion: cap how long a
 // client can take to finish sending headers/body before we drop it.

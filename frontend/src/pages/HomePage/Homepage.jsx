@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Waves, Landmark, UtensilsCrossed, Mountain, Music2, Flower2,
-  ArrowRight, ChevronRight, MousePointer2, Menu,
+  ArrowRight, ArrowLeft, ChevronRight, MousePointer2, Menu,
   PenLine, BookOpen, Backpack, Camera, Bell, Search, SlidersHorizontal,
   Heart, Wind, MoreHorizontal, User, ArrowUp, LogOut,
-  ChevronLeft, MapPin,
+  ChevronLeft, MapPin, TrendingUp, Star, Gem, Moon, Flame,
 } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
@@ -17,9 +17,10 @@ import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import MobileMenu from "../../components/MobileMenu/MobileMenu";
-
+import { getTrendingPlaces } from "../../services/api";
 import useIsMobile from "../../hooks/useIsMobile";
-import "./homepage.css";
+import "./homepage.css"
+
 
 // Category shortcuts come from constants/categories.js — the same list the
 // Explore page renders. Each one deep-links to /explore?category=<key>, which
@@ -40,6 +41,15 @@ const useScrollReveal = (threshold = 0.1) => {
   return [ref, visible];
 };
 
+const BADGE_ICON_MAP = {
+  TRENDING: TrendingUp,
+  POPULAR: Star,
+  "HIDDEN GEM": Gem,
+  TONIGHT: Moon,
+  "WHAT'S HOT": UtensilsCrossed,
+};
+
+// inside component
 
 
 const JOURNEY_WAY_STEPS = [
@@ -76,7 +86,38 @@ const Homepage = () => {
   const { isTouristLoggedIn, tourist, touristLogout } = useTourist();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [activeDot, setActiveDot] = useState(0);
+  const [trendingItems, setTrendingItems] = useState([]);
+  const trendingTrackRef = useRef(null);
 
+useEffect(() => {
+  let cancelled = false;
+  getTrendingPlaces()
+    .then((data) => { if (!cancelled) setTrendingItems(data); })
+    .catch(() => { if (!cancelled) setTrendingItems([]); });
+  return () => { cancelled = true; };
+}, []);
+
+const scrollTrending = (dir) => {
+  const track = trendingTrackRef.current;
+  if (!track) return;
+  const card = track.querySelector(".tr-card");
+  const step = card ? card.offsetWidth + 20 : track.clientWidth * 0.85;
+  track.scrollBy({ left: dir * step, behavior: "smooth" });
+};
+
+useEffect(() => {
+  const track = trendingTrackRef.current;
+  if (!track) return;
+  const onScroll = () => {
+    const card = track.querySelector(".tr-card");
+    if (!card) return;
+    const step = card.offsetWidth + 20;
+    setActiveDot(Math.round(track.scrollLeft / step));
+  };
+  track.addEventListener("scroll", onScroll, { passive: true });
+  return () => track.removeEventListener("scroll", onScroll);
+}, []);
   // Dismiss the profile menu on any tap outside it.
   useEffect(() => {
     if (!showProfile) return;
@@ -99,7 +140,7 @@ const Homepage = () => {
   const [guideRef,   guideVisible  ] = useScrollReveal();
   const [storiesRef, storiesVisible] = useScrollReveal();
   const [statsRef,   statsVisible  ] = useScrollReveal();
-
+  const [trendingRef, trendingVisible] = useScrollReveal();
   // Journey steps are a card deck rather than a static row — one step is in
   // focus at a time, and the rest stack behind it.
   const [stepIndex, setStepIndex] = useState(0);
@@ -137,8 +178,6 @@ const Homepage = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // Editor's Pick pulls real story collections — each card must link to
-  // its own collection, not a hardcoded one.
   const [stories, setStories] = useState([]);
 
   useEffect(() => {
@@ -354,140 +393,95 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* ══ YOUR GOA JOURNEY, YOUR WAY ════════════════════ */}
-      <section ref={journeyRef} className="dark-band jw-section">
-        <span className="jw-arcs" aria-hidden="true" />
+    {/* ══ WHAT'S TRENDING IN GOA ════════════════════════ */}
 
-        <div className={`jw-wrap reveal ${journeyVisible ? "visible" : ""}`}>
-          <div className="jw-copy">
-            <p className="db-eyebrow">Plan Your Trip &middot; {stepCount} Steps</p>
-            <h2 className="db-heading">
-              Your Goa Journey,<br />
-              <span className="db-heading-accent">Your Way.</span>
-            </h2>
-            <p className="db-sub">
-              Tell us what you love, swipe through how it comes together, and
-              we&rsquo;ll craft an itinerary that actually feels like yours &mdash;
-              not a template.
-            </p>
-            <button className="jw-cta" onClick={() => navigate("/itinerary")}>
-              Create My Itinerary <ArrowRight size={16} strokeWidth={2} />
-            </button>
+      <section ref={trendingRef} className="light-band tr-section">
+        <div className={`tr-wrap reveal ${trendingVisible ? "visible" : ""}`}>
+          <div className="tr-head">
+            <div className="tr-head-copy">
+              <p className="tr-eyebrow">
+                <Flame size={13} strokeWidth={2.2} />
+                Trending in Goa
+              </p>
+              <h2 className="tr-heading">
+                What&rsquo;s <span className="tr-heading-accent">trending</span> in Goa
+              </h2>
+              <p className="tr-sub">Real-time picks loved by travellers this week.</p>
+            </div>
+
+            <div className="tr-nav">
+              <button className="tr-nav-btn" onClick={() => scrollTrending(-1)} aria-label="Previous">
+                <ArrowLeft size={16} strokeWidth={2} />
+              </button>
+              <button className="tr-nav-btn" onClick={() => scrollTrending(1)} aria-label="Next">
+                <ArrowRight size={16} strokeWidth={2} />
+              </button>
+            </div>
           </div>
 
-          <div className="jw-deck-col">
-            <div
-              className="jw-deck"
-              onPointerDown={onDeckPointerDown}
-              onPointerUp={onDeckPointerUp}
-              onPointerCancel={() => { swipeStartX.current = null; }}
-            >
-              {JOURNEY_WAY_STEPS.map(({ Icon, title, desc }, i) => {
-                // How far back in the stack this card currently sits.
-                const offset = (i - stepIndex + stepCount) % stepCount;
-                return (
-                  <article
-                    key={title}
-                    className="jw-card"
-                    data-offset={offset}
-                    aria-hidden={offset !== 0}
-                    onClick={() => { if (offset === 0) goToStep(1); }}
-                  >
-                    <span className="jw-card-count">
-                      {String(i + 1).padStart(2, "0")} / {String(stepCount).padStart(2, "0")}
+         <div className="tr-track" ref={trendingTrackRef}>
+          {trendingItems.map((item) => {
+            const Icon = BADGE_ICON_MAP[item.badge] || TrendingUp;
+            return (
+              <article
+                key={item._id}
+                className="tr-card"
+                onClick={() => navigate(`/trending/${item.slug}`)}
+              >
+                <div className="tr-card-media">
+                  <img src={item.image} alt={item.title} loading="lazy" />
+                  <span className="tr-card-badge">
+                    <Icon size={12} strokeWidth={2.2} />
+                    {item.badge}
+                  </span>
+                </div>
+                <div className="tr-card-body">
+                  <span className="tr-card-loc">
+                    <MapPin size={12} strokeWidth={2} />
+                    {item.location}
+                  </span>
+                  <h3 className="tr-card-title">{item.title}</h3>
+                  <p className="tr-card-desc">{item.description}</p>
+                  <div className="tr-card-foot">
+                    <span className="tr-card-avatars">
+                      {(item.avatars || []).map((src, i) => (
+                        <img
+                          key={i}
+                          src={src}
+                          alt=""
+                          className="tr-avatar"
+                          style={{ zIndex: item.avatars.length - i }}
+                        />
+                      ))}
                     </span>
-                    <span className="jw-card-icon"><Icon size={22} strokeWidth={1.6} /></span>
-                    <h3 className="jw-card-title">{title}</h3>
-                    <p className="jw-card-desc">{desc}</p>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div className="jw-deck-nav">
-              <span className="jw-deck-hint">
-                <ChevronLeft size={14} strokeWidth={2} />
-                swipe or tap to explore each step
-                <ChevronRight size={14} strokeWidth={2} />
-              </span>
-              <button className="jw-deck-btn" onClick={() => goToStep(-1)} aria-label="Previous step">
-                <ChevronLeft size={18} strokeWidth={2} />
-              </button>
-              <button className="jw-deck-btn" onClick={() => goToStep(1)} aria-label="Next step">
-                <ChevronRight size={18} strokeWidth={2} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ GOAGUIDE AI ═══════════════════════════════════ */}
-      <section ref={guideRef} className="dark-band ga-section">
-        <div className={`ga-wrap reveal ${guideVisible ? "visible" : ""}`}>
-          <div className="ga-copy">
-            <span className="ga-badge">
-              <span className="ga-badge-dot" />
-              GoaGuide is online
-            </span>
-
-            <h2 className="db-heading ga-heading">
-              Not just answers.<br />
-              <span className="db-heading-accent">A local friend.</span>
-            </h2>
-
-            <p className="db-sub">
-              Ask it anything &mdash; hidden beaches, rainy-day plans, where locals
-              actually eat. It knows Goa the way a friend who grew up here would.
-            </p>
-
-            <div className="ga-topics">
-              {GUIDE_TOPICS.map((topic) => (
-                <button key={topic} className="ga-topic" onClick={() => navigate("/goaguide")}>
-                  {topic}
-                </button>
-              ))}
-            </div>
+                    <span className="tr-card-loved">
+                      Loved by <strong>{(item.lovedCount || 0).toLocaleString()}</strong> travellers
+                    </span>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
           </div>
 
-          <div className="ga-panel">
-            <div className="ga-panel-head">
-              <span className="ga-panel-avatar">G</span>
-              <span className="ga-panel-id">
-                <span className="ga-panel-name">GoaGuide AI</span>
-                <span className="ga-panel-status">
-                  <span className="ga-panel-dot" />
-                  Online now
-                </span>
-              </span>
-            </div>
+<div className="tr-dots">
+  {Array.from({ length: trendingItems.length }).map((_, i) => (
+    <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
+  ))}
+</div>
 
-            <div className="ga-thread">
-              <div className="ga-bubble ga-bubble-user">Best hidden beach near Palolem?</div>
-              <div className="ga-bubble ga-bubble-ai">
-                Rajbaug &mdash; locals go, tourists don&rsquo;t yet.
-                <span className="ga-bubble-meta">
-                  <MapPin size={12} strokeWidth={2} />
-                  12 min drive &middot; quiet at sunset
-                </span>
-              </div>
-            </div>
-
-            <div className="ga-chips">
-              {GUIDE_PROMPTS.map((prompt) => (
-                <button key={prompt} className="ga-chip" onClick={() => navigate("/goaguide")}>
-                  {prompt}
-                </button>
-              ))}
-            </div>
-
-            {/* Styled like an input but it's a button — GoaGuide has no way to
-                receive an opening question, so a real field would drop what
-                you typed on the way there. */}
-            <button className="ga-ask" onClick={() => navigate("/goaguide")}>
-              <span className="ga-ask-placeholder">Ask GoaGuide anything&hellip;</span>
-              <span className="ga-ask-send"><ArrowUp size={17} strokeWidth={2.5} /></span>
-            </button>
+      <button className="tr-cta" onClick={() => navigate("/trending")}>
+        Explore all trending places <ArrowRight size={16} strokeWidth={2} />
+      </button> 
+          <div className="tr-dots">
+            {Array.from({ length: trendingTrackRef.length }).map((_, i) => (
+              <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
+            ))}
           </div>
+
+          <button className="tr-cta" onClick={() => navigate("/trending")}>
+            Explore all trending places <ArrowRight size={16} strokeWidth={2} />
+          </button>
         </div>
       </section>
 
