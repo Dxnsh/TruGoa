@@ -14,6 +14,7 @@ import StayForm from "./forms/StayForm";
 import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
 import TempleForm from "./forms/TempleForm";
+import ArtGallery from "./forms/ArtGallery";
 
 // Team is owner-only, so the tab list is built per signed-in admin rather
 // than being a constant. Hiding it is cosmetic — the API enforces the rule.
@@ -30,6 +31,7 @@ const FORM_TYPES = [
   { key: "hidden",    label: "Hidden Goa",   Component: HiddenGoaForm },
   { key: "nightlife", label: "Nightlife",    Component: NightlifeForm },
   { key: "temples",   label: "Temples & Holy Places", Component: TempleForm },
+  { key: "artgallery",   label: "Art Gallery", Component: ArtGallery },
 ];
 
 // existing listings that don't fit one of the clean forms (e.g. activity, market, heritage)
