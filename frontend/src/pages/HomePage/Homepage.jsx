@@ -470,9 +470,6 @@ useEffect(() => {
   ))}
 </div>
 
-      <button className="tr-cta" onClick={() => navigate("/trending")}>
-        Explore all trending places <ArrowRight size={16} strokeWidth={2} />
-      </button> 
           <div className="tr-dots">
             {Array.from({ length: trendingTrackRef.length }).map((_, i) => (
               <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
