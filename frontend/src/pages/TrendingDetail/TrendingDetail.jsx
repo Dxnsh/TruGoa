@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapPin, ArrowLeft } from "lucide-react";
+import { MapPin, ArrowLeft, Heart } from "lucide-react";
 import { getTrendingPlaceBySlug } from "../../services/api";
 import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
-
+import "./trendingDetails.css"
 
 const TrendingDetail = () => {
   const { slug } = useParams();
@@ -24,12 +24,20 @@ const TrendingDetail = () => {
     return () => { cancelled = true; };
   }, [slug]);
 
-  if (loading) return <div className="td-loading">Loading&hellip;</div>;
+  if (loading) {
+    return (
+      <div className="td-loading">
+        <span className="td-loading-dot" />
+        <p>Finding this place&hellip;</p>
+      </div>
+    );
+  }
 
   if (notFound || !place) {
     return (
       <div className="td-notfound">
-        <p>We couldn&rsquo;t find that place.</p>
+        <span className="td-notfound-eyebrow">Not found</span>
+        <p>We couldn&rsquo;t find that place — it may have moved, or the trail ends here.</p>
         <button onClick={() => navigate("/")}>Back to Home</button>
       </div>
     );
@@ -39,13 +47,10 @@ const TrendingDetail = () => {
     <div className="td-root">
       <SEO path={`/trending/${place.slug}`} title={place.title} description={place.description} />
 
-      <button className="td-back" onClick={() => navigate(-1)}>
-        <ArrowLeft size={16} strokeWidth={2} /> Back
-      </button>
-
       <div className="td-hero">
         <img src={place.image} alt={place.title} className="td-hero-img" />
-        <span className="td-hero-badge">{place.badge}</span>
+        <div className="td-hero-gradient" />
+        {place.badge && <span className="td-hero-badge">{place.badge}</span>}
       </div>
 
       <div className="td-body">
@@ -64,6 +69,7 @@ const TrendingDetail = () => {
         )}
 
         <div className="td-loved">
+          <Heart size={14} strokeWidth={2} fill="currentColor" />
           Loved by <strong>{(place.lovedCount || 0).toLocaleString()}</strong> travellers this week
         </div>
       </div>

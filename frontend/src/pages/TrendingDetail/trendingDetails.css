@@ -1,13 +1,226 @@
-.td-root { max-width: 900px; margin: 0 auto; padding: 100px 24px 60px; }
-.td-back { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-size: 14px; color: #444; margin-bottom: 24px; }
-.td-hero { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 16 / 9; }
-.td-hero-img { width: 100%; height: 100%; object-fit: cover; }
-.td-hero-badge { position: absolute; top: 18px; left: 18px; background: rgba(255,255,255,0.92); padding: 6px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
-.td-body { padding-top: 28px; }
-.td-loc { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-primary, #E4A23A); margin-bottom: 10px; }
-.td-title { font-family: var(--font-display); font-size: clamp(28px, 4vw, 42px); font-weight: 600; color: #141414; margin-bottom: 16px; }
-.td-desc { font-size: 16px; line-height: 1.8; color: #555; max-width: 700px; }
-.td-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 28px; }
-.td-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
-.td-loved { margin-top: 28px; font-size: 14px; color: #777; }
-.td-loved strong { color: var(--color-primary, #E4A23A); }
+/* ===== TrendingDetail — TruGoa editorial style ===== */
+
+.td-root {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 100px) 20px 60px;
+}
+
+/* Back button */
+.td-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #6b6b6b;
+  margin-bottom: clamp(20px, 4vw, 28px);
+  padding: 6px 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.td-back:hover {
+  color: #141414;
+  transform: translateX(-2px);
+}
+
+/* Hero */
+.td-hero {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: #f4f1ea;
+}
+@media (max-width: 640px) {
+  .td-hero {
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+  }
+}
+.td-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.td-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+.td-hero-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #141414;
+}
+@media (max-width: 480px) {
+  .td-hero-badge {
+    top: 12px;
+    left: 12px;
+    padding: 5px 12px;
+    font-size: 10px;
+  }
+}
+
+/* Body */
+.td-body {
+  padding-top: clamp(24px, 4vw, 32px);
+}
+
+.td-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--color-primary, #E4A23A);
+  margin-bottom: 12px;
+}
+
+.td-title {
+  font-family: var(--font-display, "Playfair Display", serif);
+  font-size: clamp(28px, 5.5vw, 44px);
+  line-height: 1.15;
+  font-weight: 600;
+  color: #141414;
+  margin-bottom: clamp(14px, 3vw, 18px);
+  max-width: 20ch;
+}
+
+.td-desc {
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: clamp(15px, 2vw, 16px);
+  line-height: 1.8;
+  color: #555;
+  max-width: 700px;
+  white-space: pre-line;
+}
+
+/* Gallery */
+.td-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: clamp(24px, 4vw, 28px);
+}
+@media (max-width: 480px) {
+  .td-gallery {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+.td-gallery img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}
+.td-gallery img:hover {
+  transform: scale(1.02);
+}
+
+/* Loved-by strip */
+.td-loved {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: clamp(24px, 4vw, 28px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #f9f6f0;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 13px;
+  color: #777;
+}
+.td-loved svg {
+  color: var(--color-primary, #E4A23A);
+}
+.td-loved strong {
+  color: var(--color-primary, #E4A23A);
+  font-weight: 700;
+}
+
+/* Loading state */
+.td-loading {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  color: #999;
+  font-size: 14px;
+}
+.td-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary, #E4A23A);
+  animation: td-pulse 1.1s ease-in-out infinite;
+}
+@keyframes td-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Not found state */
+.td-notfound {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 0 24px;
+}
+.td-notfound-eyebrow {
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-primary, #E4A23A);
+}
+.td-notfound p {
+  font-family: var(--font-display, "Playfair Display", serif);
+  font-size: clamp(18px, 3vw, 22px);
+  color: #333;
+  max-width: 32ch;
+}
+.td-notfound button {
+  margin-top: 6px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: none;
+  background: #141414;
+  color: #fff;
+  font-family: var(--font-body, "Instrument Sans", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.td-notfound button:hover {
+  background: var(--color-primary, #E4A23A);
+}
