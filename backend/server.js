@@ -15,8 +15,7 @@ import { logger, morganStream }               from "./utils/logger.js";
 import apiRouter                              from "./routes/index.js";
 import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 import { isCloudinaryConfigured }             from "./config/cloudinary.js";
-import trendingRoutes from "./routes/trendingRoutes.js"; 
-
+import trendingRoutes from "./routes/trendingRoutes.js";
 dotenv.config();
 
 // Every admin session token is signed with this. Without it jwt.sign throws
@@ -93,7 +92,7 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // ── 5b. SANITIZATION ──────────────────────────────────────────────────────────
 // Strips $/. keys to block NoSQL operator injection — must run after body parsing.
 app.use(sanitizeInput);
-app.use("/api/trending", trendingRoutes);
+
 // ── 6. TIMING ─────────────────────────────────────────────────────────────────
 app.use(responseTime);
 
@@ -125,7 +124,9 @@ app.get("/health", healthLimiter, (req, res) => {
   });
 });
 
+
 // ── 9. API (v1) ────────────────────────────────────────────────────────────────
+app.use("/api/v1/trending", trendingRoutes);
 app.use("/api/v1", apiRouter);
 
 // ── 10. ERROR HANDLERS (must be last) ────────────────────────────────────────

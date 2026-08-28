@@ -7,6 +7,7 @@ const JOURNALS_URL  = `${BASE}/journals`;
 const TOURIST_URL   = `${BASE}/tourist`;
 const REVIEWS_URL   = `${BASE}/reviews`;
 const ITINERARY_URL = `${BASE}/itinerary`;
+const TRENDING_URL  = `${BASE}/trending`; 
 
 const touristHeader = () => {
   const token = localStorage.getItem("trugoa_tourist_token");
@@ -206,32 +207,6 @@ export const adminLogin = async (email, password) => {
 export const adminGetBusinesses = async () => {
   const res = await fetch(`${ADMIN_URL}/businesses`, { headers: adminHeader() });
   if (!res.ok) throw new Error(String(res.status));
-  return unwrap(await res.json());
-};
-
-export const adminCreateBusiness = async (data) => {
-  const res = await fetch(`${ADMIN_URL}/businesses`, {
-    method:  "POST",
-    headers: adminHeader(),
-    body:    JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create business");
-  }
-  return unwrap(await res.json());
-};
-
-export const adminUpdateBusiness = async (id, data) => {
-  const res = await fetch(`${ADMIN_URL}/businesses/${id}`, {
-    method:  "PUT",
-    headers: adminHeader(),
-    body:    JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to update business");
-  }
   return unwrap(await res.json());
 };
 
@@ -517,61 +492,96 @@ export const markReviewHelpful = async (reviewId) => {
   return unwrap(await res.json()); // { helpfulCount }
 };
 
-// Public
+
+// public
 export const getTrendingPlaces = async () => {
-  const res = await fetch(`${API_BASE}/trending`);
+  const res = await fetch(TRENDING_URL);
   if (!res.ok) throw new Error("Failed to fetch trending places");
-  return res.json();
+  return unwrap(await res.json());
 };
 
 export const getTrendingPlaceBySlug = async (slug) => {
-  const res = await fetch(`${API_BASE}/trending/${slug}`);
+  const res = await fetch(`${TRENDING_URL}/${slug}`);
   if (!res.ok) throw new Error("Failed to fetch trending place");
-  return res.json();
+  return unwrap(await res.json());
 };
 
 // Admin
-export const getAdminTrendingPlaces = async () => {
-  const res = await fetch(`${API_BASE}/trending/admin/all`, { headers: authHeaders() });
+export const adminCreateBusiness = async (data) => {
+  const res = await fetch(`${ADMIN_URL}/businesses`, {
+    method:  "POST",
+    headers: adminHeader(),
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create business");
+  }
+  return unwrap(await res.json());
+};
+
+export const adminUpdateBusiness = async (id, data) => {
+  const res = await fetch(`${ADMIN_URL}/businesses/${id}`, {
+    method:  "PUT",
+    headers: adminHeader(),
+    body:    JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update business");
+  }
+  return unwrap(await res.json());
+};
+export const adminGetTrendingPlaces = async () => {
+  const res = await fetch(`${TRENDING_URL}/admin/all`, { headers: adminHeader() });
   if (!res.ok) throw new Error("Failed to fetch trending places");
-  return res.json();
+  return unwrap(await res.json());
 };
 
-export const createTrendingPlace = async (data) => {
-  const res = await fetch(`${API_BASE}/trending`, {
+export const adminCreateTrendingPlace = async (data) => {
+  const res = await fetch(TRENDING_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: adminHeader(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create trending place");
-  return res.json();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create trending place");
+  }
+  return unwrap(await res.json());
 };
 
-export const updateTrendingPlace = async (id, data) => {
-  const res = await fetch(`${API_BASE}/trending/${id}`, {
+export const adminUpdateTrendingPlace = async (id, data) => {
+  const res = await fetch(`${TRENDING_URL}/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: adminHeader(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update trending place");
-  return res.json();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update trending place");
+  }
+  return unwrap(await res.json());
 };
 
-export const deleteTrendingPlace = async (id) => {
-  const res = await fetch(`${API_BASE}/trending/${id}`, {
+export const adminDeleteTrendingPlace = async (id) => {
+  const res = await fetch(`${TRENDING_URL}/${id}`, {
     method: "DELETE",
-    headers: authHeaders(),
+    headers: adminHeader(),
   });
-  if (!res.ok) throw new Error("Failed to delete trending place");
-  return res.json();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to delete trending place");
+  }
+  return unwrap(await res.json());
 };
 
-export const reorderTrendingPlaces = async (order) => {
-  const res = await fetch(`${API_BASE}/trending/reorder`, {
+export const adminReorderTrendingPlaces = async (order) => {
+  const res = await fetch(`${TRENDING_URL}/reorder`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: adminHeader(),
     body: JSON.stringify({ order }),
   });
   if (!res.ok) throw new Error("Failed to reorder");
-  return res.json();
+  return unwrap(await res.json());
 };

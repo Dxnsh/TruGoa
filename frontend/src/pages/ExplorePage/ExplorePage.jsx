@@ -36,6 +36,9 @@ const CATEGORY_FILTERS = {
   hidden:    (b) => hasTag(b, "hidden"),
   nightlife: (b) => isCategory(b, ["nightlife"]),
   temples:   (b) => isCategory(b, ["spiritual"]),
+  art:       (b) => isCategory(b, ["art-gallery"]),
+  museum:  (b) => isCategory(b, ["museum"]),
+  library: (b) => isCategory(b, ["library"]),
 };
 
 // The whole hero — artwork and words — is dressed per category, so picking a
@@ -78,6 +81,14 @@ const CATEGORY_HEROES = {
     title: "The Goa that isn't\non the map.",
     sub: "Back lanes and quiet corners you'd only find if a local pointed you there.",
   },
+  art: {
+  src: "/images/art.jpg",
+  alt: "Contemporary art gallery in Goa",
+  eyebrow: "Art & Galleries",
+  title: "Where Goa\ngets creative.",
+  sub: "Independent galleries, artists and creative spaces that reveal another side of Goa.",
+},
+
   temples: {
     ...DEFAULT_HERO,
     eyebrow: "Temples & Holy Places",
