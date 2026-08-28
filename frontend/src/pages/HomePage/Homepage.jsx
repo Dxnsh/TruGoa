@@ -464,11 +464,11 @@ useEffect(() => {
           })}
           </div>
 
-<div className="tr-dots">
-  {Array.from({ length: trendingItems.length }).map((_, i) => (
-    <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
-  ))}
-</div>
+      <div className="tr-dots">
+        {Array.from({ length: trendingItems.length }).map((_, i) => (
+          <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
+        ))}
+      </div>
 
           <div className="tr-dots">
             {Array.from({ length: trendingTrackRef.length }).map((_, i) => (
