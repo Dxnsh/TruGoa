@@ -4,11 +4,15 @@ import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
-const TYPES = ["Art-Library", " Muesem", "Library",];
+const TYPES = [
+  { value: "art-gallery", label: "Art Gallery" },
+  { value: "museum", label: "Museum" },
+  { value: "library", label: "Library" },
+];
 const PRICE_LEVELS = ["budget", "mid", "premium"];
 
 const blank = {
-  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "restaurant", subCategory: "",
+  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "art-gallery", subCategory: "",
   tagline: "", description: "", localTip: "",
   mustTry: "", highlights: "",
   priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
@@ -48,6 +52,11 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
       mustTry:    toList(form.mustTry),
       highlights: toList(form.highlights),
       tags:       toList(form.tags),
+      // Optional enum fields — an empty string from an unselected <select>
+      // fails express-validator's isIn() check even under .optional(), so
+      // send undefined instead when nothing was picked.
+      priceLevel: form.priceLevel || undefined,
+      area:       form.area || undefined,
     };
 
     try {
@@ -77,7 +86,11 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
         </Field>
         <Field label="Type *">
           <select style={inputStyle} value={form.category} onChange={e => set("category", e.target.value)}>
-            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {TYPES.map(t => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
           </select>
         </Field>
       </Row>
@@ -115,9 +128,6 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
       <Field label="Local Tip">
         <textarea style={{ ...inputStyle, minHeight: 50 }} value={form.localTip} onChange={e => set("localTip", e.target.value)} />
       </Field>
-      <Row>
-
-      </Row>
 
       <SectionHeading>Pricing & Hours</SectionHeading>
       <Row>
@@ -171,6 +181,9 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
       </div>
     </ModalShell>
   );
+
+  
 };
+
 
 export default ArtGallery;

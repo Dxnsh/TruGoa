@@ -15,12 +15,13 @@ import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
 import TempleForm from "./forms/TempleForm";
 import ArtGallery from "./forms/ArtGallery";
+import TrendingManager from "./TrendingManager";
 
 // Team is owner-only, so the tab list is built per signed-in admin rather
 // than being a constant. Hiding it is cosmetic — the API enforces the rule.
-const BASE_SECTIONS = ["businesses", "stories", "journal"];
+const BASE_SECTIONS = ["businesses", "stories","trending", "journal"];
 const SECTION_LABELS = {
-  businesses: "Businesses", stories: "Stories", journal: "Journal", team: "Team",
+  businesses: "Businesses", stories: "Stories", journal: "Journal",trending: "Trending", team: "Team",
 };
 
 // which clean, category-specific form to open for each listing type
@@ -31,7 +32,7 @@ const FORM_TYPES = [
   { key: "hidden",    label: "Hidden Goa",   Component: HiddenGoaForm },
   { key: "nightlife", label: "Nightlife",    Component: NightlifeForm },
   { key: "temples",   label: "Temples & Holy Places", Component: TempleForm },
-  { key: "artgallery",   label: "Art Gallery", Component: ArtGallery },
+  { key: "art", label: "Art Gallery", Component: ArtGallery },
 ];
 
 // existing listings that don't fit one of the clean forms (e.g. activity, market, heritage)
@@ -44,6 +45,7 @@ const resolveFormType = (biz) => {
   if (["hotel", "stay"].includes(biz.category)) return "stays";
   if (biz.category === "nightlife") return "nightlife";
   if (biz.category === "spiritual") return "temples";
+  if (["art-gallery", "museum", "library"].includes(biz.category)) return "art"; 
   return "other";
 };
 
@@ -230,7 +232,9 @@ const AdminDashboard = () => {
           <StoriesManager isMobile={isMobile} />
         ) : section === "journal" ? (
           <JournalManager isMobile={isMobile} />
-        ) : section === "team" ? (
+        ) : section === "trending" ? (
+          <TrendingManager isMobile={isMobile} />
+        ): section === "team" ? (
           <TeamManager isMobile={isMobile} me={me} />
         ) : (
         <>

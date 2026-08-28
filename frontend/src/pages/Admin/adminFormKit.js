@@ -1,5 +1,9 @@
 import { theme } from "../../Theme";
-import { adminCreateBusiness, adminUpdateBusiness } from "../../services/api";
+import { adminCreateBusiness, adminUpdateBusiness,
+        adminCreateTrendingPlace, adminUpdateTrendingPlace
+ } from "../../services/api";
+
+
 
 export const inputStyle = {
   width: "100%", padding: "10px 12px",
@@ -20,6 +24,11 @@ export const toLines = (str) => str.split("\n").map(s => s.trim()).filter(Boolea
 
 export const saveBusiness = (business, payload) =>
   business?._id ? adminUpdateBusiness(business._id, payload) : adminCreateBusiness(payload);
+
+export const saveTrendingPlace = (trendingItem, payload) =>
+  trendingItem?._id
+    ? adminUpdateTrendingPlace(trendingItem._id, payload)
+    : adminCreateTrendingPlace(payload);
 
 // ── MAP PIN ───────────────────────────────────────────────────────────────────
 // Coordinates are what put a listing on the "near me" deck: without them the
