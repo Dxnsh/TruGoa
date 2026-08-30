@@ -35,7 +35,7 @@ const CATEGORY_FILTERS = {
   stays:     (b) => isCategory(b, ["hotel", "resort", "homestay", "stay"]),
   hidden:    (b) => hasTag(b, "hidden"),
   nightlife: (b) => isCategory(b, ["nightlife"]),
-  temples:   (b) => isCategory(b, ["spiritual"]),
+  sacredPlaces:   (b) => isCategory(b, ["spiritual"]),
   art:       (b) => isCategory(b, ["art-gallery"]),
   museum:  (b) => isCategory(b, ["museum"]),
   library: (b) => isCategory(b, ["library"]),
@@ -81,20 +81,39 @@ const CATEGORY_HEROES = {
     title: "The Goa that isn't\non the map.",
     sub: "Back lanes and quiet corners you'd only find if a local pointed you there.",
   },
+
   art: {
   src: "/images/art.jpg",
   alt: "Contemporary art gallery in Goa",
   eyebrow: "Art & Galleries",
   title: "Where Goa\ngets creative.",
   sub: "Independent galleries, artists and creative spaces that reveal another side of Goa.",
+ },
+
+  museum: {
+    src: "/images/Museum.jpg",
+    alt: "Museum showcasing Goa's art and heritage",
+    eyebrow: "Museums & Heritage",
+    title: "Stories\nworth seeing.",
+    sub: "Museums and heritage spaces that bring Goa's history, art and culture to life.",
+  },
+
+  library: {
+    src: "/images/library.jpg",
+    alt: "Quiet library and reading space in Goa",
+    eyebrow: "library & Reading",
+    title: "A quieter\nside of Goa.",
+    sub: "Independent library, reading rooms and cultural spaces for those who like to slow down and explore.",
+  },
+
+ sacredPlaces: {
+  src: "/images/sacred-places.png",
+  alt: "Sacred temple, church, mosque and gurdwara heritage in Goa",
+  eyebrow: "Faith & Heritage",
+  title: "Where Goa goes\nquiet.",
+  sub: "Temples, churches, mosques, gurdwaras and sacred spaces that reveal the faith, history and traditions woven into Goa.",
 },
 
-  temples: {
-    ...DEFAULT_HERO,
-    eyebrow: "Temples & Holy Places",
-    title: "Where Goa goes\nquiet.",
-    sub: "Hilltop temples, whitewashed churches and roadside shrines — the older Goa, still in daily use.",
-  },
   nightlife: {
     src: "/images/drinks.jpg",
     alt: "A bartender mixing a cocktail over ice",

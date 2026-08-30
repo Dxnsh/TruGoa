@@ -7,10 +7,10 @@ const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 
 // Every listing here saves as category "spiritual"; the kind of holy place it
 // is lives in subCategory, so a church isn't filed away as a temple.
-const KINDS = ["temple", "church", "chapel", "cathedral", "mosque", "shrine", "monastery"];
+const KINDS = ["temple", "church", "chapel", "c","cathedral", "mosque", "shrine", "monastery"];
 
 const blank = {
-  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, subCategory: "temple",
+  name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, subCategory: "sacredplaces",
   tagline: "", description: "", story: "", localTip: "",
   highlights: "", bestTime: "", openingHours: "", visitDuration: "",
   dressCode: "",
@@ -27,7 +27,7 @@ const toFormState = (biz) => ({
   gallery:    biz.gallery || [],
 });
 
-const TempleForm = ({ business, onClose, onSaved }) => {
+const sacredPlaces = ({ business, onClose, onSaved }) => {
   const isEdit = !!business?._id;
   const [form, setForm] = useState(business ? toFormState(business) : blank);
   const [saving, setSaving] = useState(false);
@@ -172,4 +172,4 @@ const TempleForm = ({ business, onClose, onSaved }) => {
   );
 };
 
-export default TempleForm;
+export default sacredPlaces;
