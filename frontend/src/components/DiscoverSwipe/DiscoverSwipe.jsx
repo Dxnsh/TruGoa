@@ -43,16 +43,16 @@ const nextRadius = (current) => RADIUS_STEPS_M.find((r) => r > current) ?? null;
 // Business.category enum members; a mood spanning several of them passes a
 // comma-separated list.
 const MOODS = [
-  { key: "all",       label: "All",          category: null,         Icon: Sparkles },
-  { key: "beach",     label: "Beaches",      category: "beach",      Icon: Palmtree },
-  { key: "cafe",      label: "Cafés",        category: "cafe",       Icon: Coffee },
-  { key: "food",      label: "Food",         category: "restaurant", Icon: UtensilsCrossed },
-  { key: "stay",      label: "Stays",        category: "hotel,stay", Icon: BedDouble },
-  { key: "nightlife", label: "Nightlife",    category: "nightlife",  Icon: Martini },
-  { key: "heritage",  label: "Heritage",     category: "heritage",   Icon: Landmark },
-  { key: "temples",   label: "Temples",      category: "spiritual",  Icon: Church },
-  { key: "market",    label: "Markets",      category: "market",     Icon: ShoppingBag },
-  { key: "activity",  label: "Things to do", category: "activity",   Icon: Compass },
+  { key: "all",          label: "All",          category: null,         Icon: Sparkles },
+  { key: "beach",        label: "Beaches",      category: "beach",     Icon: Palmtree },
+  { key: "cafe",         label: "Cafés",        category: "cafe",      Icon: Coffee },
+  { key: "food",         label: "Food",         category: "restaurant", Icon: UtensilsCrossed },
+  { key: "stay",         label: "Stays",        category: "hotel,stay", Icon: BedDouble },
+  { key: "nightlife",    label: "Nightlife",    category: "nightlife", Icon: Martini },
+  { key: "heritage",     label: "Heritage",     category: "heritage",  Icon: Landmark },
+  { key: "sacredPlaces", label: "Faith & Heritage", category: "spiritual", Icon: Church },
+  { key: "market",       label: "Markets",      category: "market",    Icon: ShoppingBag },
+  { key: "activity",     label: "Things to do", category: "activity",  Icon: Compass },
 ];
 
 // Facebook, Messenger, Instagram and the like render pages inside their own

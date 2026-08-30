@@ -25,7 +25,12 @@ export const CATEGORIES = [
     icon: BookOpen,
   },
 
-  { key: "temples",   label: "Temples",     sub: "Temples & holy places", icon: Church },
+ {
+  key: "sacredPlaces",
+  label: "Sacred Places",
+  sub: "Temples, churches, mosques & gurdwaras",
+  icon: Church
+},
   { key: "all",       label: "View All",    sub: "All categories",       icon: LayoutGrid },
   
 ];
