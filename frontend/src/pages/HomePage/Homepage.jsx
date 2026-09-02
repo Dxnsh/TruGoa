@@ -168,9 +168,11 @@ useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const data = await getBusinesses({ featured: true });
-        const mapped = data.map((biz, i) => mapBusiness(biz, i));
-        if (!cancelled) setFeaturedPlaces(mapped.slice(0, 4));
+        // Only four are rendered, so only four are asked for — this used to
+        // download every featured listing in full and throw the rest away.
+        const { items } = await getBusinesses({ featured: true, limit: 4 });
+        const mapped = items.map((biz, i) => mapBusiness(biz, i));
+        if (!cancelled) setFeaturedPlaces(mapped);
       } catch {
         if (!cancelled) setFeaturedPlaces([]);
       }

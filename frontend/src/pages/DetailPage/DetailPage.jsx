@@ -8,7 +8,7 @@ import {
 import StarRating from "../../components/StarRating/StarRating";
 import ReviewForm from "../../components/ReviewForm/ReviewForm";
 import {
-  getBusinessById, getBusinessBySlug, getBusinesses,
+  getBusinessById, getBusinessBySlug, getNearbyBusinesses,
   getReviewsForBusiness, markReviewHelpful,
   getFavorites, addFavorite, removeFavorite,
 } from "../../services/api";
@@ -273,6 +273,8 @@ function GlimpsesStrip({ name, images, onOpen }) {
    REVIEWS — real visitor reviews for this place
 ══════════════════════════════════════════════════════════ */
 function ReviewsSection({ businessId, categoryLabel }) {
+  const { isTouristLoggedIn } = useTourist();
+  const [showHelpfulLogin, setShowHelpfulLogin] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(0);
@@ -296,12 +298,21 @@ function ReviewsSection({ businessId, categoryLabel }) {
     setActive(a => Math.min(a, Math.max(0, reviews.length - 1)));
   }, [reviews.length]);
 
+  // A vote now belongs to an account, so an anonymous reader is asked to
+  // sign in rather than having the click silently fail.
   const markHelpful = async (id) => {
-    // optimistic bump — matches the atomic $inc the server does
+    if (!isTouristLoggedIn) {
+      setShowHelpfulLogin(true);
+      return;
+    }
+    // Optimistic bump, then reconciled with the count the server returns —
+    // a second vote from the same account leaves that number unchanged.
     setReviews(rs => rs.map(r => r._id === id ? { ...r, helpfulCount: r.helpfulCount + 1 } : r));
     try {
-      await markReviewHelpful(id);
-    } catch {
+      const { helpfulCount } = await markReviewHelpful(id);
+      setReviews(rs => rs.map(r => r._id === id ? { ...r, helpfulCount } : r));
+    } catch (err) {
+      if (err.message === "401") setShowHelpfulLogin(true);
       fetchReviews();
     }
   };
@@ -412,6 +423,13 @@ function ReviewsSection({ businessId, categoryLabel }) {
       )}
 
       <ReviewForm businessId={businessId} fetchReviews={fetchReviews} />
+
+      {showHelpfulLogin && (
+        <LoginModal
+          onClose={() => setShowHelpfulLogin(false)}
+          message="Sign in to mark a review helpful"
+        />
+      )}
     </div>
   );
 }
@@ -441,11 +459,8 @@ export default function DetailPage() {
       try {
         setLoading(true);
         setStoryExpanded(false);
-        const [bizData, allBiz] = await Promise.all([
-          // Clean slug URLs are canonical; fall back to raw Mongo ID for old/shared links.
-          getBusinessBySlug(slug).catch(() => getBusinessById(slug)),
-          getBusinesses(),
-        ]);
+        // Clean slug URLs are canonical; fall back to raw Mongo ID for old/shared links.
+        const bizData = await getBusinessBySlug(slug).catch(() => getBusinessById(slug));
         const mapped = mapBusiness(bizData, 0);
         setBiz(mapped);
 
@@ -460,26 +475,47 @@ export default function DetailPage() {
           navigate(`/listings/${mapped.slug}`, { replace: true });
         }
 
-        // "Nearest Places" used to mean "same category, first four in whatever
-        // order the API returned" — distance was never consulted. Arika in
-        // Sanguem listed Lar Amorosa in Bardez because both are stays, and a
-        // cafe in Siolim listed a cafe an hour away. Category is not proximity.
+        // "Nearest Places" is ranked by actual distance from this listing,
+        // category ignored: what's near a homestay is worth knowing whether
+        // it's a beach, a temple or somewhere to eat.
         //
-        // Ranked by actual distance from this place now, category ignored:
-        // what's near a homestay is worth knowing whether it's a beach, a
-        // temple or somewhere to eat.
-        const sim = hasCoordinates(bizData)
-          ? allBiz
-              .filter(b => String(b._id) !== String(bizData._id) && hasCoordinates(b))
-              .map(b => ({ b, metres: metresBetween(pointOf(bizData), pointOf(b)) }))
-              .sort((a, z) => a.metres - z.metres)
-              .slice(0, 4)
-              .map(({ b, metres }, i) => ({ ...mapBusiness(b, i), metres }))
-          // No pin on this listing, so nothing can honestly be called nearest.
-          // The row hides itself when empty rather than falling back to a
-          // category match wearing a proximity label.
-          : [];
-        setSimilar(sim);
+        // The ranking used to be done here, over a second full download of the
+        // entire catalogue — opening any place page cost two of them. The API
+        // already sorts by distance in the database and returns card-sized
+        // documents, so it does the work now and sends back five.
+        //
+        // No pin on this listing means nothing can honestly be called nearest;
+        // the row hides itself when empty rather than falling back to a
+        // category match wearing a proximity label.
+        if (hasCoordinates(bizData)) {
+          try {
+            // Five, because this listing itself comes back in its own results
+            // and is dropped below, leaving the four the row renders.
+            const { places } = await getNearbyBusinesses({
+              lat: bizData.latitude,
+              lng: bizData.longitude,
+              limit: 5,
+            });
+            setSimilar(
+              places
+                .filter((b) => String(b._id) !== String(bizData._id))
+                .slice(0, 4)
+                .map((b, i) => ({
+                  ...mapBusiness(b, i),
+                  // `distance` is only present on the proximity tier; recompute
+                  // from the coordinates the deck projection carries so the
+                  // regional and catalogue-wide tiers can still show a figure.
+                  metres: hasCoordinates(b)
+                    ? metresBetween(pointOf(bizData), pointOf(b))
+                    : undefined,
+                }))
+            );
+          } catch {
+            setSimilar([]);
+          }
+        } else {
+          setSimilar([]);
+        }
       } catch (err) {
         setError(err.message);
       } finally {

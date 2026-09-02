@@ -1,6 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import Tourist from "../models/Tourist.js";
+import Business from "../models/Business.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -73,6 +74,14 @@ export const getFavorites = asyncHandler(async (req, res) => {
 // POST /tourist/favorites/:businessId
 export const addFavorite = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
+
+  // A well-formed id for a business that does not exist used to be stored
+  // happily, leaving a dangling reference that populate() silently drops —
+  // so the save appeared to work and the place never showed up again.
+  const business = await Business.findById(businessId).select("_id");
+  if (!business) throw new ApiError(404, "Business not found");
+
+  // $addToSet keeps this idempotent: saving twice is a no-op, not a duplicate.
   await Tourist.findByIdAndUpdate(req.user._id, { $addToSet: { favorites: businessId } });
 
   sendSuccess(res, { message: "Saved" });

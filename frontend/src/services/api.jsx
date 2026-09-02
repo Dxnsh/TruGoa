@@ -1,4 +1,18 @@
-const BASE          = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+// No localhost fallback. It used to be `|| "http://localhost:5000/api/v1"`,
+// which meant a build made without VITE_API_BASE_URL shipped a bundle telling
+// every visitor's browser to call their own machine — the whole site renders
+// empty and error states while the backend is perfectly healthy, and nothing
+// anywhere says why. vite.config.js now fails the production build outright
+// when the variable is missing; this throw covers a dev server started the
+// same way.
+const BASE = import.meta.env.VITE_API_BASE_URL;
+if (!BASE) {
+  throw new Error(
+    "VITE_API_BASE_URL is not set. Add it to frontend/.env for local work " +
+      "(see .env.example), or to the Vercel project environment for deploys."
+  );
+}
+
 const BUSINESS_URL  = `${BASE}/businesses`;
 const AUTH_URL      = `${BASE}/auth`;
 const ADMIN_URL     = `${BASE}/admin`;
@@ -20,15 +34,22 @@ const unwrap = (json) => json.data;
 
 // ─── BUSINESSES (Public) ──────────────────────────────────────────────────────
 
-// GET all approved businesses
-// Optional: pass { category, area, priceLevel, featured, search }
+// GET one page of approved businesses.
+// Optional: { category, tag, area, priceLevel, featured, search, page, limit }
+// `category` may be a comma-separated list; it is matched OR-ed with `tag`.
+//
+// Resolves to { items, total, page, limit, totalPages, hasMore } — this used
+// to be a bare array of whole documents for the entire catalogue.
 export const getBusinesses = async (params = {}) => {
   const query = new URLSearchParams();
   if (params.category)   query.set("category",   params.category);
-  if (params.area)       query.set("area",        params.area);
-  if (params.priceLevel) query.set("priceLevel",  params.priceLevel);
-  if (params.featured)   query.set("featured",    "true");
-  if (params.search)     query.set("search",      params.search);
+  if (params.tag)        query.set("tag",        params.tag);
+  if (params.area)       query.set("area",       params.area);
+  if (params.priceLevel) query.set("priceLevel", params.priceLevel);
+  if (params.featured)   query.set("featured",   "true");
+  if (params.search)     query.set("search",     params.search);
+  if (params.page)       query.set("page",       String(params.page));
+  if (params.limit)      query.set("limit",      String(params.limit));
 
   const url = query.toString()
     ? `${BUSINESS_URL}?${query.toString()}`
@@ -36,7 +57,8 @@ export const getBusinesses = async (params = {}) => {
 
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch businesses");
-  return unwrap(await res.json());
+  const data = unwrap(await res.json());
+  return { ...data, items: data?.items ?? [] };
 };
 
 // GET curated places near a coordinate, nearest first.
@@ -105,6 +127,26 @@ export const getJournals = async () => {
 export const getJournalBySlug = async (slug) => {
   const res = await fetch(`${JOURNALS_URL}/${slug}`);
   if (!res.ok) throw new Error("Journal entry not found");
+  return unwrap(await res.json());
+};
+
+// ─── CONTACT ──────────────────────────────────────────────────────────────────
+
+// Sends a contact enquiry. Resolves only once the backend confirms the message
+// was stored; any failure rejects with the server's message so the form can
+// show what actually went wrong instead of a generic line.
+export const submitContactMessage = async (payload) => {
+  const res = await fetch(`${BASE}/contact`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    // Validation failures come back as { errors: [{ field, message }] }; the
+    // first one is more useful than the generic "Validation failed" summary.
+    throw new Error(err.errors?.[0]?.message || err.message || "Failed to send your message");
+  }
   return unwrap(await res.json());
 };
 
@@ -204,10 +246,24 @@ export const adminLogin = async (email, password) => {
   return unwrap(await res.json()); // { token }
 };
 
-export const adminGetBusinesses = async () => {
-  const res = await fetch(`${ADMIN_URL}/businesses`, { headers: adminHeader() });
+// One page of businesses, all statuses. Search runs server-side because the
+// results are paged — filtering in the browser would only ever search the
+// page already loaded.
+// Resolves to { items, total, page, limit, totalPages, hasMore }.
+export const adminGetBusinesses = async ({ page, limit, search } = {}) => {
+  const query = new URLSearchParams();
+  if (page)   query.set("page",   String(page));
+  if (limit)  query.set("limit",  String(limit));
+  if (search) query.set("search", search);
+
+  const url = query.toString()
+    ? `${ADMIN_URL}/businesses?${query.toString()}`
+    : `${ADMIN_URL}/businesses`;
+
+  const res = await fetch(url, { headers: adminHeader() });
   if (!res.ok) throw new Error(String(res.status));
-  return unwrap(await res.json());
+  const data = unwrap(await res.json());
+  return { ...data, items: data?.items ?? [] };
 };
 
 export const adminDeleteBusiness = async (id) => {
@@ -262,7 +318,26 @@ export const adminUploadImages = async (files) => {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to upload image");
   }
+  // { urls: string[], images: [{ url, publicId }] } — `urls` is unchanged for
+  // every existing caller; `images` carries the id needed to delete an asset.
   return unwrap(await res.json());
+};
+
+// Deletes one Cloudinary asset this app uploaded. Only the public_id travels;
+// the API secret stays on the server. Best-effort by design — a picture that
+// fails to delete is an orphaned file, not a broken form.
+export const adminDeleteUploadedImage = async (publicId) => {
+  if (!publicId) return;
+  try {
+    await fetch(`${ADMIN_URL}/upload`, {
+      method:  "DELETE",
+      headers: adminHeader(),
+      body:    JSON.stringify({ publicId }),
+    });
+  } catch {
+    // Swallowed on purpose: the admin is mid-edit and the upload they are
+    // replacing is already gone from the form either way.
+  }
 };
 
 export const adminCreateStory = async (data) => {
@@ -486,9 +561,15 @@ export const createReview = async (payload) => {
   return unwrap(await res.json());
 };
 
+// Signed-in tourists only — the server records who voted so the same
+// account can't vote twice. Throws "401" when nobody is signed in, which
+// the caller turns into a sign-in prompt.
 export const markReviewHelpful = async (reviewId) => {
-  const res = await fetch(`${REVIEWS_URL}/${reviewId}/helpful`, { method: "PATCH" });
-  if (!res.ok) throw new Error("Failed to mark review helpful");
+  const res = await fetch(`${REVIEWS_URL}/${reviewId}/helpful`, {
+    method:  "PATCH",
+    headers: touristHeader(),
+  });
+  if (!res.ok) throw new Error(String(res.status));
   return unwrap(await res.json()); // { helpfulCount }
 };
 

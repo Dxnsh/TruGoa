@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import SEO from "../../components/SEO/SEO";
 import { PrimaryButton } from "../../Theme";
+import { submitContactMessage } from "../../services/api";
 import "./StaticPages.css";
 
 const TOPICS = [
@@ -18,18 +19,39 @@ export default function ContactPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState(null); // null | "success" | "error"
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [sending, setSending] = useState(false);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) {
+    // A second submit while the first is still in flight would send the enquiry
+    // twice, so the request is the gate — not just the disabled button, which
+    // a fast double-press can beat.
+    if (sending) return;
+
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setErrorMessage("Please fill in your name, email and message.");
       setStatus("error");
       return;
     }
-    setStatus("success");
-    setForm(EMPTY_FORM);
+
+    setSending(true);
+    setStatus(null);
+    setErrorMessage(null);
+    try {
+      await submitContactMessage(form);
+      // Reached only once the server confirms the enquiry was stored.
+      setStatus("success");
+      setForm(EMPTY_FORM);
+    } catch (err) {
+      setErrorMessage(err.message);
+      setStatus("error");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -144,11 +166,14 @@ export default function ContactPage() {
           )}
           {status === "error" && (
             <div className="tg-contact-status error">
-              Something went wrong on our end. Write to trugoaofficial@gmail.com and we'll pick it up there.
+              {errorMessage || "Something went wrong on our end."} You can also write to
+              trugoaofficial@gmail.com and we'll pick it up there.
             </div>
           )}
 
-          <PrimaryButton style={{ alignSelf: "flex-start" }}>Send</PrimaryButton>
+          <PrimaryButton style={{ alignSelf: "flex-start" }} disabled={sending}>
+            {sending ? "Sending..." : "Send"}
+          </PrimaryButton>
         </form>
       </div>
 

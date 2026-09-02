@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Plus } from "lucide-react";
+import { CATEGORIES, OPENABLE_CATEGORY_KEYS } from "../../constants/categories";
 import "./Footer.css";
 
 /* lucide dropped brand logos in v1, so the three social marks are inline. */
@@ -25,16 +26,22 @@ const IconLinkedIn = (props) => (
   </svg>
 );
 
+// Built from the same list the Explore page filters by, so a footer link can
+// never point at a category that does not exist. "Experiences" and "Villages"
+// were hardcoded and matched no key at all — both landed on an empty grid.
+// Capped so the column stays the same visual length as the others.
+const EXPLORE_LINKS = [
+  ["Places", "/explore"],
+  ...CATEGORIES
+    .filter((c) => OPENABLE_CATEGORY_KEYS.includes(c.key))
+    .slice(0, 4)
+    .map((c) => [c.label, `/explore?category=${c.key}`]),
+];
+
 const COLUMNS = [
   {
     title: "Explore",
-    links: [
-      ["Places", "/explore"],
-      ["Experiences", "/explore?category=experiences"],
-      ["Beaches", "/explore?category=beaches"],
-      ["Villages", "/explore?category=villages"],
-      ["Maps", "/explore"],
-    ],
+    links: EXPLORE_LINKS,
   },
   {
     title: "Journal & GoaGuide AI",
@@ -158,9 +165,9 @@ export default function Footer() {
         <div className="tg-footer-bottom">
           <span>© {new Date().getFullYear()} TruGoa. All rights reserved.</span>
           <div className="tg-footer-legal">
-            <span className="tg-footer-legal-link" onClick={() => navigate("/")}>Privacy</span>
+            <span className="tg-footer-legal-link" onClick={() => navigate("/privacy")}>Privacy</span>
             <span className="tg-footer-legal-sep">·</span>
-            <span className="tg-footer-legal-link" onClick={() => navigate("/")}>Terms</span>
+            <span className="tg-footer-legal-link" onClick={() => navigate("/terms")}>Terms</span>
           </div>
         </div>
       </div>

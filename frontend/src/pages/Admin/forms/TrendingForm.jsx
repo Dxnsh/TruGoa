@@ -13,6 +13,12 @@ const blank = {
   lovedCount: 0, order: 0, isActive: true,
 };
 
+// Exactly the fields this form edits — one per control below, and the same set
+// the API accepts. Editing seeds form state from the fetched document, which
+// also carries _id, __v and the timestamps; those are the server's to set, so
+// the payload is built from this list rather than from whatever state holds.
+const EDITABLE_FIELDS = Object.keys(blank);
+
 const toFormState = (item) => ({
   ...blank,
   ...item,
@@ -38,7 +44,7 @@ const TrendingForm = ({ trendingItem, onClose, onSaved }) => {
     setError(null);
 
     const payload = {
-      ...form,
+      ...Object.fromEntries(EDITABLE_FIELDS.map((field) => [field, form[field]])),
       slug: form.slug.trim().toLowerCase().replace(/\s+/g, "-") || form.title.trim().toLowerCase().replace(/\s+/g, "-"),
       lovedCount: Number(form.lovedCount) || 0,
       order: Number(form.order) || 0,

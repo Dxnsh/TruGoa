@@ -5,6 +5,14 @@ const businessSchema = new mongoose.Schema({
   // ── IDENTITY ──────────────────────────────────────────────────────────────
   name:        { type: String, required: true, trim: true },
   slug:        { type: String, unique: true, sparse: true },
+
+  // Slugs this listing used to answer to. Renaming a business changes its
+  // public URL, and every inbound link, bookmark and indexed search result
+  // still points at the old one — so old slugs are kept and redirected
+  // rather than dropped. Deliberately not unique: an old slug here may
+  // legitimately be another listing's current slug, and the current-slug
+  // lookup runs first, so a live listing always wins.
+  previousSlugs: { type: [String], default: [] },
   category: {
     type: String,
     required: true,
@@ -133,14 +141,78 @@ season: [{
 }, { timestamps: true });
 
 // ── AUTO-GENERATE SLUG FROM NAME ──────────────────────────────────────────────
+// Shared by the save hook below and the rename hook further down, so a slug
+// created at insert and one regenerated on rename can never diverge.
+export const slugify = (name) =>
+  String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+// Appends -2, -3, … until the slug is free. `slug` is uniquely indexed, so a
+// rename onto a name another listing already uses would otherwise fail the
+// write outright with a duplicate-key error.
+const uniqueSlug = async (model, base, excludeId) => {
+  let candidate = base;
+  for (let n = 2; n < 100; n++) {
+    const clash = await model
+      .findOne({ slug: candidate, _id: { $ne: excludeId } })
+      .select("_id")
+      .lean();
+    if (!clash) return candidate;
+    candidate = `${base}-${n}`;
+  }
+  return `${base}-${Date.now()}`;
+};
+
 businessSchema.pre("save", function () {
   if (this.isModified("name") && !this.slug) {
-    this.slug = this.name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-");
+    this.slug = slugify(this.name);
   }
+});
+
+// ── REGENERATE THE SLUG WHEN A NAME CHANGES ──────────────────────────────────
+// The save hook above never runs for findByIdAndUpdate, which is how the admin
+// dashboard saves every edit — and `slug` is not in BUSINESS_EDITABLE_FIELDS,
+// so it could not be corrected by hand either. Fixing a typo in a name left the
+// misspelling in the public URL, the sitemap and anything already indexed, with
+// no way to change it from the dashboard. The geo sync below needed a second
+// implementation for exactly this reason; the slug never got one.
+businessSchema.pre(["findOneAndUpdate", "updateOne"], async function () {
+  const update = this.getUpdate();
+  // An aggregation-pipeline update states its own stages; rewriting one here
+  // would corrupt it.
+  if (!update || Array.isArray(update)) return;
+
+  const $set = update.$set || {};
+  const nextName = $set.name !== undefined ? $set.name : update.name;
+  if (nextName === undefined) return;
+
+  const current = await this.model
+    .findOne(this.getQuery())
+    .select("_id name slug previousSlugs")
+    .lean();
+  if (!current) return;
+
+  const base = slugify(nextName);
+  // Nothing to do when the name is unchanged, or when it differs only in
+  // punctuation the slug drops anyway ("Cafe X" → "Cafe-X").
+  if (!base || base === current.slug) return;
+
+  const nextSlug = await uniqueSlug(this.model, base, current._id);
+
+  // Keep every slug this listing has answered to, minus the one it is about
+  // to take, so renaming back and forth cannot leave a slug listed as both
+  // current and previous.
+  const previous = new Set(current.previousSlugs || []);
+  if (current.slug) previous.add(current.slug);
+  previous.delete(nextSlug);
+
+  update.$set = { ...$set, slug: nextSlug, previousSlugs: [...previous] };
+  delete update.slug;
+  delete update.previousSlugs;
+  this.setUpdate(update);
 });
 
 // ── KEEP GeoJSON IN SYNC WITH latitude/longitude ──────────────────────────────
@@ -223,5 +295,7 @@ businessSchema.index({ featured: -1, createdAt: -1 });
 businessSchema.index({ name: "text", description: "text", story: "text" });
 // Required by $near / $geoNear — proximity search errors out without it.
 businessSchema.index({ geo: "2dsphere" });
+// Backs the old-slug lookup that issues the redirect on a renamed listing.
+businessSchema.index({ previousSlugs: 1 });
 
 export default mongoose.model("Business", businessSchema);

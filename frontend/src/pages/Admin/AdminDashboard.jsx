@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminGetBusinesses, adminDeleteBusiness, adminGetMe } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
@@ -56,6 +56,10 @@ const AdminDashboard = () => {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [editingBusiness, setEditingBusiness] = useState(null); // null = create mode
   const [activeFormType, setActiveFormType] = useState(null); // one of FORM_TYPES keys, or "other", or null = closed
@@ -78,14 +82,43 @@ const AdminDashboard = () => {
       .catch(() => { localStorage.removeItem("trugoa_admin_token"); navigate("/admin"); });
   }, []);
 
-  const fetchBusinesses = async () => {
+  // The list used to be one unbounded query for every business, filtered in
+  // the browser. It is paged now, so the search has to run server-side —
+  // filtering here would only ever search the page already loaded.
+  const fetchBusinesses = async (term = search) => {
     try {
       setLoading(true);
-      setBusinesses(await adminGetBusinesses());
+      const { items, hasMore: more, total: found } = await adminGetBusinesses({
+        page: 1,
+        search: term.trim() || undefined,
+      });
+      setBusinesses(items);
+      setPage(1);
+      setHasMore(Boolean(more));
+      setTotal(found ?? items.length);
     } catch (err) {
       if (err.message.includes("401")) navigate("/admin");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreBusinesses = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const { items, hasMore: more } = await adminGetBusinesses({
+        page: next,
+        search: search.trim() || undefined,
+      });
+      setBusinesses((prev) => [...prev, ...items]);
+      setPage(next);
+      setHasMore(Boolean(more));
+    } catch (err) {
+      if (err.message.includes("401")) navigate("/admin");
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -119,15 +152,19 @@ const AdminDashboard = () => {
     navigate("/admin");
   };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return businesses;
-    return businesses.filter(b =>
-      b.name?.toLowerCase().includes(q) ||
-      b.location?.toLowerCase().includes(q) ||
-      b.category?.toLowerCase().includes(q)
-    );
-  }, [businesses, search]);
+  // Debounced so typing doesn't fire a request per keystroke. Skips the very
+  // first run — the mount effect above has already loaded page one.
+  const searchDebounce = useRef(null);
+  const firstSearchRun = useRef(true);
+  useEffect(() => {
+    if (firstSearchRun.current) { firstSearchRun.current = false; return; }
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => fetchBusinesses(search), 300);
+    return () => clearTimeout(searchDebounce.current);
+  }, [search]);
+
+  // The server has already applied the search; this is just the loaded page.
+  const filtered = businesses;
 
   return (
     <div style={{
@@ -426,6 +463,28 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* The list is paged now, so the rest is fetched on request rather
+              than every listing arriving in one unbounded query. */}
+          {hasMore && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+              <button
+                onClick={loadMoreBusinesses}
+                disabled={loadingMore}
+                style={{
+                  padding: "10px 22px",
+                  borderRadius: theme.radii.md,
+                  border: `1px solid ${theme.colors.borderLight}`,
+                  background: theme.colors.bgCard,
+                  color: theme.colors.textPrimary,
+                  fontSize: 14,
+                  cursor: loadingMore ? "default" : "pointer",
+                }}
+              >
+                {loadingMore ? "Loading…" : `Load more (${total - businesses.length} of ${total} remaining)`}
+              </button>
             </div>
           )}
         </>

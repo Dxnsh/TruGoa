@@ -404,7 +404,18 @@ export default function GoaGuide() {
     setMsgs(prev => [...prev, { role: "user", content: q }]);
     setLoading(true);
     try {
-      const history = [...msgs.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "user", content: q }];
+      // The server rejects more than 20 messages, or any single message over
+      // 2000 characters, rather than trimming silently — so send the tail of
+      // the conversation and let a long question be caught before it is sent.
+      const history = [...msgs, { role: "user", content: q }]
+        .slice(-20)
+        .map(m => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          // A long reply can run past the server's per-message cap, which
+          // would reject the next turn. Only the copy sent back as context
+          // is clipped — what is on screen stays whole.
+          content: String(m.content).slice(0, 2000),
+        }));
       const { reply, action, redirectUrl } = await sendChatMessage(history);
       setMsgs(prev => [...prev, {
         role: "assistant",
@@ -523,6 +534,7 @@ export default function GoaGuide() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+              maxLength={2000}
               placeholder="Ask anything about Goa…"
             />
             <button

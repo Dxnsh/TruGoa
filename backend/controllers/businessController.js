@@ -2,6 +2,7 @@ import Business from "../models/Business.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { isDevelopment } from "../config/env.js";
 
 // Query values reach $regex as raw strings, so any metacharacter the caller
 // sends is interpreted as pattern syntax: "search=.*" matches every document,
@@ -14,42 +15,117 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$
 // is truthy. Compare explicitly instead of testing truthiness.
 const isTrue = (value) => value === true || value === "true" || value === "1";
 
-// GET /businesses — public, returns approved businesses (all statuses shown in dev)
+// The one public visibility rule, shared by every public read below: a
+// business is public only once an admin has approved it. There is no owner
+// onboarding — admins are the only people who create or publish listings —
+// so "approved" is the whole of the rule.
+//
+// Local development deliberately serves the whole catalogue, so unapproved
+// drafts can be worked on without publishing them first. Any environment
+// that has not opted into development gets the approved-only filter.
+const publicVisibility = () => (isDevelopment ? {} : { status: "approved" });
+
+// Moderation bookkeeping that belongs to the admin dashboard and never to a
+// public response. Excluded rather than whitelisted so newly added content
+// fields keep reaching the site on their own.
+const PUBLIC_EXCLUDED_FIELDS = "-rejectionReason -reviewedAt";
+
+// What a listing card actually renders — the same idea as DECK_FIELDS below,
+// sized for the Explore grid rather than the swipe deck.
+//
+// The list endpoint used to return whole documents. `story` alone is capped at
+// 5000 characters and is read on nothing but a detail page; with highlights,
+// mustTry, idealFor, the safety notes and the contact block it was the bulk of
+// a response that grew linearly with the catalogue. An inclusion projection
+// also means the moderation fields can never appear here by accident.
+export const LIST_FIELDS = {
+  slug: 1, name: 1, category: 1, subCategory: 1,
+  tagline: 1, description: 1,
+  location: 1, area: 1, latitude: 1, longitude: 1,
+  priceRange: 1, priceLevel: 1,
+  heroImage: 1, gallery: { $slice: 1 },
+  verified: 1, featured: 1, editorPick: 1, tags: 1,
+  rating: 1, reviewCount: 1, createdAt: 1,
+};
+
+// Page/limit read off a query string, clamped so no caller can ask for the
+// whole collection in one request.
+export const paginationFrom = (query, defaultLimit, maxLimit) => {
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(maxLimit, Math.max(1, Number(query.limit) || defaultLimit));
+  return { page, limit, skip: (page - 1) * limit };
+};
+
+// One envelope shape for every paginated list, so a caller can page through
+// any of them without special-casing.
+export const paginated = (items, total, page, limit) => ({
+  items,
+  total,
+  page,
+  limit,
+  totalPages: Math.max(1, Math.ceil(total / limit)),
+  hasMore: page * limit < total,
+});
+
+// GET /businesses — public, one page of approved businesses.
+// Query: ?category=a,b &tag= &area= &priceLevel= &featured= &search= &page= &limit=
 export const getBusinesses = asyncHandler(async (req, res) => {
-  const { category, area, priceLevel, featured, search } = req.query;
+  const { area, priceLevel, featured, search, tag } = req.query;
 
-  const filter = {};
+  const filter = { ...publicVisibility() };
 
-  if (process.env.NODE_ENV !== "development") {
-    filter.status = "approved";
-  }
-
-  // category/area are stored lowercase by the schema, so an exact match is
-  // both correct and index-friendly — a case-insensitive $regex couldn't use
-  // the {category,status} / {area,status} indexes.
-  if (category) filter.category = String(category).toLowerCase();
+  // area is stored lowercase by the schema, so an exact match is both correct
+  // and index-friendly — a case-insensitive $regex couldn't use the
+  // {area,status} index.
   if (area) filter.area = String(area).toLowerCase();
   if (priceLevel) filter.priceLevel = priceLevel;
   if (featured !== undefined) filter.featured = isTrue(featured);
 
+  // Accepts a comma-separated list, the shape /nearby already takes, because
+  // one filter in the UI spans several stored values — "stays" is hotel,
+  // resort, homestay and stay. Explore used to pull the whole catalogue and
+  // apply these predicates in the browser.
+  const categories = String(req.query.category || "")
+    .split(",")
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean);
+
+  // A UI filter can also be a tag rather than a category ("hidden"), or both
+  // at once ("food" is three categories or the food tag) — so these two are
+  // OR-ed, matching what the client used to compute locally.
+  const scope = [];
+  if (categories.length) scope.push({ category: { $in: categories } });
+  if (tag) scope.push({ tags: String(tag).trim() });
+
+  const conditions = [];
+  if (scope.length) conditions.push(scope.length === 1 ? scope[0] : { $or: scope });
+
   if (search) {
     const term = escapeRegex(search);
-    filter.$or = [
-      { name: { $regex: term, $options: "i" } },
-      { location: { $regex: term, $options: "i" } },
-      { category: { $regex: term, $options: "i" } },
-      { description: { $regex: term, $options: "i" } },
-      { area: { $regex: term, $options: "i" } },
-    ];
+    conditions.push({
+      $or: [
+        { name: { $regex: term, $options: "i" } },
+        { location: { $regex: term, $options: "i" } },
+        { category: { $regex: term, $options: "i" } },
+        { description: { $regex: term, $options: "i" } },
+        { area: { $regex: term, $options: "i" } },
+      ],
+    });
   }
 
-  const businesses = await Business.find(filter).sort({
-    editorPick: -1,
-    featured: -1,
-    createdAt: -1,
-  });
+  // $and rather than merging into $or: scope and search are separate
+  // restrictions, and a single $or key would let one overwrite the other.
+  if (conditions.length) filter.$and = conditions;
 
-  sendSuccess(res, { data: businesses });
+  const { page, limit, skip } = paginationFrom(req.query, 24, 100);
+  const sort = { editorPick: -1, featured: -1, createdAt: -1 };
+
+  const [items, total] = await Promise.all([
+    Business.find(filter).select(LIST_FIELDS).sort(sort).skip(skip).limit(limit).lean(),
+    Business.countDocuments(filter),
+  ]);
+
+  sendSuccess(res, { data: paginated(items, total, page, limit) });
 });
 
 // Goa splits either side of the Zuari, at roughly 15.42°N. Used only to pick
@@ -118,7 +194,7 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
     .filter(Boolean);
 
   const baseFilter = {
-    ...(process.env.NODE_ENV !== "development" ? { status: "approved" } : {}),
+    ...publicVisibility(),
     ...(categories.length ? { category: { $in: categories } } : {}),
   };
 
@@ -204,18 +280,42 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
 
 // GET /businesses/slug/:slug — public
 export const getBusinessBySlug = asyncHandler(async (req, res) => {
-  const filter = { slug: req.params.slug };
-  if (process.env.NODE_ENV !== "development") filter.status = "approved";
+  const { slug } = req.params;
 
-  const business = await Business.findOne(filter);
-  if (!business) throw new ApiError(404, "Business not found");
+  const business = await Business.findOne({ slug, ...publicVisibility() })
+    .select(PUBLIC_EXCLUDED_FIELDS);
+  if (business) return sendSuccess(res, { data: business });
 
-  sendSuccess(res, { data: business });
+  // Not a current slug — it may be one this listing was renamed away from.
+  // Renaming changes the public URL, so every link already out there points at
+  // the old one; a 301 keeps those working and tells crawlers which URL now
+  // holds the content, instead of turning them all into 404s.
+  //
+  // The visibility filter is applied to this lookup too. Without it an old
+  // slug would redirect for a business that is not public, which is the same
+  // disclosure the current-slug filter exists to prevent.
+  const renamed = await Business.findOne({ previousSlugs: slug, ...publicVisibility() })
+    .select("slug");
+
+  if (renamed?.slug) {
+    // req.baseUrl is the router mount point (/api/v1/businesses), so this stays
+    // correct if the API is ever mounted elsewhere. fetch follows the redirect
+    // on its own, so the client receives the JSON it asked for either way.
+    return res.redirect(301, `${req.baseUrl}/slug/${encodeURIComponent(renamed.slug)}`);
+  }
+
+  throw new ApiError(404, "Business not found");
 });
 
 // GET /businesses/:id — public
 export const getBusinessById = asyncHandler(async (req, res) => {
-  const business = await Business.findById(req.params.id);
+  // findOne carrying the visibility rule, not findById: a business that is
+  // not public has to be indistinguishable from one that does not exist, or
+  // the 404 itself confirms the record is there. This route is reachable in
+  // production — DetailPage falls back to it for older /listings/<id> links
+  // — so it needs the same gate the slug lookup already applies.
+  const business = await Business.findOne({ _id: req.params.id, ...publicVisibility() })
+    .select(PUBLIC_EXCLUDED_FIELDS);
   if (!business) throw new ApiError(404, "Business not found");
 
   sendSuccess(res, { data: business });

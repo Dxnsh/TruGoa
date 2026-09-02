@@ -29,6 +29,29 @@ const EDITORS_PICK_FILTER = (b) =>
 // One place stores several underlying category values (a "stay" may be saved as
 // hotel/resort/homestay), so each key owns a predicate rather than a single
 // string comparison. Keys must stay in sync with constants/categories.js.
+// What each shortcut asks the API for. These mirror CATEGORY_FILTERS below
+// exactly, but run in the query rather than in the browser: the page used to
+// download the whole catalogue and filter it here, which grows linearly with
+// the number of listings. `category` is comma-separated and OR-ed with `tag`
+// server-side, so a key can span several stored categories, a tag, or both.
+const CATEGORY_QUERIES = {
+  beaches:      { category: "beach" },
+  food:         { category: "restaurant,cafe,bakery", tag: "food" },
+  stays:        { category: "hotel,resort,homestay,stay" },
+  hidden:       { tag: "hidden" },
+  nightlife:    { category: "nightlife" },
+  sacredPlaces: { category: "spiritual" },
+  art:          { category: "art-gallery" },
+  museum:       { category: "museum" },
+  library:      { category: "library" },
+};
+
+// How many cards a page of the grid holds. Matches the API default.
+const PAGE_SIZE = 24;
+
+// Still used for the Editor's Picks row, which is drawn from the cards
+// already loaded rather than costing a request of its own — the API sorts
+// editorPick and featured first, so they land on the first page.
 const CATEGORY_FILTERS = {
   beaches:   (b) => isCategory(b, ["beach"]),
   food:      (b) => isCategory(b, ["restaurant", "cafe", "bakery"]) || hasTag(b, "food"),
@@ -546,6 +569,10 @@ const ExplorePage = () => {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -565,22 +592,53 @@ const ExplorePage = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Refetches from page 1 whenever the category changes — the narrowing now
+  // happens in the query, so a different filter is a different result set
+  // rather than a different predicate over one big local array.
   useEffect(() => {
-    const fetchData = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getBusinesses();
-        const mapped = data.map((biz, i) => mapBusiness(biz, i));
-        setBusinesses(mapped);
+        const { items, hasMore, total: found } = await getBusinesses({
+          ...(CATEGORY_QUERIES[activeCategory] || {}),
+          page: 1,
+          limit: PAGE_SIZE,
+        });
+        if (cancelled) return;
+        setBusinesses(items.map((biz, i) => mapBusiness(biz, i)));
+        setPage(1);
+        setHasMore(Boolean(hasMore));
+        setTotal(found ?? items.length);
       } catch (err) {
-        setError("Could not load places. Please check your connection and try again.");
+        if (!cancelled) setError("Could not load places. Please check your connection and try again.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchData();
-  }, []);
+    })();
+    return () => { cancelled = true; };
+  }, [activeCategory]);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const { items, hasMore: more } = await getBusinesses({
+        ...(CATEGORY_QUERIES[activeCategory] || {}),
+        page: next,
+        limit: PAGE_SIZE,
+      });
+      setBusinesses((prev) => [...prev, ...items.map((biz, i) => mapBusiness(biz, prev.length + i))]);
+      setPage(next);
+      setHasMore(Boolean(more));
+    } catch {
+      // Leave what is already on screen; the button stays available to retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (!isTouristLoggedIn) {
@@ -622,11 +680,9 @@ const ExplorePage = () => {
 
   const editorsPicks = businesses.filter(EDITORS_PICK_FILTER).slice(0, 4);
 
-  // The grid shows every place by default and only the matching ones once a
-  // category is picked — that narrowing is the whole point of the shortcuts.
-  const visibleBusinesses = activeCategory
-    ? businesses.filter(CATEGORY_FILTERS[activeCategory])
-    : businesses;
+  // Already narrowed by the query — CATEGORY_QUERIES reproduces what
+  // CATEGORY_FILTERS used to compute here.
+  const visibleBusinesses = businesses;
 
   const nothingToShow = !businesses.length;
 
@@ -928,12 +984,13 @@ const ExplorePage = () => {
                   marginBottom: isMobile ? 20 : 28,
                 }}
               >
-                {visibleBusinesses.length} verified{" "}
-                {visibleBusinesses.length === 1 ? "place" : "places"}
+                {total} verified{" "}
+                {total === 1 ? "place" : "places"}
                 {activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa."}
               </div>
 
               {visibleBusinesses.length > 0 ? (
+                <>
                 <div
                   style={{
                     display: "grid",
@@ -951,6 +1008,17 @@ const ExplorePage = () => {
                     />
                   ))}
                 </div>
+
+                {/* Only the first page is fetched up front; the rest is pulled
+                    on request rather than shipped to everyone who opens the page. */}
+                {hasMore && (
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: isMobile ? 28 : 40 }}>
+                    <PrimaryButton onClick={loadMore} disabled={loadingMore}>
+                      {loadingMore ? "Loading…" : `Show more places (${total - visibleBusinesses.length} left)`}
+                    </PrimaryButton>
+                  </div>
+                )}
+                </>
               ) : (
                 // The catalogue has places, just none in this category — say so
                 // rather than showing a bare empty grid.
