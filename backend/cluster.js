@@ -1,14 +1,32 @@
-// cluster.js — run this instead of server.js in production
+// cluster.js — run this instead of server.js in production (npm start).
 import cluster from "cluster";
 import os from "os";
 
-const cpus = os.cpus().length;
+// How many workers to fork.
+//
+// os.cpus().length is unreliable inside a container: it commonly reports the
+// HOST machine's core count, not this instance's CPU allocation. On a small
+// plan (e.g. Render Free — a fraction of one core) that forks far more workers
+// than there is CPU to run them, so they fight for the scheduler and each opens
+// its own MongoDB pool (MONGO_MAX_POOL_SIZE × workers connections).
+//
+// Resolution order:
+//   1. WEB_CONCURRENCY, if set to a positive integer — always wins. Set this on
+//      the host to match the plan (Render Free: 1).
+//   2. os.cpus().length — reasonable for local `npm start` on a real machine.
+//   3. 1 — last-resort fallback if the core count is somehow unavailable.
+const parsedConcurrency = Number.parseInt(process.env.WEB_CONCURRENCY ?? "", 10);
+const concurrencyFromEnv =
+  Number.isInteger(parsedConcurrency) && parsedConcurrency > 0 ? parsedConcurrency : null;
+const coreCount = os.cpus().length || 1;
+const workerCount = concurrencyFromEnv ?? coreCount;
 
 if (cluster.isPrimary) {
-  console.log(`Primary process ${process.pid} — forking ${cpus} workers`);
+  const source = concurrencyFromEnv !== null ? "WEB_CONCURRENCY" : `os.cpus()=${coreCount}`;
+  console.log(`Primary process ${process.pid} — forking ${workerCount} worker(s) (${source})`);
 
-  // Fork one worker per CPU core
-  for (let i = 0; i < cpus; i++) {
+  // Fork the resolved number of workers
+  for (let i = 0; i < workerCount; i++) {
     cluster.fork();
   }
 

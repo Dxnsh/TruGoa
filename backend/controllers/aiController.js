@@ -5,6 +5,7 @@ dotenv.config();
 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -262,6 +263,15 @@ const ITINERARY_INTENT_PATTERNS = [
 const isItineraryIntent = (text) => ITINERARY_INTENT_PATTERNS.some((re) => re.test(text || ""));
 
 export const chat = asyncHandler(async (req, res) => {
+  // Same graceful-degradation pattern the upload route uses for Cloudinary:
+  // without the key the OpenAI SDK fails deep inside itself and the error
+  // handler masks it as a bare 500. Say plainly that the feature isn't
+  // configured instead. The itinerary route needs no equivalent — it already
+  // falls back to its local generator when the AI call fails.
+  if (!process.env.GROQ_API_KEY) {
+    throw new ApiError(503, "The AI guide isn't configured on this server. Set GROQ_API_KEY in the environment.");
+  }
+
   const { messages } = req.body;
 
   // The validator already caps the array at 20, so this can't truncate a

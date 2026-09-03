@@ -455,20 +455,16 @@ export default function DetailPage() {
   const { isTouristLoggedIn } = useTourist();
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
         setStoryExpanded(false);
         // Clean slug URLs are canonical; fall back to raw Mongo ID for old/shared links.
         const bizData = await getBusinessBySlug(slug).catch(() => getBusinessById(slug));
+        if (cancelled) return;
         const mapped = mapBusiness(bizData, 0);
         setBiz(mapped);
-
-        if (isTouristLoggedIn) {
-          getFavorites()
-            .then(favs => setSaved(favs.some(f => String(f._id) === String(bizData._id))))
-            .catch(() => {});
-        }
 
         // If the URL didn't already use the canonical slug, swap it in for better SEO.
         if (mapped.slug && mapped.slug !== slug) {
@@ -496,6 +492,7 @@ export default function DetailPage() {
               lng: bizData.longitude,
               limit: 5,
             });
+            if (cancelled) return;
             setSimilar(
               places
                 .filter((b) => String(b._id) !== String(bizData._id))
@@ -517,12 +514,34 @@ export default function DetailPage() {
           setSimilar([]);
         }
       } catch (err) {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, [slug]);
+
+  // Keep the save button in sync with the tourist's favourites whenever the
+  // login state changes. Signing in from the modal while viewing a place
+  // updates context but does not re-run the [slug] effect above, so without
+  // this the button kept showing "Save Place" for somewhere already saved
+  // until the next navigation. Mirrors the favourites effect in ExplorePage.
+  useEffect(() => {
+    if (!isTouristLoggedIn) {
+      setSaved(false);
+      return;
+    }
+    const bizId = biz?.id;
+    if (!bizId) return;
+    let cancelled = false;
+    getFavorites()
+      .then(favs => {
+        if (!cancelled) setSaved(favs.some(f => String(f._id) === String(bizId)));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isTouristLoggedIn, biz?.id]);
 
   if (loading) return (
     <div className="dp-loading">

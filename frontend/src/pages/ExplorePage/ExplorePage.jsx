@@ -645,9 +645,11 @@ const ExplorePage = () => {
       setFavoriteIds(new Set());
       return;
     }
+    let cancelled = false;
     getFavorites()
-      .then(favs => setFavoriteIds(new Set(favs.map(f => String(f._id)))))
+      .then(favs => { if (!cancelled) setFavoriteIds(new Set(favs.map(f => String(f._id)))); })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [isTouristLoggedIn]);
 
   const toggleSave = async (b) => {
