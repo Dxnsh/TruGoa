@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { theme } from "../../Theme";
-import { adminUploadImages } from "../../services/api";
+import { adminUploadImages, adminDeleteUploadedImage } from "../../services/api";
 import { labelStyle } from "./adminFormKit";
 
 /* ── single image — used for hero/cover images ─────────────────────────── */
@@ -8,6 +8,10 @@ export function SingleImageUpload({ label, value, onChange }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  // public_id of an image uploaded in this session. Only what was uploaded
+  // here is ever deleted — an image the form loaded from an existing listing
+  // has no id recorded, so clearing the field just detaches it.
+  const uploadedId = useRef(null);
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -17,13 +21,25 @@ export function SingleImageUpload({ label, value, onChange }) {
     setUploading(true);
     setError(null);
     try {
-      const { urls } = await adminUploadImages([file]);
+      const { urls, images } = await adminUploadImages([file]);
+      // Replacing a picture uploaded moments ago — bin the old one rather
+      // than leaving it in Cloudinary with nothing pointing at it.
+      if (uploadedId.current) adminDeleteUploadedImage(uploadedId.current);
+      uploadedId.current = images?.[0]?.publicId ?? null;
       onChange(urls[0]);
     } catch (err) {
       setError(err.message || "Upload failed");
     } finally {
       setUploading(false);
     }
+  };
+
+  const clear = () => {
+    if (uploadedId.current) {
+      adminDeleteUploadedImage(uploadedId.current);
+      uploadedId.current = null;
+    }
+    onChange("");
   };
 
   return (
@@ -58,7 +74,7 @@ export function SingleImageUpload({ label, value, onChange }) {
           {value && (
             <button
               type="button"
-              onClick={() => onChange("")}
+              onClick={clear}
               style={{
                 background: "none", border: "none", color: theme.colors.danger,
                 fontSize: 12, fontWeight: theme.typography.weightMedium, cursor: "pointer",
@@ -85,6 +101,9 @@ export function GalleryUpload({ label, values, onChange }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  // url -> public_id for anything uploaded in this session. Images already on
+  // the listing are absent from this map and are never deleted.
+  const uploadedIds = useRef(new Map());
 
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -94,7 +113,10 @@ export function GalleryUpload({ label, values, onChange }) {
     setUploading(true);
     setError(null);
     try {
-      const { urls } = await adminUploadImages(files);
+      const { urls, images } = await adminUploadImages(files);
+      for (const img of images || []) {
+        if (img?.url && img?.publicId) uploadedIds.current.set(img.url, img.publicId);
+      }
       onChange([...values, ...urls]);
     } catch (err) {
       setError(err.message || "Upload failed");
@@ -103,7 +125,15 @@ export function GalleryUpload({ label, values, onChange }) {
     }
   };
 
-  const removeAt = (i) => onChange(values.filter((_, idx) => idx !== i));
+  const removeAt = (i) => {
+    const url = values[i];
+    const publicId = uploadedIds.current.get(url);
+    if (publicId) {
+      adminDeleteUploadedImage(publicId);
+      uploadedIds.current.delete(url);
+    }
+    onChange(values.filter((_, idx) => idx !== i));
+  };
 
   return (
     <div style={{ marginBottom: 16 }}>

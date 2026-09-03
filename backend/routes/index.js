@@ -9,6 +9,7 @@ import touristRoutes   from "./touristRoutes.js";
 import storyRoutes     from "./storyRoutes.js";
 import reviewRoutes    from "./reviewRoutes.js";
 import journalRoutes   from "./journalRoutes.js";
+import contactRoutes   from "./contactRoutes.js";
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ router.use("/tourist",    touristRoutes);
 router.use("/stories",    storyRoutes);
 router.use("/reviews",    reviewRoutes);
 router.use("/journals",   journalRoutes);
+router.use("/contact",    contactRoutes);
 // Legacy alias — /blogs was the original path and may still be cached in
 // clients or bookmarks, so it keeps resolving to the same router.
 router.use("/blogs",      journalRoutes);

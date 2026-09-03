@@ -264,7 +264,8 @@ const isItineraryIntent = (text) => ITINERARY_INTENT_PATTERNS.some((re) => re.te
 export const chat = asyncHandler(async (req, res) => {
   const { messages } = req.body;
 
-  // Keep conversation to last 20 messages to manage token costs
+  // The validator already caps the array at 20, so this can't truncate a
+  // request that got this far — it stays as a backstop on the token cost.
   const trimmed = messages.slice(-20);
 
   const lastUserMessage = [...trimmed].reverse().find(m => m.role === "user");
@@ -284,7 +285,10 @@ export const chat = asyncHandler(async (req, res) => {
       role: "system",
       content: SYSTEM_PROMPT,
     },
-    ...trimmed,
+    // Only the two validated fields reach the provider. Spreading the
+    // client's objects would let any other field the API understands
+    // (name, tool_calls, …) ride along unchecked.
+    ...trimmed.map(({ role, content }) => ({ role, content })),
   ];
 
   const response = await client.chat.completions.create({

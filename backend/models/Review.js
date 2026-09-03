@@ -79,6 +79,21 @@ const reviewSchema = new mongoose.Schema(
     ],
 
     /* Trust Signals */
+
+    // Who voted, one entry per signed-in tourist. The vote is recorded
+    // rather than merely counted so the same account cannot vote twice —
+    // a bare $inc had nothing to dedupe against.
+    //
+    // Never selected by default: the public review list would otherwise
+    // hand out the tourist ids of everyone who voted.
+    helpfulBy: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tourist" }],
+      default: [],
+      select: false,
+    },
+
+    // Derived from helpfulBy.length on every vote, never incremented on its
+    // own, so the number shown can't drift from the votes behind it.
     helpfulCount: {
       type: Number,
       default: 0,

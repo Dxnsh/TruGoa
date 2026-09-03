@@ -10,6 +10,8 @@ import {
   getStats,
 } from "../controllers/adminController.js";
 import {
+  adminGetStories,
+  adminGetStory,
   createStory,
   updateStory,
   deleteStory,
@@ -29,7 +31,7 @@ import {
   deleteAdminUser,
   getCurrentAdmin,
 } from "../controllers/adminUserController.js";
-import { uploadImages } from "../controllers/uploadController.js";
+import { uploadImages, deleteImage } from "../controllers/uploadController.js";
 import adminAuth, { ownerOnly } from "../middleware/adminAuth.js";
 import upload from "../middleware/upload.js";
 import { validateFileContent } from "../middleware/validateFileContent.js";
@@ -44,6 +46,7 @@ import {
   createStoryRules,
   updateStoryRules,
   storyIdParamRules,
+  storySlugParamRules,
 } from "../validators/storyValidators.js";
 import {
   createJournalRules,
@@ -70,6 +73,9 @@ router.get("/stats", adminAuth, getStats);
 router.patch("/businesses/:id/approve", adminAuth, businessIdParamRules, validate, approveBusiness);
 router.patch("/businesses/:id/reject", adminAuth, businessIdParamRules, validate, rejectBusiness);
 
+// The admin list includes drafts, which the public routes hide.
+router.get("/stories", adminAuth, adminGetStories);
+router.get("/stories/:slug", adminAuth, storySlugParamRules, validate, adminGetStory);
 router.post("/stories", adminAuth, createStoryRules, validate, createStory);
 router.put("/stories/:id", adminAuth, updateStoryRules, validate, updateStory);
 router.delete("/stories/:id", adminAuth, storyIdParamRules, validate, deleteStory);
@@ -96,5 +102,6 @@ router.put("/users/:id/password", adminAuth, ownerOnly, resetAdminPasswordRules,
 router.delete("/users/:id", adminAuth, ownerOnly, adminUserIdParamRules, validate, deleteAdminUser);
 
 router.post("/upload", adminAuth, upload.array("images", 10), validateFileContent, uploadImages);
+router.delete("/upload", adminAuth, deleteImage);
 
 export default router;

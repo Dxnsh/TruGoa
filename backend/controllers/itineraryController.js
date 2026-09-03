@@ -319,10 +319,15 @@ export const getMyItinerary = asyncHandler(async (req, res) => {
 export const saveItinerary = asyncHandler(async (req, res) => {
   const { form, data } = req.body;
 
+  // runValidators makes the sub-schema in models/Itinerary.js actually apply
+  // on an upsert — without it Mongoose skips validation for update paths and
+  // the document goes in unchecked, which is how arbitrary blobs were being
+  // stored. setDefaultsOnInsert fills schema defaults on the insert half of
+  // the upsert rather than leaving them unset on first save.
   const saved = await Itinerary.findOneAndUpdate(
     { tourist: req.user._id },
     { form, data },
-    { upsert: true, new: true }
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   );
 
   sendSuccess(res, { data: { updatedAt: saved.updatedAt } });

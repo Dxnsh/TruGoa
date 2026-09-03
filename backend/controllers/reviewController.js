@@ -2,7 +2,6 @@
 import mongoose from "mongoose";
 import Review from "../models/Review.js";
 import Business from "../models/Business.js";
-import { clearCache } from "../middleware/cacheMiddleware.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -39,8 +38,6 @@ const recalculateBusinessRating = async (businessId) => {
     rating: Math.round(avg * 10) / 10,
     reviewCount: total,
   });
-
-  clearCache(`/api/v1/businesses`);
 };
 
 /* =====================================================
@@ -106,18 +103,28 @@ export const getReviewsForBusiness = asyncHandler(async (req, res) => {
 
 /* =====================================================
    PATCH /reviews/:id/helpful
-   Atomic increment — safe when many tourists click at once.
+   Signed-in tourists only (protectTourist). One vote per
+   account, recorded rather than counted.
 ===================================================== */
 
 export const markHelpful = asyncHandler(async (req, res) => {
+  // A pipeline update so the vote and the count it produces are written in
+  // one atomic step: $setUnion makes a repeat click a no-op, and the count
+  // is recomputed from the array rather than incremented, so concurrent
+  // clicks can't push it past the number of distinct voters behind it.
   const review = await Review.findByIdAndUpdate(
     req.params.id,
-    { $inc: { helpfulCount: 1 } },
-    { new: true }
+    [
+      { $set: { helpfulBy: { $setUnion: [{ $ifNull: ["$helpfulBy", []] }, [req.user._id]] } } },
+      { $set: { helpfulCount: { $size: "$helpfulBy" } } },
+    ],
+    // Mongoose needs updatePipeline to accept an aggregation-pipeline update.
+    { new: true, updatePipeline: true }
   ).select("helpfulCount");
 
   if (!review) throw new ApiError(404, "Review not found.");
 
+  // Voting twice is not an error — it simply doesn't move the number.
   sendSuccess(res, { data: { helpfulCount: review.helpfulCount } });
 });
 

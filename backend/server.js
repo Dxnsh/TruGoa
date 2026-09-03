@@ -15,8 +15,21 @@ import { logger, morganStream }               from "./utils/logger.js";
 import apiRouter                              from "./routes/index.js";
 import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 import { isCloudinaryConfigured }             from "./config/cloudinary.js";
+import { isDevelopment, nodeEnv }             from "./config/env.js";
 import trendingRoutes from "./routes/trendingRoutes.js";
 dotenv.config();
+
+// NODE_ENV decides HTTPS enforcement, CORS origins, error-detail leakage and
+// whether unapproved listings are public. The defaults now fail safe, so an
+// unset variable is not dangerous — but it is almost always a misconfigured
+// host, and it silently costs the local conveniences, so say so at boot.
+if (!process.env.NODE_ENV) {
+  logger.warn(
+    "NODE_ENV is not set — running with production defaults (HTTPS enforced, " +
+    "strict CORS, error details hidden, only approved listings public). Set it " +
+    "to \"production\" on the host, or \"development\" locally, to be explicit."
+  );
+}
 
 // Every admin session token is signed with this. Without it jwt.sign throws
 // on an otherwise correct login, which surfaces as a bare 500 and looks like a
@@ -40,10 +53,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 // ── 0. HTTPS ENFORCEMENT ──────────────────────────────────────────────────────
-// No-op in development. In production, redirect any request that didn't
+// No-op in development. Everywhere else, redirect any request that didn't
 // arrive over HTTPS (checked via X-Forwarded-Proto, set by the proxy/PaaS
-// terminating TLS).
-if (process.env.NODE_ENV === "production") {
+// terminating TLS). Keyed on isDevelopment rather than === "production", so
+// an unset NODE_ENV still enforces TLS instead of quietly serving plaintext.
+if (!isDevelopment) {
   app.use((req, res, next) => {
     if (req.secure || req.headers["x-forwarded-proto"] === "https") return next();
     res.redirect(308, `https://${req.headers.host}${req.originalUrl}`);
@@ -51,7 +65,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // ── 1. LOGGING ────────────────────────────────────────────────────────────────
-app.use(morgan(process.env.NODE_ENV === "development" ? "dev" : "combined", { stream: morganStream }));
+app.use(morgan(isDevelopment ? "dev" : "combined", { stream: morganStream }));
 
 // ── 2. SECURITY HEADERS ───────────────────────────────────────────────────────
 app.use(helmet({ crossOriginOpenerPolicy: false }));
@@ -69,7 +83,7 @@ const allowedOrigins = [
 // allowlist above exactly, so this never widens the deployed surface.
 const isAllowedOrigin = (origin) => {
   if (allowedOrigins.includes(origin)) return true;
-  if (process.env.NODE_ENV !== "development") return false;
+  if (!isDevelopment) return false;
   return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
 };
 
@@ -107,6 +121,9 @@ app.get("/health", healthLimiter, (req, res) => {
   const dbState = ["disconnected", "connected", "connecting", "disconnecting"];
   res.json({
     status:    "ok",
+    // Reported so a deployment can be checked without shell access — an
+    // "unset" here means the host is not setting NODE_ENV at all.
+    nodeEnv,
     uptime:    Math.floor(process.uptime()),
     db:        dbState[mongoose.connection.readyState],
     memory:    `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,

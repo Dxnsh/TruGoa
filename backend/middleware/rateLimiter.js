@@ -62,6 +62,15 @@ export const reviewLimiter = rateLimit({
   message: msg("Review limit reached. Try again in an hour."),
 });
 
+// Contact form — 5 per hour per IP. A public, unauthenticated write, so it
+// gets the same shape of protection as review submission; the cap is lower
+// because nobody has five genuine enquiries in an hour.
+export const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: msg("You've sent several messages already. Try again in an hour, or email us directly."),
+});
+
 // Itinerary generation — hits an external LLM, keep it tighter than
 // the blanket apiLimiter so one visitor can't burn through the AI budget
 export const itineraryLimiter = rateLimit({

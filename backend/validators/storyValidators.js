@@ -15,6 +15,7 @@ export const createStoryRules = [
   body("manifestoText1").optional().isString(),
   body("manifestoText2").optional().isString(),
   body("stories").optional().isArray(),
+  body("published").optional().isBoolean(),
 ];
 
 export const updateStoryRules = [
@@ -24,6 +25,7 @@ export const updateStoryRules = [
   body("title").optional().isString().trim().notEmpty(),
   body("image").optional().isString().trim().notEmpty(),
   body("stories").optional().isArray(),
+  body("published").optional().isBoolean(),
 ];
 
 export const storyIdParamRules = [

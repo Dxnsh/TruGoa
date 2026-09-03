@@ -1,11 +1,17 @@
 import { query, param } from "express-validator";
 
 export const listBusinessesRules = [
-  query("category").optional().isString().trim().isLength({ max: 50 }),
+  // May be a comma-separated list, so it needs more room than a single value.
+  query("category").optional().isString().trim().isLength({ max: 120 }),
+  query("tag").optional().isString().trim().isLength({ max: 50 }),
   query("area").optional().isIn(["north-goa", "south-goa", "panaji", "central-goa"]),
   query("priceLevel").optional().isIn(["budget", "mid", "premium"]),
   query("featured").optional().isBoolean().toBoolean(),
   query("search").optional().isString().trim().isLength({ max: 100 }),
+  // Bounds are enforced in the controller too; rejecting nonsense here keeps a
+  // negative page or a non-numeric limit from reaching the query at all.
+  query("page").optional().isInt({ min: 1, max: 10000 }),
+  query("limit").optional().isInt({ min: 1, max: 100 }),
 ];
 
 // Bounds are enforced here rather than in the controller so a malformed

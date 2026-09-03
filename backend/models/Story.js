@@ -29,6 +29,10 @@ const subStorySchema = new mongoose.Schema({
 }, { _id: false });
 
 const storySchema = new mongoose.Schema({
+  // Drafts stay off the public site until an admin marks them published, the
+  // same flag the Journal already uses. Defaults to false so a newly created
+  // story is never live the moment it is saved.
+  published:      { type: Boolean, default: false, index: true },
   category:       { type: String, required: true, trim: true }, // "DESTINATIONS"
   slug:            { type: String, required: true, unique: true, trim: true, lowercase: true },
   title:           { type: String, required: true, trim: true, maxlength: 200 },
