@@ -1,7 +1,13 @@
 // middleware/rateLimiter.js
 import rateLimit from "express-rate-limit";
+import { createMongoStore } from "./rateLimitStore.js";
 
 const msg = (message) => ({ success: false, message });
+
+// Every limiter uses the shared MongoDB store (see rateLimitStore.js) so its
+// count is enforced across all cluster.js worker processes, not per-process.
+// Each gets its own store instance with a distinct name so they count
+// independently against the one `ratelimits` collection.
 
 // Burst limiter — blunts rapid-fire request floods (script/bot hammering)
 // within a short window, ahead of the longer 15-min window below.
@@ -10,6 +16,7 @@ export const burstLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  store: createMongoStore("burst"),
   message: msg("Too many requests in a short time. Slow down and try again."),
 });
 
@@ -20,6 +27,7 @@ export const healthLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  store: createMongoStore("health"),
   message: msg("Too many requests."),
 });
 
@@ -29,6 +37,7 @@ export const apiLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  store: createMongoStore("api"),
   message: msg("Too many requests. Please try again in 15 minutes."),
 });
 
@@ -36,6 +45,7 @@ export const apiLimiter = rateLimit({
 export const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  store: createMongoStore("auth"),
   message: msg("Too many login attempts. Try again in an hour."),
   skipSuccessfulRequests: true,  // only counts failed attempts
 });
@@ -44,6 +54,7 @@ export const authLimiter = rateLimit({
 export const adminLoginLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  store: createMongoStore("admin-login"),
   message: msg("Too many login attempts. Try again in an hour."),
   skipSuccessfulRequests: true,
 });
@@ -52,6 +63,7 @@ export const adminLoginLimiter = rateLimit({
 export const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
+  store: createMongoStore("ai"),
   message: msg("AI rate limit reached. Try again in an hour."),
 });
 
@@ -59,6 +71,7 @@ export const aiLimiter = rateLimit({
 export const reviewLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
+  store: createMongoStore("review"),
   message: msg("Review limit reached. Try again in an hour."),
 });
 
@@ -68,6 +81,7 @@ export const reviewLimiter = rateLimit({
 export const contactLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  store: createMongoStore("contact"),
   message: msg("You've sent several messages already. Try again in an hour, or email us directly."),
 });
 
@@ -76,5 +90,6 @@ export const contactLimiter = rateLimit({
 export const itineraryLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 15,
+  store: createMongoStore("itinerary"),
   message: msg("Itinerary generation limit reached. Try again in an hour."),
 });

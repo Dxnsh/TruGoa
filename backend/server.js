@@ -16,6 +16,7 @@ import apiRouter                              from "./routes/index.js";
 import { bootstrapAdmin }                     from "./utils/bootstrapAdmin.js";
 import { isCloudinaryConfigured }             from "./config/cloudinary.js";
 import { isDevelopment, nodeEnv }             from "./config/env.js";
+import { assertRequiredEnv }                  from "./config/requiredEnv.js";
 import trendingRoutes from "./routes/trendingRoutes.js";
 dotenv.config();
 
@@ -31,26 +32,37 @@ if (!process.env.NODE_ENV) {
   );
 }
 
-// Every admin session token is signed with this. Without it jwt.sign throws
-// on an otherwise correct login, which surfaces as a bare 500 and looks like a
-// server fault rather than a missing variable — so say so at boot instead.
-if (!process.env.ADMIN_JWT_SECRET) {
-  logger.error(
-    "ADMIN_JWT_SECRET is not set — admin login will fail with a 500 even when " +
-    "the email and password are correct. Set it and restart."
-  );
-}
-
-// Seeds the first owner from ADMIN_EMAIL / ADMIN_PASSWORD_HASH when no admin
-// accounts exist yet, so switching logins to the database can't lock everyone out.
-connectDB().then(bootstrapAdmin);
+// Fail-fast on any required variable (MONGO_URI and the three JWT secrets):
+// missing one of these otherwise surfaces as a bare 500 or an opaque driver
+// error on the first request that needs it, with nothing pointing at the cause.
+// Optional integrations (Cloudinary, Groq, Google) are only reported here, not
+// enforced — each has a guarded degraded mode. See config/requiredEnv.js.
+assertRequiredEnv();
 
 const app = express();
 
-// Correct req.ip / req.secure once behind a reverse proxy or PaaS load
-// balancer (also required for express-rate-limit to key off the real
-// client IP instead of the proxy's).
-app.set("trust proxy", 1);
+// ── TRUST PROXY ───────────────────────────────────────────────────────────────
+// Render terminates TLS and forwards HTTP at a single edge load balancer, so
+// from this process there is exactly ONE trusted proxy hop. That hop appends the
+// real client IP as the right-most X-Forwarded-For entry; "1" tells Express to
+// take it for req.ip / req.secure — which is also the key express-rate-limit
+// buckets each caller on.
+//
+//   1     → Render as deployed today (correct default)
+//   2     → only if you later put Cloudflare (or another proxy) IN FRONT of Render
+//   true  → NEVER: trusts the whole X-Forwarded-For chain, so any client can
+//           spoof the header and mint unlimited fresh rate-limit buckets
+//           (express-rate-limit also rejects this with ERR_ERL_PERMISSIVE_TRUST_PROXY)
+//   false → NEVER on Render: req.ip becomes the LB's internal IP, identical for
+//           every request, so all users share a single rate-limit bucket
+//
+// Overridable via TRUST_PROXY_HOPS so a future topology change is a dashboard
+// edit rather than a deploy. A non-integer or negative value falls back to 1.
+const parsedTrustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "", 10);
+const trustProxyHops =
+  Number.isInteger(parsedTrustProxyHops) && parsedTrustProxyHops >= 0 ? parsedTrustProxyHops : 1;
+app.set("trust proxy", trustProxyHops);
+logger.info(`trust proxy = ${trustProxyHops} hop(s) — req.ip is taken ${trustProxyHops} entr${trustProxyHops === 1 ? "y" : "ies"} in from the right of X-Forwarded-For`);
 
 // ── 0. HTTPS ENFORCEMENT ──────────────────────────────────────────────────────
 // No-op in development. Everywhere else, redirect any request that didn't
@@ -124,6 +136,10 @@ app.get("/health", healthLimiter, (req, res) => {
     // Reported so a deployment can be checked without shell access — an
     // "unset" here means the host is not setting NODE_ENV at all.
     nodeEnv,
+    // Which cluster.js worker answered. Hitting /health a few times and seeing
+    // more than one value confirms the process is actually clustered — which is
+    // what makes the shared rate-limit store (rateLimitStore.js) necessary.
+    pid:       process.pid,
     uptime:    Math.floor(process.uptime()),
     db:        dbState[mongoose.connection.readyState],
     memory:    `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
@@ -152,31 +168,58 @@ app.use(errorHandler);
 
 // ── 11. START ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+let server;
 
+// Mongo has to be connected before the port is opened. When app.listen() ran
+// unawaited alongside connectDB(), the worker accepted requests during the
+// connection window — Mongoose's command buffering hid that most of the time,
+// but a slow connect surfaced it as raw driver errors instead of a clean
+// startup delay. Awaiting here means the process is either not listening yet
+// or fully ready.
+const start = async () => {
+  await connectDB();
+  // Seeds the first owner from ADMIN_EMAIL / ADMIN_PASSWORD_HASH when no admin
+  // accounts exist yet, so switching logins to the database can't lock everyone out.
+  await bootstrapAdmin();
 
+  server = app.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`);
+  });
 
+  // Guard against slow-loris style connection exhaustion: cap how long a
+  // client can take to finish sending headers/body before we drop it.
+  server.headersTimeout = 15000;
+  server.requestTimeout = 20000;
+  // Keep-alive must stay below headersTimeout or a legitimate reused
+  // connection can get cut off mid-request.
+  server.keepAliveTimeout = 10000;
+};
 
-// Guard against slow-loris style connection exhaustion: cap how long a
-// client can take to finish sending headers/body before we drop it.
-server.headersTimeout = 15000;
-server.requestTimeout = 20000;
-// Keep-alive must stay below headersTimeout or a legitimate reused
-// connection can get cut off mid-request.
-server.keepAliveTimeout = 10000;
+start();
 
 // Graceful shutdown
 const shutdown = (signal) => {
   logger.info(`${signal} — shutting down`);
-  server.close(() => {
-    mongoose.connection.close(false).then(() => process.exit(0));
+  const closeDb = () => mongoose.connection.close(false).then(() => process.exit(0));
+  if (server) {
+    server.close(closeDb);
     setTimeout(() => process.exit(1), 10000);
-  });
+  } else {
+    closeDb();
+  }
 };
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT",  () => shutdown("SIGINT"));
+
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled Rejection:", reason);
+});
+
+// An uncaught exception outside a request used to kill the worker with no log
+// line explaining why. Log it, then exit deliberately: the process state is
+// indeterminate after one of these, and cluster.js forks a replacement on
+// exit, so a clean restart beats serving from a broken worker.
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught Exception — exiting:", err);
+  process.exit(1);
 });

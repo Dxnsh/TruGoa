@@ -17,6 +17,17 @@ export default defineConfig(({ command, mode }) => {
     )
   }
 
+  // Same reasoning for the Google client id: without it <GoogleOAuthProvider>
+  // gets clientId={undefined} and tourist sign-in silently does nothing — no
+  // error in the console, the button just fails. Catch it at build time.
+  if (command === 'build' && !env.VITE_GOOGLE_CLIENT_ID) {
+    throw new Error(
+      'VITE_GOOGLE_CLIENT_ID is not set — refusing to build. Tourist Google ' +
+        'sign-in would be silently broken. Set it in the Vercel project ' +
+        'environment (Production and Preview), or in frontend/.env. See .env.example.'
+    )
+  }
+
   return {
     plugins: [react()],
     server: {
