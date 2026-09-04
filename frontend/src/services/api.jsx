@@ -50,6 +50,11 @@ export const getBusinesses = async (params = {}) => {
   if (params.search)     query.set("search",     params.search);
   if (params.page)       query.set("page",       String(params.page));
   if (params.limit)      query.set("limit",      String(params.limit));
+  // Open-now filtering defaults on server-side for discovery surfaces; pass
+  // openNow:false to include closed places, or openFirst to only reorder them.
+  if (params.openNow === false) query.set("openNow", "false");
+  if (params.openNow === true)  query.set("openNow", "true");
+  if (params.openFirst)         query.set("openFirst", "true");
 
   const url = query.toString()
     ? `${BUSINESS_URL}?${query.toString()}`
@@ -68,7 +73,7 @@ export const getBusinesses = async (params = {}) => {
 // caption the deck honestly rather than calling everything "near you".
 // Results carry a `distance` in metres only under scope "nearby"; the wider
 // tiers aren't ranked by proximity.
-export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit = 20, category } = {}) => {
+export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit = 20, category, openNow } = {}) => {
   const query = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
@@ -76,6 +81,8 @@ export const getNearbyBusinesses = async ({ lat, lng, maxDistance = 15000, limit
     limit: String(limit),
   });
   if (category) query.set("category", category);
+  // The deck defaults to open-only server-side; pass openNow:false to widen it.
+  if (openNow === false) query.set("openNow", "false");
 
   const res = await fetch(`${BUSINESS_URL}/nearby?${query.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch nearby places");

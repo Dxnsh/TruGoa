@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { inputStyle, toList, saveBusiness } from "../adminFormKit";
+import {
+  inputStyle, toList, saveBusiness,
+  blankOpeningHours, openingHoursToForm, openingHoursFromForm,
+} from "../adminFormKit";
 import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
+import OpeningHoursEditor from "../OpeningHoursEditor";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 
@@ -12,7 +16,7 @@ const KINDS = ["temple", "church", "chapel", "c","cathedral", "mosque", "shrine"
 const blank = {
   name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, subCategory: "sacredplaces",
   tagline: "", description: "", story: "", localTip: "",
-  highlights: "", bestTime: "", openingHours: "", visitDuration: "",
+  highlights: "", bestTime: "", openingHours: blankOpeningHours(), openingHoursNote: "", visitDuration: "",
   dressCode: "",
   scamAlert: "", safetyTip: "",
   heroImage: "", gallery: [], tags: "",
@@ -25,6 +29,8 @@ const toFormState = (biz) => ({
   highlights: (biz.highlights || []).join(", "),
   tags:       (biz.tags       || []).join(", "),
   gallery:    biz.gallery || [],
+  openingHours: openingHoursToForm(biz.openingHours),
+  openingHoursNote: biz.openingHoursNote || "",
 });
 
 const sacredPlaces = ({ business, onClose, onSaved }) => {
@@ -55,6 +61,7 @@ const sacredPlaces = ({ business, onClose, onSaved }) => {
       category: "spiritual",
       highlights: [...toList(form.highlights), ...(dress ? [`Dress code: ${dress}`] : [])],
       tags:       toList(form.tags),
+      openingHours: openingHoursFromForm(form.openingHours) ?? null,
     };
 
     try {
@@ -127,9 +134,10 @@ const sacredPlaces = ({ business, onClose, onSaved }) => {
       </Field>
 
       <SectionHeading>Visiting</SectionHeading>
+      <OpeningHoursEditor value={form.openingHours} onChange={oh => set("openingHours", oh)} />
       <Row>
-        <Field label="Opening Hours">
-          <input style={inputStyle} value={form.openingHours} onChange={e => set("openingHours", e.target.value)} placeholder="6am – 10pm daily" />
+        <Field label="Hours Note (freeform, optional)">
+          <input style={inputStyle} value={form.openingHoursNote} onChange={e => set("openingHoursNote", e.target.value)} placeholder="Closed to visitors during Mass" />
         </Field>
         <Field label="Best Time">
           <input style={inputStyle} value={form.bestTime} onChange={e => set("bestTime", e.target.value)} placeholder="Early morning, or the evening aarti" />

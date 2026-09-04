@@ -1,5 +1,44 @@
 import mongoose from "mongoose";
 
+// Trading hours, stored as "HH:MM" 24-hour strings so the open-now check
+// (utils/isPlaceOpenNow.js) can compare them as plain minutes and the admin
+// <input type="time"> round-trips without conversion.
+//
+// A day holds a list of `periods` rather than one open/close pair, because
+// split hours are common here — "10:00–14:00 & 15:30–19:30" for a lunch-and-
+// dinner kitchen, or a temple that shuts for the afternoon. A single-window
+// day is just a one-entry list.
+//
+//   closed:  the place is shut this day — wins over any periods still set
+//   period:  close numerically <= open means it crosses midnight
+//            (a beach shack open "18:00"–"02:00")
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const hoursPeriodSchema = new mongoose.Schema({
+  open:  { type: String, match: [HHMM, "open must be HH:MM (24-hour)"] },
+  close: { type: String, match: [HHMM, "close must be HH:MM (24-hour)"] },
+}, { _id: false });
+
+const dayHoursSchema = new mongoose.Schema({
+  closed:  { type: Boolean, default: false },
+  periods: { type: [hoursPeriodSchema], default: undefined },
+}, { _id: false });
+
+// Wrapped in its own schema (rather than an inline `{ type: { … } }` block) so
+// Mongoose can't mistake the nested `is24Hours`/day keys for a type descriptor,
+// and so an untouched document keeps `openingHours` genuinely absent instead of
+// being auto-created as `{}`. isPlaceOpenNow treats both absent and empty as
+// "unknown", but absent is the honest state for a listing nobody has filled in.
+const openingHoursSchema = new mongoose.Schema({
+  monday:    { type: dayHoursSchema, default: undefined },
+  tuesday:   { type: dayHoursSchema, default: undefined },
+  wednesday: { type: dayHoursSchema, default: undefined },
+  thursday:  { type: dayHoursSchema, default: undefined },
+  friday:    { type: dayHoursSchema, default: undefined },
+  saturday:  { type: dayHoursSchema, default: undefined },
+  sunday:    { type: dayHoursSchema, default: undefined },
+  is24Hours: { type: Boolean, default: false },
+}, { _id: false });
+
 const businessSchema = new mongoose.Schema({
 
   // ── IDENTITY ──────────────────────────────────────────────────────────────
@@ -103,7 +142,20 @@ season: [{
     type: String,
     enum: ["budget", "mid", "premium"],
   },
-  openingHours: { type: String },              // "8am – 11pm daily"
+  // Structured, per-day trading hours — drives the "open now" filter and badge
+  // across the site. Left undefined for a place whose hours nobody has entered
+  // yet: isPlaceOpenNow treats that as "unknown", which is always shown and
+  // carries no badge, so unmigrated listings don't vanish from the feed.
+  // `is24Hours` is the explicit way to say "always open" (rather than
+  // 00:00–23:59, which would still read as shut for one minute a day).
+  openingHours: { type: openingHoursSchema, default: undefined },
+
+  // Freeform hours note shown on the detail page — "Kitchen closes 30 min
+  // before bar", "Seasonal, call ahead". This is the old `openingHours` string
+  // field, renamed for what it actually is now that structured hours exist.
+  // Never parsed; display only.
+  openingHoursNote: { type: String },
+
   phone:        { type: String },
   website:      { type: String },
 

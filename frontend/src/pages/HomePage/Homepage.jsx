@@ -17,6 +17,7 @@ import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import MobileMenu from "../../components/MobileMenu/MobileMenu";
+import OpenBadge from "../../components/OpenBadge/OpenBadge";
 import { getTrendingPlaces } from "../../services/api";
 import useIsMobile from "../../hooks/useIsMobile";
 import "./homepage.css"
@@ -168,10 +169,14 @@ useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        // Only four are rendered, so only four are asked for — this used to
-        // download every featured listing in full and throw the rest away.
-        const { items } = await getBusinesses({ featured: true, limit: 4 });
-        const mapped = items.map((biz, i) => mapBusiness(biz, i));
+        // Order open places first but don't hide the closed ones — a late-night
+        // visitor should still see a full row, just led by what's open now and
+        // filled out with "Opens 8 AM". Ask for a few extra so the slice to four
+        // always lands on the open ones when there are enough.
+        const { items } = await getBusinesses({
+          featured: true, openNow: false, openFirst: true, limit: 8,
+        });
+        const mapped = items.slice(0, 4).map((biz, i) => mapBusiness(biz, i));
         if (!cancelled) setFeaturedPlaces(mapped);
       } catch {
         if (!cancelled) setFeaturedPlaces([]);
@@ -388,6 +393,9 @@ useEffect(() => {
                 <div className="place-card-text">
                   <div className="place-card-name">{p.name}</div>
                   <div className="place-card-loc">{p.area || p.location}</div>
+                  <div style={{ marginTop: 6 }}>
+                    <OpenBadge place={p} variant="onImage" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -442,6 +450,14 @@ useEffect(() => {
                     <MapPin size={12} strokeWidth={2} />
                     {item.location}
                   </span>
+                  {/* Only appears when the trending card links to a real
+                      listing whose hours we know — keeps someone from tapping
+                      through to a closed door at 11 PM with no warning. */}
+                  {item.openStatus && (
+                    <div style={{ marginTop: 6 }}>
+                      <OpenBadge place={item} />
+                    </div>
+                  )}
                   <h3 className="tr-card-title">{item.title}</h3>
                   <p className="tr-card-desc">{item.description}</p>
                   <div className="tr-card-foot">

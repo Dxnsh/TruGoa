@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { inputStyle, toList, saveBusiness } from "../adminFormKit";
+import {
+  inputStyle, toList, saveBusiness,
+  blankOpeningHours, openingHoursToForm, openingHoursFromForm,
+} from "../adminFormKit";
 import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
+import OpeningHoursEditor from "../OpeningHoursEditor";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 const TYPES = [
@@ -15,7 +19,7 @@ const blank = {
   name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "art-gallery", subCategory: "",
   tagline: "", description: "", localTip: "",
   mustTry: "", highlights: "",
-  priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
+  priceRange: "", priceLevel: "", openingHours: blankOpeningHours(), openingHoursNote: "", phone: "", website: "",
   scamAlert: "", safetyTip: "",
   heroImage: "", gallery: [], tags: "",
   featured: false, editorPick: false,
@@ -28,6 +32,8 @@ const toFormState = (biz) => ({
   highlights: (biz.highlights || []).join(", "),
   tags:       (biz.tags       || []).join(", "),
   gallery:    biz.gallery || [],
+  openingHours: openingHoursToForm(biz.openingHours),
+  openingHoursNote: biz.openingHoursNote || "",
 });
 
 const ArtGallery = ({ business, onClose, onSaved }) => {
@@ -52,6 +58,7 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
       mustTry:    toList(form.mustTry),
       highlights: toList(form.highlights),
       tags:       toList(form.tags),
+      openingHours: openingHoursFromForm(form.openingHours) ?? null,
       // Optional enum fields — an empty string from an unselected <select>
       // fails express-validator's isIn() check even under .optional(), so
       // send undefined instead when nothing was picked.
@@ -141,9 +148,10 @@ const ArtGallery = ({ business, onClose, onSaved }) => {
           </select>
         </Field>
       </Row>
+      <OpeningHoursEditor value={form.openingHours} onChange={oh => set("openingHours", oh)} />
       <Row>
-        <Field label="Opening Hours">
-          <input style={inputStyle} value={form.openingHours} onChange={e => set("openingHours", e.target.value)} placeholder="8am – 11pm daily" />
+        <Field label="Hours Note (freeform, optional)">
+          <input style={inputStyle} value={form.openingHoursNote} onChange={e => set("openingHoursNote", e.target.value)} placeholder="Last entry 30 min before close" />
         </Field>
         <Field label="Phone">
           <input style={inputStyle} value={form.phone} onChange={e => set("phone", e.target.value)} />

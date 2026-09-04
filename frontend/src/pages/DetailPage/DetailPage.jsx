@@ -13,6 +13,8 @@ import {
   getFavorites, addFavorite, removeFavorite,
 } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
+import { isPlaceOpenNow, openLabel, to12Hour } from "../../utils/isPlaceOpenNow";
+import OpenBadge from "../../components/OpenBadge/OpenBadge";
 import { metresBetween, formatDistance, hasCoordinates, pointOf } from "../../utils/distance";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
@@ -22,6 +24,29 @@ import "./DetailPage.css";
 
 const WHY_ICONS = [Sparkles, Waves, Compass, Camera, Utensils];
 const STORY_PREVIEW_LEN = 320;
+
+const HOURS_DAYS = [
+  ["monday", "Monday"], ["tuesday", "Tuesday"], ["wednesday", "Wednesday"],
+  ["thursday", "Thursday"], ["friday", "Friday"], ["saturday", "Saturday"],
+  ["sunday", "Sunday"],
+];
+
+// One line per day — "9 AM – 6 PM", "10 AM – 2 PM, 3:30 – 7:30 PM", or "Closed".
+const weeklyHours = (openingHours) => {
+  if (!openingHours || typeof openingHours !== "object") return [];
+  if (openingHours.is24Hours) return HOURS_DAYS.map(([, label]) => ({ label, text: "Open 24 hours" }));
+  return HOURS_DAYS.map(([key, label]) => {
+    const e = openingHours[key];
+    const periods = e && !e.closed
+      ? (Array.isArray(e.periods) && e.periods.length
+          ? e.periods
+          : (e.open && e.close ? [{ open: e.open, close: e.close }] : []))
+      : [];
+    const valid = periods.filter((p) => p.open && p.close);
+    if (!valid.length) return { label, text: "Closed" };
+    return { label, text: valid.map((p) => `${to12Hour(p.open)} – ${to12Hour(p.close)}`).join(", ") };
+  });
+};
 
 /* ══════════════════════════════════════════════════════════
    LIGHTBOX
@@ -150,11 +175,22 @@ function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
       ? `https://www.google.com/maps/dir/?api=1&destination=${biz.latitude},${biz.longitude}`
       : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(biz.location)}`);
 
+  // Prefer a live "Open now — closes 10 PM" line derived in IST; fall back to
+  // the freeform note ("Seasonal, call ahead") when there are no structured
+  // hours to reason about.
+  const liveHours = biz.openingHours ? isPlaceOpenNow(biz.openingHours) : null;
+  const timingsValue = liveHours && liveHours.status !== "unknown"
+    ? (liveHours.status === "open"
+        ? `Open now${liveHours.closesAt ? ` — closes ${to12Hour(liveHours.closesAt)}` : ""}`
+        : `Closed${liveHours.nextOpenTime ? ` — ${openLabel(liveHours).toLowerCase()}` : ""}`)
+    : biz.openingHoursNote;
+  const week = weeklyHours(biz.openingHours);
+
   const facts = [
     { label: "Best Time to Visit", value: biz.bestTime, icon: Sun },
     { label: "Ideal For",          value: biz.idealFor?.length ? biz.idealFor.join(", ") : "", icon: Users },
     { label: "Price",              value: biz.price && biz.price !== "Contact for price" ? biz.price : "", icon: IndianRupee },
-    { label: "Timings",            value: biz.openingHours, icon: Clock },
+    { label: "Timings",            value: timingsValue, icon: Clock },
     { label: "Duration",           value: biz.visitDuration, icon: Compass },
     { label: "Phone",              value: biz.phone, icon: Phone },
     { label: "Nearest Places",     value: nearbyNames, icon: MapPin },
@@ -214,6 +250,35 @@ function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
               </div>
             ))}
           </div>
+        </>
+      )}
+
+      {week.length > 0 && (
+        <>
+          <div className="dp-card-divider" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+            <p className="dp-card-eyebrow" style={{ margin: 0 }}>Opening Hours</p>
+            <OpenBadge place={biz} />
+          </div>
+          <div style={{ display: "grid", gap: 4 }}>
+            {week.map(({ label, text }) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex", justifyContent: "space-between", gap: 12,
+                  fontSize: 13, color: text === "Closed" ? "#8A9E94" : "inherit",
+                }}
+              >
+                <span>{label}</span>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+          {biz.openingHoursNote && (
+            <p style={{ fontSize: 12.5, color: "#8A9E94", margin: "8px 0 0" }}>
+              {biz.openingHoursNote}
+            </p>
+          )}
         </>
       )}
 

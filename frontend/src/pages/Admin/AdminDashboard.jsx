@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { adminGetBusinesses, adminDeleteBusiness, adminGetMe } from "../../services/api";
+import { adminGetBusinesses, adminDeleteBusiness, adminGetMe, adminGetStats } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
@@ -64,6 +64,9 @@ const AdminDashboard = () => {
   const [editingBusiness, setEditingBusiness] = useState(null); // null = create mode
   const [activeFormType, setActiveFormType] = useState(null); // one of FORM_TYPES keys, or "other", or null = closed
   const [showAddMenu, setShowAddMenu] = useState(false);
+  // Count of approved listings with no structured hours — shown as a nudge so
+  // the gap gets closed with real data rather than guessed defaults.
+  const [missingHours, setMissingHours] = useState(0);
   // Who is signed in — drives whether the Team tab is offered at all.
   const [me, setMe] = useState(null);
   const SECTIONS = me?.role === "owner" ? [...BASE_SECTIONS, "team"] : BASE_SECTIONS;
@@ -75,6 +78,9 @@ const AdminDashboard = () => {
       return;
     }
     fetchBusinesses();
+    adminGetStats()
+      .then((s) => setMissingHours(s?.missingHours || 0))
+      .catch(() => {});
     adminGetMe()
       .then(setMe)
       // A token that no longer resolves to an active account means access was
@@ -145,7 +151,10 @@ const AdminDashboard = () => {
     setActiveFormType(resolveFormType(biz));
   };
   const closeBusinessForm = () => setActiveFormType(null);
-  const handleBusinessSaved = () => fetchBusinesses();
+  const handleBusinessSaved = () => {
+    fetchBusinesses();
+    adminGetStats().then((s) => setMissingHours(s?.missingHours || 0)).catch(() => {});
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("trugoa_admin_token");
@@ -275,6 +284,23 @@ const AdminDashboard = () => {
           <TeamManager isMobile={isMobile} me={me} />
         ) : (
         <>
+          {/* ── OPENING-HOURS NUDGE ────────────────────── */}
+          {missingHours > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              background: theme.colors.warningBg, border: `1px solid ${theme.colors.warning}55`,
+              borderRadius: theme.radii.md, padding: "12px 16px", marginBottom: 20,
+              fontSize: 13.5, color: theme.colors.primaryText,
+            }}>
+              <span aria-hidden="true">🕒</span>
+              <span>
+                <strong>{missingHours}</strong> published {missingHours === 1 ? "listing has" : "listings have"} no
+                opening hours set — {missingHours === 1 ? "it shows" : "they show"} with no “open now” badge and
+                {missingHours === 1 ? " is" : " are"} never filtered out. Add real hours in each listing’s editor.
+              </span>
+            </div>
+          )}
+
           {/* ── HEADER ─────────────────────────────────── */}
           <div style={{
             display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",

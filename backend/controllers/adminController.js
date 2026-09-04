@@ -71,6 +71,49 @@ const cleanEnums = (obj) => {
   return obj;
 };
 
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+// The admin hours editor sends a full 7-day object with blank/partial rows for
+// days left untouched. Store only what's actually meaningful:
+//   - is24Hours wins and makes the per-day rows moot, so they're dropped
+//   - a day marked closed stores just { closed: true }
+//   - a day stores its periods that have BOTH a valid HH:MM open and close
+//   - a half-filled period is dropped — isPlaceOpenNow would treat a stray
+//     "09:00" as a real edge — and a day with no surviving period is omitted
+// If nothing survives, the whole field becomes undefined so the listing reads
+// as "hours unknown" (always shown, no badge) rather than an empty shell.
+const cleanOpeningHours = (raw) => {
+  if (!raw || typeof raw !== "object") return undefined;
+  if (raw.is24Hours === true) return { is24Hours: true };
+
+  const out = {};
+  for (const day of DAYS) {
+    const entry = raw[day];
+    if (!entry || typeof entry !== "object") continue;
+    if (entry.closed === true) { out[day] = { closed: true }; continue; }
+
+    const rawPeriods = Array.isArray(entry.periods)
+      ? entry.periods
+      : (entry.open || entry.close ? [{ open: entry.open, close: entry.close }] : []);
+
+    const periods = rawPeriods
+      .filter((p) => p && HHMM.test(p.open || "") && HHMM.test(p.close || "") && p.open !== p.close)
+      .map((p) => ({ open: p.open, close: p.close }));
+
+    if (periods.length) out[day] = { closed: false, periods };
+  }
+  return Object.keys(out).length ? out : undefined;
+};
+
+// Applied to whichever payload a write is about to use — `openingHours` only
+// gets normalised when the caller actually sent it, so an edit that doesn't
+// touch hours leaves the stored ones alone.
+const cleanHoursField = (obj) => {
+  if ("openingHours" in obj) obj.openingHours = cleanOpeningHours(obj.openingHours);
+  return obj;
+};
+
 // ── POST /admin/businesses ────────────────────────────────────────────────
 // Admin-curated content only — created directly as "approved".
 export const createBusiness = asyncHandler(async (req, res) => {
@@ -79,13 +122,13 @@ export const createBusiness = asyncHandler(async (req, res) => {
     tagline, description, story, localTip,
     highlights, mustTry, bestTime, idealFor,
     area, latitude, longitude, googleMapUrl,
-    priceRange, priceLevel, openingHours, phone, website,
+    priceRange, priceLevel, openingHours, openingHoursNote, phone, website,
     heroImage, gallery,
     scamAlert, safetyTip,
     tags, featured, editorPick,
   } = req.body;
 
-  const business = await Business.create(cleanEnums({
+  const business = await Business.create(cleanEnums(cleanHoursField({
     name: name.trim(),
     location: location.trim(),
     category: category.toLowerCase(),
@@ -95,7 +138,7 @@ export const createBusiness = asyncHandler(async (req, res) => {
     bestTime,
     idealFor: idealFor || [],
     area, latitude, longitude, googleMapUrl,
-    priceRange, priceLevel, openingHours, phone, website,
+    priceRange, priceLevel, openingHours, openingHoursNote, phone, website,
     heroImage,
     gallery: gallery || [],
     scamAlert, safetyTip,
@@ -105,7 +148,7 @@ export const createBusiness = asyncHandler(async (req, res) => {
     status: "approved",
     verified: true,
     reviewedAt: new Date(),
-  }));
+  })));
 
   sendSuccess(res, { statusCode: 201, message: "Business created", data: business });
 });
@@ -116,7 +159,7 @@ const BUSINESS_EDITABLE_FIELDS = [
   "tagline", "description", "story", "localTip",
   "highlights", "mustTry", "bestTime", "idealFor",
   "area", "latitude", "longitude", "googleMapUrl",
-  "priceRange", "priceLevel", "openingHours", "phone", "website",
+  "priceRange", "priceLevel", "openingHours", "openingHoursNote", "phone", "website",
   "heroImage", "gallery",
   "scamAlert", "safetyTip",
   "tags", "featured", "editorPick", "featuredStory",
@@ -132,8 +175,19 @@ export const updateBusiness = asyncHandler(async (req, res) => {
   if (updates.location) updates.location = updates.location.trim();
   if (updates.category) updates.category = updates.category.toLowerCase();
   cleanEnums(updates);
+  cleanHoursField(updates);
 
-  const business = await Business.findByIdAndUpdate(req.params.id, updates, {
+  // cleanOpeningHours collapses a blank editor to undefined, and Mongoose drops
+  // undefined values from an update rather than clearing the field — so an admin
+  // wiping every day would leave the old hours in place. Turn that into an
+  // explicit $unset so "cleared" means cleared.
+  let mongoUpdate = updates;
+  if ("openingHours" in updates && updates.openingHours === undefined) {
+    const { openingHours, ...rest } = updates;
+    mongoUpdate = { ...rest, $unset: { openingHours: "" } };
+  }
+
+  const business = await Business.findByIdAndUpdate(req.params.id, mongoUpdate, {
     new: true,
     runValidators: true,
   });
@@ -195,14 +249,21 @@ export const getAllBusinesses = asyncHandler(async (req, res) => {
 
 // ── GET /admin/stats ──────────────────────────────────────────────────────
 export const getStats = asyncHandler(async (req, res) => {
-  const [total, pending, approved, rejected] = await Promise.all([
+  const [total, pending, approved, rejected, missingHours] = await Promise.all([
     Business.countDocuments(),
     Business.countDocuments({ status: "pending" }),
     Business.countDocuments({ status: "approved" }),
     Business.countDocuments({ status: "rejected" }),
+    // Approved listings with no structured hours — these show in the feed with
+    // no "open now" badge and are never filtered out. Surfaced in the dashboard
+    // so the gap gets closed with real hours rather than guessed defaults.
+    Business.countDocuments({
+      status: "approved",
+      $or: [{ openingHours: { $exists: false } }, { openingHours: null }],
+    }),
   ]);
 
-  sendSuccess(res, { data: { total, pending, approved, rejected } });
+  sendSuccess(res, { data: { total, pending, approved, rejected, missingHours } });
 });
 
 // ── PATCH /admin/businesses/:id/approve ───────────────────────────────────
