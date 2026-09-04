@@ -55,9 +55,22 @@ export const mapBusiness = (biz, index) => {
     priceLevel:  biz.priceLevel  || "mid",
 
     // ── Practical
-    openingHours: biz.openingHours || "",
+    // Structured per-day hours (drives the open/closed badge + filter) and the
+    // freeform note shown on the detail page. `openingHours` used to be the
+    // freeform string — that's `openingHoursNote` now.
+    openingHours:     biz.openingHours || null,
+    openingHoursNote: biz.openingHoursNote || "",
     phone:        biz.phone        || "",
     website:      biz.website      || "",
+
+    // ── Open state (computed server-side in IST, refreshed client-side by
+    //    useOpenNow for long-lived tabs)
+    isOpenNow:       biz.isOpenNow ?? null,
+    openStatus:      biz.openStatus || (biz.openingHours ? null : "unknown"),
+    opensAt:         biz.opensAt || null,
+    closesAt:        biz.closesAt || null,
+    closesInMinutes: biz.closesInMinutes ?? null,
+    nextOpenTime:    biz.nextOpenTime || null,
 
     // ── Media
     // Media

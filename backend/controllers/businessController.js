@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { isDevelopment } from "../config/env.js";
+import { decorateOpenState, passesOpenNowFilter } from "../utils/isPlaceOpenNow.js";
 
 // Query values reach $regex as raw strings, so any metacharacter the caller
 // sends is interpreted as pattern syntax: "search=.*" matches every document,
@@ -46,6 +47,20 @@ export const LIST_FIELDS = {
   heroImage: 1, gallery: { $slice: 1 },
   verified: 1, featured: 1, editorPick: 1, tags: 1,
   rating: 1, reviewCount: 1, createdAt: 1,
+  // Needed to derive isOpenNow / the "Open now" badge on every card.
+  openingHours: 1, openingHoursNote: 1,
+};
+
+// Shared by the two list endpoints. "Open now" can't be a Mongo predicate —
+// it's derived from the wall clock in IST — so filtering happens in JS after
+// the query. `openNow` defaults on for the discovery feeds; a place with no
+// hours on record ("unknown") always passes, and an explicit search never
+// filters (the caller has stated intent). Pass ?openNow=false to see closed
+// places too.
+const wantsOpenNow = (query, { defaultOn }) => {
+  const raw = query.openNow;
+  if (raw === undefined) return defaultOn;
+  return !(raw === false || raw === "false" || raw === "0");
 };
 
 // Page/limit read off a query string, clamped so no caller can ask for the
@@ -67,8 +82,48 @@ export const paginated = (items, total, page, limit) => ({
   hasMore: page * limit < total,
 });
 
+// Ceiling on how many docs the open-now path pulls into memory to filter/sort
+// in JS. The catalogue is well under this; it exists so a future 10x can't turn
+// one request into a full-collection scan without someone noticing the cap.
+const OPEN_NOW_SCAN_CAP = 300;
+
+// Orders decorated places open-first, then the closed ones by how soon they
+// reopen — so a late-night "Featured" row leads with what's open and fills the
+// rest with "Opens 8:00 AM" rather than coming back short. Properties the
+// caller already sorted on (editorPick, featured) are preserved within each
+// group because Array.prototype.sort is stable.
+const byOpenThenSoonest = (a, b) => {
+  const rank = (p) => (p.openStatus === "open" ? 0 : p.openStatus === "unknown" ? 1 : 2);
+  const ra = rank(a);
+  const rb = rank(b);
+  if (ra !== rb) return ra - rb;
+  if (ra === 2) {
+    // Both closed — soonest to reopen first. No nextOpenTime (shut
+    // indefinitely) sinks to the bottom.
+    const mins = (p) => minutesUntilNextOpen(p) ?? Infinity;
+    return mins(a) - mins(b);
+  }
+  return 0;
+};
+
+// "Today 18:00" / "Mon 09:00" → rough minutes from now, for ordering only.
+const DAY_ORDER = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const minutesUntilNextOpen = (p) => {
+  if (!p.nextOpenTime) return null;
+  const [label, hhmm] = String(p.nextOpenTime).split(" ");
+  const [h, m] = (hhmm || "").split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const dayOffset =
+    label === "Today" ? 0 :
+    label === "Tomorrow" ? 1 :
+    Math.max(0, DAY_ORDER.indexOf(label)); // coarse; only used to break ties
+  return dayOffset * 24 * 60 + h * 60 + m;
+};
+
 // GET /businesses — public, one page of approved businesses.
 // Query: ?category=a,b &tag= &area= &priceLevel= &featured= &search= &page= &limit=
+//        &openNow=  (default: on, except when ?search= is present)
+//        &openFirst= (order open places first without hiding the closed ones)
 export const getBusinesses = asyncHandler(async (req, res) => {
   const { area, priceLevel, featured, search, tag } = req.query;
 
@@ -120,12 +175,37 @@ export const getBusinesses = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginationFrom(req.query, 24, 100);
   const sort = { editorPick: -1, featured: -1, createdAt: -1 };
 
-  const [items, total] = await Promise.all([
-    Business.find(filter).select(LIST_FIELDS).sort(sort).skip(skip).limit(limit).lean(),
-    Business.countDocuments(filter),
-  ]);
+  const openNow = wantsOpenNow(req.query, { defaultOn: !search });
+  const openFirst = isTrue(req.query.openFirst);
 
-  sendSuccess(res, { data: paginated(items, total, page, limit) });
+  // Fast path: no open-state filtering or reordering needed, so the database
+  // does the paging exactly as before and we only decorate the page we return.
+  if (!openNow && !openFirst) {
+    const [items, total] = await Promise.all([
+      Business.find(filter).select(LIST_FIELDS).sort(sort).skip(skip).limit(limit).lean(),
+      Business.countDocuments(filter),
+    ]);
+    sendSuccess(res, { data: paginated(decorateOpenState(items), total, page, limit) });
+    return;
+  }
+
+  // Open-now path: "open right now" is a wall-clock derivation, not something
+  // Mongo can filter or sort on, so pull the matching set (bounded by
+  // OPEN_NOW_SCAN_CAP), decorate, then filter/order/paginate in memory.
+  const now = new Date();
+  const scanned = await Business.find(filter)
+    .select(LIST_FIELDS)
+    .sort(sort)
+    .limit(OPEN_NOW_SCAN_CAP)
+    .lean();
+
+  let decorated = decorateOpenState(scanned, now);
+  if (openNow) decorated = decorated.filter(passesOpenNowFilter);
+  if (openFirst) decorated = [...decorated].sort(byOpenThenSoonest);
+
+  const total = decorated.length;
+  const pageItems = decorated.slice(skip, skip + limit);
+  sendSuccess(res, { data: paginated(pageItems, total, page, limit) });
 });
 
 // Goa splits either side of the Zuari, at roughly 15.42°N. Used only to pick
@@ -161,7 +241,7 @@ const DECK_FIELDS = {
   slug: 1, name: 1, category: 1, verified: 1,
   heroImage: 1, location: 1, rating: 1,
   tagline: 1, description: 1, localTip: 1, bestTime: 1,
-  mustTry: 1, priceRange: 1, openingHours: 1, scamAlert: 1,
+  mustTry: 1, priceRange: 1, openingHours: 1, openingHoursNote: 1, scamAlert: 1,
   // The deck follows a live position, and the distance $geoNear computes is
   // measured from wherever the query ran — so it's already stale by the time
   // someone has walked a street. These let the client recompute it against the
@@ -169,11 +249,16 @@ const DECK_FIELDS = {
   latitude: 1, longitude: 1,
 };
 
-// GET /businesses/nearby?lat=&lng=&maxDistance=&limit=&category=
+// GET /businesses/nearby?lat=&lng=&maxDistance=&limit=&category=&openNow=
 // Curated places near a coordinate, nearest first — powers the Discover
-// swipe deck on the homepage.
+// swipe deck on the homepage. `openNow` defaults on here: the deck is a
+// right-now surface. A tier is only accepted if it still has places after the
+// open filter, so "nothing open within 15 km" widens to the region rather than
+// showing an empty deck.
 export const getNearbyBusinesses = asyncHandler(async (req, res) => {
   const { category } = req.query;
+  const now = new Date();
+  const openNow = wantsOpenNow(req.query, { defaultOn: true });
 
   // Coerce here rather than relying on express-validator's .toFloat()/.toInt():
   // Express 5 exposes req.query as a getter, so the validator's sanitised
@@ -184,6 +269,19 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
   const lng = Number(req.query.lng);
   const maxDistance = Number(req.query.maxDistance) || 15000; // 15km default
   const limit = Number(req.query.limit) || 20;
+
+  // How many to pull per tier before the open filter thins them out — so a deck
+  // asking for 20 still fills when half the neighbourhood is shut. Capped well
+  // below a full scan.
+  const fetchLimit = openNow ? Math.min(limit * 4, 120) : limit;
+
+  // Decorate every tier's rows, optionally drop the closed ones, cap to the
+  // requested size. A tier that comes back empty after this widens to the next.
+  const finalizeTier = (rows) => {
+    let out = decorateOpenState(rows, now);
+    if (openNow) out = out.filter(passesOpenNowFilter);
+    return out.slice(0, limit);
+  };
 
   // Accepts one category or a comma-separated list, because a single mood in
   // the UI can span several enum values ("stays" is hotel + stay). A lone
@@ -233,7 +331,7 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
           query: baseFilter,
         },
       },
-      { $limit: limit },
+      { $limit: fetchLimit },
       // The swipe deck is the only consumer, and it renders maybe a third of a
       // business document. Shipping the rest (story, highlights, geo, contact,
       // timestamps) roughly tripled the response for no visible benefit, and
@@ -241,8 +339,9 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
       { $project: { ...DECK_FIELDS, distance: 1, gallery: { $slice: ["$gallery", 1] } } },
     ]);
 
-    if (nearby.length > 0) {
-      return sendSuccess(res, { data: { scope: "nearby", places: nearby } });
+    const nearbyOpen = finalizeTier(nearby);
+    if (nearbyOpen.length > 0) {
+      return sendSuccess(res, { data: { scope: "nearby", places: nearbyOpen } });
     }
 
     // Nothing within the radius. Most of the catalogue currently has no
@@ -257,11 +356,12 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
     })
       .select(deckProjection)
       .sort(curatedFirst)
-      .limit(limit)
+      .limit(fetchLimit)
       .lean();
 
-    if (regional.length > 0) {
-      return sendSuccess(res, { data: { scope: "region", places: regional } });
+    const regionalOpen = finalizeTier(regional);
+    if (regionalOpen.length > 0) {
+      return sendSuccess(res, { data: { scope: "region", places: regionalOpen } });
     }
   }
 
@@ -272,10 +372,14 @@ export const getNearbyBusinesses = asyncHandler(async (req, res) => {
   const anywhere = await Business.find(baseFilter)
     .select(deckProjection)
     .sort(curatedFirst)
-    .limit(limit)
+    .limit(fetchLimit)
     .lean();
 
-  sendSuccess(res, { data: { scope: "goa", places: anywhere } });
+  // The widest tier. If the open filter empties even this, hand back the empty
+  // list — "nothing open anywhere in Goa right now" is real at 4am, and the
+  // deck's own empty state (with its "show closed too" affordance) says it
+  // better than a deck full of places the visitor can't walk into.
+  sendSuccess(res, { data: { scope: "goa", places: finalizeTier(anywhere) } });
 });
 
 // GET /businesses/slug/:slug — public
@@ -283,8 +387,9 @@ export const getBusinessBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
   const business = await Business.findOne({ slug, ...publicVisibility() })
-    .select(PUBLIC_EXCLUDED_FIELDS);
-  if (business) return sendSuccess(res, { data: business });
+    .select(PUBLIC_EXCLUDED_FIELDS)
+    .lean();
+  if (business) return sendSuccess(res, { data: decorateOpenState(business) });
 
   // Not a current slug — it may be one this listing was renamed away from.
   // Renaming changes the public URL, so every link already out there points at
@@ -315,8 +420,9 @@ export const getBusinessById = asyncHandler(async (req, res) => {
   // production — DetailPage falls back to it for older /listings/<id> links
   // — so it needs the same gate the slug lookup already applies.
   const business = await Business.findOne({ _id: req.params.id, ...publicVisibility() })
-    .select(PUBLIC_EXCLUDED_FIELDS);
+    .select(PUBLIC_EXCLUDED_FIELDS)
+    .lean();
   if (!business) throw new ApiError(404, "Business not found");
 
-  sendSuccess(res, { data: business });
+  sendSuccess(res, { data: decorateOpenState(business) });
 });

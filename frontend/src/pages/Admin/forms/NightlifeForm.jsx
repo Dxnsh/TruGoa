@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { inputStyle, toList, saveBusiness } from "../adminFormKit";
+import {
+  inputStyle, toList, saveBusiness,
+  blankOpeningHours, openingHoursToForm, openingHoursFromForm,
+} from "../adminFormKit";
 import { Field, Row, SectionHeading, ModalShell, PinField } from "./formUI";
 import { SingleImageUpload, GalleryUpload } from "../ImageUpload";
+import OpeningHoursEditor from "../OpeningHoursEditor";
 
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
 const PRICE_LEVELS = ["budget", "mid", "premium"];
@@ -10,7 +14,7 @@ const blank = {
   name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null,
   tagline: "", description: "", localTip: "",
   highlights: "", mustTry: "",
-  priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
+  priceRange: "", priceLevel: "", openingHours: blankOpeningHours(), openingHoursNote: "", phone: "", website: "",
   scamAlert: "", safetyTip: "",
   heroImage: "", gallery: [], tags: "",
   featured: false, editorPick: false,
@@ -23,6 +27,8 @@ const toFormState = (biz) => ({
   mustTry:    (biz.mustTry    || []).join(", "),
   tags:       (biz.tags       || []).join(", "),
   gallery:    biz.gallery || [],
+  openingHours: openingHoursToForm(biz.openingHours),
+  openingHoursNote: biz.openingHoursNote || "",
 });
 
 const NightlifeForm = ({ business, onClose, onSaved }) => {
@@ -48,6 +54,7 @@ const NightlifeForm = ({ business, onClose, onSaved }) => {
       highlights: toList(form.highlights),
       mustTry:    toList(form.mustTry),
       tags:       toList(form.tags),
+      openingHours: openingHoursFromForm(form.openingHours) ?? null,
     };
 
     try {
@@ -126,9 +133,10 @@ const NightlifeForm = ({ business, onClose, onSaved }) => {
           </select>
         </Field>
       </Row>
+      <OpeningHoursEditor value={form.openingHours} onChange={oh => set("openingHours", oh)} />
       <Row>
-        <Field label="Opening Hours">
-          <input style={inputStyle} value={form.openingHours} onChange={e => set("openingHours", e.target.value)} placeholder="9pm – 3am" />
+        <Field label="Hours Note (freeform, optional)">
+          <input style={inputStyle} value={form.openingHoursNote} onChange={e => set("openingHoursNote", e.target.value)} placeholder="Last entry 1am · Ladies' night Weds" />
         </Field>
         <Field label="Phone">
           <input style={inputStyle} value={form.phone} onChange={e => set("phone", e.target.value)} />

@@ -4,11 +4,12 @@ import {
   Heart, X, Info, MapPin, Loader2, Compass,
   RotateCcw, ArrowLeft, Sparkles, Palmtree, Coffee, UtensilsCrossed,
   BedDouble, Martini, Landmark, Church, ShoppingBag, SlidersHorizontal, Check,
-  RefreshCw, LocateFixed,
+  RefreshCw, LocateFixed, Clock,
 } from "lucide-react";
 import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../LoginModal/LoginModal";
+import OpenBadge from "../OpenBadge/OpenBadge";
 // $geoNear measures from wherever the deck was fetched, which goes stale the
 // moment someone walks off; with a live fix and the place's own coordinates the
 // card recomputes as they move. Shared with the detail page, which ranks what's
@@ -202,6 +203,11 @@ const DiscoverSwipe = () => {
   const [showInfo, setShowInfo]     = useState(false);
   const [showLogin, setShowLogin]   = useState(false);
   const [mood, setMood] = useState("all");
+  // The deck queues only currently-open places by default. This lets someone
+  // browse closed ones too (each still badged "Opens 8 AM"). A ref alongside
+  // the state so the stable runFetch callback can read the latest value.
+  const [includeClosed, setIncludeClosed] = useState(false);
+  const includeClosedRef = useRef(false);
   // "nearby" | "region" | "goa" — how far the backend had to widen to fill the
   // deck. Drives the caption on each card and the copy on the empty state.
   const [scope, setScope] = useState("nearby");
@@ -311,6 +317,7 @@ const DiscoverSwipe = () => {
     try {
       const { scope: resultScope, places: results } = await getNearbyBusinesses({
         lat, lng, maxDistance: radiusRef.current, limit: DECK_LIMIT, category,
+        openNow: includeClosedRef.current ? false : undefined,
       });
       if (seq !== fetchSeq.current) return; // superseded while we waited
       // Drop anything already swiped, so a wider search only ever adds.
@@ -374,6 +381,20 @@ const DiscoverSwipe = () => {
     const at = origin.current;
     if (!at) return;
     await runFetch(at.lat, at.lng, at.label, at.precise, categoryFor(key), "inline");
+  }, [runFetch]);
+
+  // Flip between "open now only" and "everything nearby" and re-query in place.
+  const toggleIncludeClosed = useCallback(async () => {
+    const next = !includeClosedRef.current;
+    includeClosedRef.current = next;
+    setIncludeClosed(next);
+    setShowFilter(false);
+    seen.current = new Set();          // widening the pool — start the pass fresh
+    storeSeen(seen.current);
+    setAllSeen(false);
+    const at = origin.current;
+    if (!at) return;
+    await runFetch(at.lat, at.lng, at.label, at.precise, categoryFor(deckRef.current.mood), "inline");
   }, [runFetch]);
 
   // Asks for a position on demand. The watch below covers the normal case, but
@@ -864,6 +885,17 @@ const DiscoverSwipe = () => {
                   {mood === key && <Check size={13} strokeWidth={2.6} />}
                 </button>
               ))}
+              <button
+                role="menuitemcheckbox"
+                aria-checked={includeClosed}
+                className={`ds-filter-item ${includeClosed ? "ds-filter-item--on" : ""}`}
+                onClick={toggleIncludeClosed}
+                style={{ borderTop: "1px solid rgba(0,0,0,0.08)", marginTop: 4, paddingTop: 8 }}
+              >
+                <Clock size={14} strokeWidth={2} className="ds-filter-item-icon" />
+                <span className="ds-filter-item-label">Show closed too</span>
+                {includeClosed && <Check size={13} strokeWidth={2.6} />}
+              </button>
             </span>
           )}
         </span>
@@ -910,24 +942,32 @@ const DiscoverSwipe = () => {
         <div className="ds-inline-state">
           <MapPin size={26} strokeWidth={1.5} className="ds-state-icon" />
           <p className="ds-state-title">
-            {mood === "all" ? "Nothing curated yet" : `No ${labelFor(mood).toLowerCase()} yet`}
+            {!includeClosed
+              ? (mood === "all" ? "Nothing open right now" : `No ${labelFor(mood).toLowerCase()} open right now`)
+              : (mood === "all" ? "Nothing curated yet" : `No ${labelFor(mood).toLowerCase()} yet`)}
           </p>
-          {/* An empty deck now means the whole catalogue came back empty — the
-              backend widens past the radius and past the region before giving
-              up — so switching coast can't help, and only clearing the mood
-              can. Offering a region picker here would be a dead end. */}
+          {/* With the open-now filter on, an empty deck usually just means the
+              hour — the closed places are still there. Only once closed places
+              are included does an empty deck mean the catalogue itself is thin. */}
           <p className="ds-state-sub">
-            {mood === "all"
+            {!includeClosed
+              ? "Everything nearby is closed at the moment. You can still look through them to plan ahead."
+              : mood === "all"
               ? "We haven't verified any places yet. Check back soon."
               : `We haven't verified any ${labelFor(mood).toLowerCase()} in Goa yet.`}
           </p>
-          {mood !== "all" && (
-            <div className="ds-region-picker">
+          <div className="ds-region-picker">
+            {!includeClosed && (
+              <button className="ds-region-btn ds-region-btn--solid" onClick={toggleIncludeClosed}>
+                <Clock size={14} strokeWidth={2} /> Show closed too
+              </button>
+            )}
+            {includeClosed && mood !== "all" && (
               <button className="ds-region-btn ds-region-btn--solid" onClick={() => applyMood("all")}>
                 Show all places
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ) : !hasMore ? (
         <div className="ds-inline-state">
@@ -1024,6 +1064,11 @@ const DiscoverSwipe = () => {
               <MapPin size={12} strokeWidth={2} />
               <span>{current.location}</span>
             </div>
+            {/* Only really needed when closed places are in the deck, but a
+                live "Closes 10 PM" is worth showing whenever we know it. */}
+            <div style={{ marginTop: 8 }}>
+              <OpenBadge place={current} variant="onImage" size="md" />
+            </div>
           </div>
 
           {/* Detail panel — the "i" button reveals what the card can't show */}
@@ -1065,10 +1110,20 @@ const DiscoverSwipe = () => {
                   <p className="ds-info-text">{current.priceRange}</p>
                 </div>
               )}
-              {current.openingHours && (
+              {(current.nextOpenTime || current.closesAt || current.openingHoursNote) && (
                 <div className="ds-info-block">
                   <span className="ds-info-label">Hours</span>
-                  <p className="ds-info-text">{current.openingHours}</p>
+                  <p className="ds-info-text">
+                    {current.openStatus === "open" && current.closesAt
+                      ? `Open now — closes ${current.closesAt}`
+                      : current.openStatus === "closed" && current.nextOpenTime
+                      ? `Closed — opens ${current.nextOpenTime}`
+                      : current.openingHoursNote}
+                  </p>
+                  {current.openingHoursNote &&
+                    (current.openStatus === "open" || current.openStatus === "closed") && (
+                    <p className="ds-info-text">{current.openingHoursNote}</p>
+                  )}
                 </div>
               )}
               {current.scamAlert && (

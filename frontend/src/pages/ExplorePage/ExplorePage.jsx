@@ -11,6 +11,7 @@ import {
 import { CATEGORIES } from "../../constants/categories";
 import { getBusinesses, getFavorites, addFavorite, removeFavorite } from "../../services/api";
 import SEO from "../../components/SEO/SEO";
+import OpenBadge from "../../components/OpenBadge/OpenBadge";
 import { mapBusiness } from "../../services/mapper";
 import { theme } from "../../Theme";
 import useIsMobile from "../../hooks/useIsMobile";
@@ -188,6 +189,7 @@ function SaveButton({ saved, onClick, style }) {
    EditorPickCard — used in the 4-up "Editor's Picks" grid
 ══════════════════════════════════════════════════════ */
 function EditorPickCard({ b, onOpen, saved, onToggleSave }) {
+  const isClosed = b.openStatus === "closed";
   return (
     <div onClick={() => onOpen(b)} style={{ cursor: "pointer" }}>
       <div
@@ -205,8 +207,16 @@ function EditorPickCard({ b, onOpen, saved, onToggleSave }) {
           src={b.image}
           alt={b.name}
           loading="lazy"
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{
+            width: "100%", height: "100%", objectFit: "cover",
+            // Closed places aren't hidden when "show all" is on — just visibly
+            // dimmed so the row still reads as "these are shut right now".
+            filter: isClosed ? "grayscale(0.5) brightness(0.82)" : "none",
+          }}
         />
+        <span style={{ position: "absolute", left: 10, bottom: 10, zIndex: 2 }}>
+          <OpenBadge place={b} variant="onImage" />
+        </span>
         <SaveButton
           saved={saved}
           onClick={() => onToggleSave(b)}
@@ -575,6 +585,9 @@ const ExplorePage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // Category pages default to places open right now; this reveals the closed
+  // ones too (dimmed, badged) for people planning ahead for tomorrow.
+  const [showAll, setShowAll] = useState(false);
 
   // ?category=food narrows the list to that category. Derived straight from the
   // URL rather than mirrored into state, so a link, a back/forward step and an
@@ -603,6 +616,7 @@ const ExplorePage = () => {
         setError(null);
         const { items, hasMore, total: found } = await getBusinesses({
           ...(CATEGORY_QUERIES[activeCategory] || {}),
+          openNow: showAll ? false : undefined,
           page: 1,
           limit: PAGE_SIZE,
         });
@@ -618,7 +632,7 @@ const ExplorePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeCategory]);
+  }, [activeCategory, showAll]);
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -627,6 +641,7 @@ const ExplorePage = () => {
       const next = page + 1;
       const { items, hasMore: more } = await getBusinesses({
         ...(CATEGORY_QUERIES[activeCategory] || {}),
+        openNow: showAll ? false : undefined,
         page: next,
         limit: PAGE_SIZE,
       });
@@ -686,7 +701,10 @@ const ExplorePage = () => {
   // CATEGORY_FILTERS used to compute here.
   const visibleBusinesses = businesses;
 
-  const nothingToShow = !businesses.length;
+  // "Nothing at all" and "nothing open right now" need different words — the
+  // latter isn't an empty catalogue, it's a time of day.
+  const nothingToShow = !businesses.length && showAll;
+  const nothingOpenNow = !businesses.length && !showAll;
 
   return (
     <div style={{ fontFamily: theme.typography.fontBody, background: theme.colors.bgPage, minHeight: "100vh", overflowX: "hidden" }}>
@@ -981,14 +999,46 @@ const ExplorePage = () => {
               </div>
               <div
                 style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 12,
                   fontSize: 14,
                   color: theme.colors.textMuted,
                   marginBottom: isMobile ? 20 : 28,
                 }}
               >
-                {total} verified{" "}
-                {total === 1 ? "place" : "places"}
-                {activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa."}
+                <span>
+                  {total} {showAll ? "verified" : "open"}{" "}
+                  {total === 1 ? "place" : "places"}
+                  {showAll
+                    ? (activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa.")
+                    : " right now"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAll((v) => !v)}
+                  aria-pressed={showAll}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    minHeight: 34,
+                    padding: "6px 14px",
+                    borderRadius: theme.radii.pill,
+                    border: `1.5px solid ${showAll ? theme.colors.secondary : theme.colors.borderLight}`,
+                    background: showAll ? theme.colors.secondary : theme.colors.bgCard,
+                    color: showAll ? theme.colors.textInverse : theme.colors.textBody,
+                    fontFamily: theme.typography.fontBody,
+                    fontSize: 12.5,
+                    fontWeight: theme.typography.weightMedium,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: theme.transitions.fast,
+                  }}
+                >
+                  {showAll ? "Showing all — open now only" : "Show all (incl. closed)"}
+                </button>
               </div>
 
               {visibleBusinesses.length > 0 ? (
@@ -1021,6 +1071,15 @@ const ExplorePage = () => {
                   </div>
                 )}
                 </>
+              ) : !showAll ? (
+                // Filtered to open-now and nothing's open — the closed ones are
+                // still there, one tap away.
+                <EmptyState
+                  icon="🌙"
+                  title={`Nothing ${activeCategoryMeta?.label.toLowerCase() || "here"} open right now`}
+                  subtitle="Everything in this category is closed at the moment. You can still browse them to plan ahead."
+                  action={<PrimaryButton onClick={() => setShowAll(true)}>Show all (incl. closed)</PrimaryButton>}
+                />
               ) : (
                 // The catalogue has places, just none in this category — say so
                 // rather than showing a bare empty grid.
@@ -1042,6 +1101,19 @@ const ExplorePage = () => {
                 title="No places yet"
                 subtitle="There are no approved places to show right now. Add some from the admin dashboard and they'll appear here."
                 action={<PrimaryButton onClick={() => navigate("/")}>Back to home</PrimaryButton>}
+              />
+            </div>
+          )}
+
+          {/* ── NOTHING OPEN RIGHT NOW — the catalogue has places, they're just
+                 all closed at this hour ── */}
+          {nothingOpenNow && (
+            <div style={{ padding: isMobile ? "0 16px 60px" : `0 ${theme.spacing.pagePadding} 60px` }}>
+              <EmptyState
+                icon="🌙"
+                title={`Nothing ${activeCategoryMeta ? activeCategoryMeta.label.toLowerCase() : "here"} is open right now`}
+                subtitle="Everything is closed at the moment. Browse the full list to plan for tomorrow."
+                action={<PrimaryButton onClick={() => setShowAll(true)}>Show all (incl. closed)</PrimaryButton>}
               />
             </div>
           )}

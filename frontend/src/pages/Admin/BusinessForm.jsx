@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { theme } from "../../Theme";
 import { adminCreateBusiness, adminUpdateBusiness } from "../../services/api";
-import { inputStyle, labelStyle, toList } from "./adminFormKit";
+import {
+  inputStyle, labelStyle, toList,
+  blankOpeningHours, openingHoursToForm, openingHoursFromForm,
+} from "./adminFormKit";
 import { SingleImageUpload, GalleryUpload } from "./ImageUpload";
+import OpeningHoursEditor from "./OpeningHoursEditor";
 
 const CATEGORIES = ["restaurant", "cafe", "hotel", "stay", "beach", "activity", "market", "heritage", "spiritual", "nightlife"];
 const AREAS = ["north-goa", "south-goa", "panaji", "central-goa"];
@@ -30,10 +34,11 @@ const blankForm = {
   tagline: "", description: "", story: "", localTip: "",
   highlights: "", mustTry: "", bestTime: "", idealFor: "",
   area: "", latitude: "", longitude: "", googleMapUrl: "",
-  priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
+  priceRange: "", priceLevel: "", openingHoursNote: "", phone: "", website: "",
   heroImage: "", gallery: [],
   scamAlert: "", safetyTip: "",
   tags: "", season: "", visitDuration: "",
+  openingHours: blankOpeningHours(),
   featured: false, editorPick: false, featuredStory: false,
 };
 
@@ -49,6 +54,8 @@ const toFormState = (biz) => ({
   tags:       (biz.tags       || []).join(", "),
   season:     (biz.season     || []).join(", "),
   gallery:    biz.gallery || [],
+  openingHours: openingHoursToForm(biz.openingHours),
+  openingHoursNote: biz.openingHoursNote || "",
 });
 
 const BusinessForm = ({ business, onClose, onSaved }) => {
@@ -77,6 +84,7 @@ const BusinessForm = ({ business, onClose, onSaved }) => {
       idealFor:   toList(form.idealFor),
       tags:       toList(form.tags),
       season:     toList(form.season),
+      openingHours: openingHoursFromForm(form.openingHours) ?? null,
     };
 
     try {
@@ -209,9 +217,14 @@ const BusinessForm = ({ business, onClose, onSaved }) => {
             </Field>
           </div>
 
+          <OpeningHoursEditor
+            value={form.openingHours}
+            onChange={(oh) => set("openingHours", oh)}
+          />
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Field label="Opening Hours">
-              <input style={inputStyle} value={form.openingHours} onChange={e => set("openingHours", e.target.value)} placeholder="8am – 11pm daily" />
+            <Field label="Hours Note (freeform, optional)">
+              <input style={inputStyle} value={form.openingHoursNote} onChange={e => set("openingHoursNote", e.target.value)} placeholder="Kitchen closes 30 min early · Seasonal, call ahead" />
             </Field>
             <Field label="Visit Duration">
               <input style={inputStyle} value={form.visitDuration} onChange={e => set("visitDuration", e.target.value)} placeholder="1–2 hours" />

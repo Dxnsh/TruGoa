@@ -8,6 +8,10 @@ export const listBusinessesRules = [
   query("priceLevel").optional().isIn(["budget", "mid", "premium"]),
   query("featured").optional().isBoolean().toBoolean(),
   query("search").optional().isString().trim().isLength({ max: 100 }),
+  // Filter to places open right now (default on, except alongside ?search=).
+  query("openNow").optional().isBoolean(),
+  // Order open places first without hiding the closed ones (for the homepage row).
+  query("openFirst").optional().isBoolean(),
   // Bounds are enforced in the controller too; rejecting nonsense here keeps a
   // negative page or a non-numeric limit from reaching the query at all.
   query("page").optional().isInt({ min: 1, max: 10000 }),
@@ -36,6 +40,8 @@ export const nearbyBusinessesRules = [
     .isInt({ min: 1, max: 50 }).toInt(),
   // May be a comma-separated list, so it needs more room than a single value.
   query("category").optional().isString().trim().isLength({ max: 120 }),
+  // Deck defaults to open-only; ?openNow=false includes closed places.
+  query("openNow").optional().isBoolean(),
 ];
 
 export const businessIdParamRules = [

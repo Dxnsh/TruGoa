@@ -22,6 +22,15 @@ export const labelStyle = {
 export const toList  = (str) => str.split(",").map(s => s.trim()).filter(Boolean);
 export const toLines = (str) => str.split("\n").map(s => s.trim()).filter(Boolean);
 
+// ── OPENING HOURS ─────────────────────────────────────────────────────────────
+// The shape + serialisers live in hoursShape.js (no React/theme deps so the
+// paste parser can use them too). Re-exported here so existing form imports —
+// `import { ..., blankOpeningHours } from "./adminFormKit"` — keep working.
+export {
+  BLANK_PERIOD, BLANK_DAY, HOURS_DAYS,
+  blankOpeningHours, openingHoursToForm, openingHoursFromForm,
+} from "./hoursShape";
+
 export const saveBusiness = (business, payload) =>
   business?._id ? adminUpdateBusiness(business._id, payload) : adminCreateBusiness(payload);
 

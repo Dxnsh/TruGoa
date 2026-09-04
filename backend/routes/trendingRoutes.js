@@ -2,8 +2,42 @@ import express from "express";
 import mongoose from "mongoose";
 import TrendingPlace from "../models/TrendingPlace.js";
 import adminAuth from "../middleware/adminAuth.js";
+import { isPlaceOpenNow } from "../utils/isPlaceOpenNow.js";
 
 const router = express.Router();
+
+// Trending is curated buzz, not a "what's open right now" list, so it is never
+// filtered by open-state. But when a trending card links to a real Business we
+// attach that place's current open-state, so tapping through to a shut door at
+// 11pm at least carries an "Opens 9:00 AM" badge first. Cards with no linked
+// business (`relatedBusiness` unset) get nulls and render no badge.
+const withOpenState = (doc) => {
+  const item = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+  const linked = item.relatedBusiness;
+  if (linked && typeof linked === "object") {
+    const r = isPlaceOpenNow(linked.openingHours);
+    item.relatedBusinessSlug = linked.slug || null;
+    item.isOpenNow = r.isOpen;
+    item.openStatus = r.status;
+    item.opensAt = r.opensAt;
+    item.closesAt = r.closesAt;
+    item.closesInMinutes = r.closesInMinutes;
+    item.nextOpenTime = r.nextOpenTime;
+    // Don't ship the whole populated business back — the card only needs the badge.
+    item.relatedBusiness = linked._id;
+  } else {
+    item.relatedBusinessSlug = null;
+    item.isOpenNow = null;
+    item.openStatus = null;
+    item.opensAt = null;
+    item.closesAt = null;
+    item.closesInMinutes = null;
+    item.nextOpenTime = null;
+  }
+  return item;
+};
+
+const LINKED_BUSINESS_FIELDS = "slug openingHours";
 
 // The fields the Trending admin form is designed to edit — one entry per
 // control in frontend/src/pages/Admin/forms/TrendingForm.jsx.
@@ -40,8 +74,10 @@ const pickEditableFields = (body = {}) => {
 // PUBLIC — active trending places, in display order
 router.get("/", async (req, res) => {
   try {
-    const items = await TrendingPlace.find({ isActive: true }).sort({ order: 1, createdAt: -1 });
-    res.json({ success: true, data: items });
+    const items = await TrendingPlace.find({ isActive: true })
+      .sort({ order: 1, createdAt: -1 })
+      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS);
+    res.json({ success: true, data: items.map(withOpenState) });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to load trending places" });
   }
@@ -60,9 +96,10 @@ router.get("/admin/all", adminAuth, async (req, res) => {
 // PUBLIC — single place for the detail page
 router.get("/:slug", async (req, res) => {
   try {
-    const item = await TrendingPlace.findOne({ slug: req.params.slug, isActive: true });
+    const item = await TrendingPlace.findOne({ slug: req.params.slug, isActive: true })
+      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS);
     if (!item) return res.status(404).json({ success: false, message: "Not found" });
-    res.json({ success: true, data: item });
+    res.json({ success: true, data: withOpenState(item) });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to load place" });
   }

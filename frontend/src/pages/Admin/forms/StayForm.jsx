@@ -11,7 +11,7 @@ const blank = {
   name: "", location: "", area: "", googleMapUrl: "", latitude: null, longitude: null, category: "hotel", subCategory: "",
   tagline: "", description: "", localTip: "",
   highlights: "", idealFor: "",
-  priceRange: "", priceLevel: "", openingHours: "", phone: "", website: "",
+  priceRange: "", priceLevel: "", openingHoursNote: "", phone: "", website: "",
   safetyTip: "",
   heroImage: "", gallery: [], tags: "",
   featured: false, editorPick: false,
@@ -138,7 +138,7 @@ const StayForm = ({ business, onClose, onSaved }) => {
       </Row>
       <Row>
         <Field label="Check-in / Check-out">
-          <input style={inputStyle} value={form.openingHours} onChange={e => set("openingHours", e.target.value)} placeholder="Check-in 12pm, Check-out 11am" />
+          <input style={inputStyle} value={form.openingHoursNote} onChange={e => set("openingHoursNote", e.target.value)} placeholder="Check-in 12pm, Check-out 11am" />
         </Field>
         <Field label="Phone">
           <input style={inputStyle} value={form.phone} onChange={e => set("phone", e.target.value)} />
