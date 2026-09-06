@@ -1,143 +1,118 @@
 import SEO from "../../components/SEO/SEO";
 import "./StaticPages.css";
 
-// Everything below describes services this application actually uses. Nothing
-// here is boilerplate: Google sign-in, Cloudinary, Groq, MongoDB Atlas, Vercel
-// Analytics and GA4 (G-2PF4ZTR8DE, loaded in index.html) are all wired up in
-// the current code. If a service is removed, remove it from this page too.
+const CONTACT_EMAIL = "trugoaofficial@gmail.com";
+
 export default function PrivacyPage() {
   return (
     <>
       <SEO
         path="/privacy"
         title="Privacy Policy — TruGoa"
-        description="What TruGoa collects, why, who it is shared with, and how to have it deleted."
+        description="How TruGoa collects, uses and protects your personal information, and the choices you have."
       />
 
       <section className="tg-static-hero">
         <span className="tg-static-eyebrow">Legal</span>
         <h1 className="tg-static-headline">Privacy Policy</h1>
         <p className="tg-static-subhead">
-          What we collect, why we collect it, and what we do not do with it.
-          Last updated 3 September 2026.
+          How we handle your information, why we hold it, and the control you
+          have over it. Last updated 4 September 2026.
         </p>
       </section>
 
       <div className="tg-static-body">
         <div className="tg-static-section">
-          <h2>The short version</h2>
+          <h2>Overview</h2>
           <p>
-            TruGoa is a curated guide to Goa. You can read the entire site without
-            an account. We do not sell your data, and we do not run advertising.
-            The only personal information we hold is what you give us when you sign
-            in, save a place, write a review or send us a message.
+            TruGoa (&ldquo;TruGoa&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is a
+            curated travel guide to Goa. This policy explains what personal
+            information we collect, how we use it, and the rights available to
+            you. You can browse the entire site without an account. We do not sell
+            your personal information and we do not run advertising.
           </p>
         </div>
 
         <div className="tg-static-section">
-          <h2>What we collect</h2>
+          <h2>Information we collect</h2>
           <p>
-            <strong>If you sign in with Google.</strong> We receive your name, email
-            address and profile picture from Google, and store them so we can show
-            who you are and keep your saved places attached to you. We never receive
-            your Google password.
+            <strong>Account information.</strong> When you create an account or
+            sign in, we collect your name, email address and profile picture so we
+            can identify you and keep your activity attached to your account. When
+            you sign in through a third-party provider, we receive only your basic
+            profile details from that provider — never your password.
           </p>
           <p>
-            <strong>If you save places.</strong> A list of the listings you have
-            saved, stored against your account.
+            <strong>Content you provide.</strong> Places you save, reviews and
+            ratings you submit, any photos you upload, itineraries you generate or
+            save and the preferences behind them, and the questions you ask our
+            travel assistant.
           </p>
           <p>
-            <strong>If you write a review.</strong> Your name, the rating and text
-            you wrote, any city or country you chose to add, any photos you attached,
-            and which listings you have marked as helpful. Reviews are public.
+            <strong>Messages you send us.</strong> The name, email address and
+            message you provide when you contact us or subscribe to our
+            newsletter.
           </p>
           <p>
-            <strong>If you generate or save an itinerary.</strong> The preferences you
-            picked — trip length, budget band, vibe, interests, travel style — and the
-            resulting itinerary, so you can come back to it.
-          </p>
-          <p>
-            <strong>If you use GoaGuide AI.</strong> The messages you send in that
-            conversation, for as long as it takes to answer them.
-          </p>
-          <p>
-            <strong>If you contact us.</strong> Your name, email address and message.
-          </p>
-          <p>
-            <strong>Automatically.</strong> Our servers keep short-lived request logs
-            containing IP addresses, which we use to apply rate limits and to
-            investigate errors and abuse.
+            <strong>Technical information.</strong> Our servers keep short-lived
+            logs that may include your IP address and browser type. We use these
+            to keep the service secure, apply rate limits, and diagnose problems.
           </p>
         </div>
 
         <div className="tg-static-section">
-          <h2>Who we share it with</h2>
+          <h2>How we use your information</h2>
           <p>
-            We use a small number of third-party services to run the site. Each one
-            receives only what it needs:
+            We use your information to provide and maintain the service, to show
+            your saved places and itineraries, to publish reviews you choose to
+            post, to respond to your messages, to send our newsletter if you have
+            asked for it, and to protect the site and its users against abuse.
           </p>
+        </div>
+
+        <div className="tg-static-section">
+          <h2>Service providers</h2>
           <p>
-            <strong>Google (Sign-In).</strong> Handles authentication when you choose
-            to sign in. Governed by Google's own privacy policy.
-          </p>
-          <p>
-            <strong>MongoDB Atlas.</strong> Our database. Everything described above
-            is stored there.
-          </p>
-          <p>
-            <strong>Cloudinary.</strong> Hosts the images on the site, including any
-            photos attached to a review.
-          </p>
-          <p>
-            <strong>Groq.</strong> Runs the language model behind GoaGuide AI and the
-            itinerary planner. The messages and preferences you submit are sent to
-            Groq to generate a reply.
-          </p>
-          <p>
-            <strong>Vercel.</strong> Hosts the website and provides Vercel Analytics,
-            which counts page views without using cookies or building a profile of you.
-          </p>
-          <p>
-            <strong>Render.</strong> Hosts our API.
-          </p>
-          <p>
-            <strong>Google Analytics 4.</strong> Measures how the site is used, in
-            aggregate. GA4 sets cookies and collects a trimmed IP address. If you would
-            rather not be counted, browser-level tracking protection or an ad blocker
-            will stop it, and Google publishes an opt-out browser add-on.
-          </p>
-          <p>
-            We do not sell personal information, and we do not share it with advertisers.
+            We rely on a small number of trusted third-party providers to host the
+            site, store data securely, deliver images, provide sign-in, and power
+            certain features such as our travel assistant. These providers process
+            information only on our instructions and only to the extent needed to
+            provide their service to us. We do not sell personal information or
+            share it with advertisers.
           </p>
         </div>
 
         <div className="tg-static-section">
           <h2>Cookies and local storage</h2>
           <p>
-            We keep your sign-in token and a small amount of session information in
-            your browser's local storage so you stay signed in between visits.
-            Clearing your browser data signs you out. Google Analytics sets its own
-            cookies as described above; nothing else on TruGoa does.
+            We store a sign-in token and limited session information in your
+            browser so that you stay signed in between visits. Clearing your
+            browser data will sign you out. We also use privacy-conscious
+            analytics to understand overall traffic in aggregate; this does not
+            build an advertising profile of you, and browser-level tracking
+            protection will stop it.
           </p>
         </div>
 
         <div className="tg-static-section">
           <h2>How long we keep it</h2>
           <p>
-            Account information, saved places and itineraries are kept until you ask
-            us to delete them. Reviews are kept while they are published. Request logs
-            are short-lived and rotate automatically.
+            Account information, saved places and itineraries are kept until you
+            ask us to delete them or close your account. Published reviews are
+            kept while they remain public. Technical logs are short-lived and
+            rotate automatically.
           </p>
         </div>
 
         <div className="tg-static-section">
-          <h2>Your choices</h2>
+          <h2>Your rights</h2>
           <p>
-            You can ask us for a copy of what we hold about you, ask us to correct it,
-            or ask us to delete your account and everything attached to it. Email{" "}
-            <a href="mailto:hello@trugoa.in">hello@trugoa.in</a> and we will action it.
-            You can stop sharing data with us at any time by not signing in — the site
-            works without an account.
+            You may request a copy of the information we hold about you, ask us to
+            correct it, or ask us to delete your account and everything attached
+            to it. Email{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and we will
+            respond within a reasonable time. You can also stop sharing
+            information with us at any time by not signing in.
           </p>
         </div>
 
@@ -145,22 +120,25 @@ export default function PrivacyPage() {
           <h2>Children</h2>
           <p>
             TruGoa is not intended for children under 13, and we do not knowingly
-            collect information from them.
+            collect information from them. If you believe a child has provided us
+            with personal information, please contact us and we will remove it.
           </p>
         </div>
 
         <div className="tg-static-section">
-          <h2>Changes</h2>
+          <h2>Changes to this policy</h2>
           <p>
-            If this policy changes materially we will update the date at the top of
-            this page. Continued use of the site after a change means you accept it.
+            We may update this policy from time to time. When we make material
+            changes, we will revise the date at the top of this page. Continued
+            use of the site after an update means you accept the revised policy.
           </p>
         </div>
 
         <div className="tg-static-section">
           <h2>Contact</h2>
           <p>
-            Questions about any of this: <a href="mailto:hello@trugoa.in">hello@trugoa.in</a>.
+            Questions about this policy or your information:{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
           </p>
         </div>
       </div>

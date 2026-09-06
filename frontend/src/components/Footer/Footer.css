@@ -172,6 +172,14 @@
 }
 .tg-footer-newsletter-form button:hover { background: var(--color-secondary); }
 
+.tg-footer-newsletter-note {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+
 /* ── Bottom bar ── */
 .tg-footer-rule {
   height: 1px;

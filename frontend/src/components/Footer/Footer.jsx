@@ -73,6 +73,7 @@ const SOCIALS = [
 export default function Footer() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
   // Mobile collapses each link group behind a "+". On desktop the CSS keeps
   // every panel open, so this state simply goes unused there.
   const [openCol, setOpenCol] = useState(null);
@@ -140,23 +141,40 @@ export default function Footer() {
           <div className="tg-footer-newsletter">
             <div className="tg-footer-col-title">The Goa Letter</div>
             <p className="tg-footer-tagline">
-              Stories &amp; secrets, straight to your inbox.
+              A short letter from Goa — places worth your time, once a month.
             </p>
-            <form
-              className="tg-footer-newsletter-form"
-              onSubmit={(e) => { e.preventDefault(); setEmail(""); }}
-            >
-              <input
-                type="email"
-                required
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="submit" aria-label="Subscribe">
-                <ArrowRight size={16} strokeWidth={2.2} />
-              </button>
-            </form>
+            {subscribed ? (
+              <p className="tg-footer-newsletter-note" role="status">
+                Thank you for subscribing. The next Goa Letter will arrive in your
+                inbox.
+              </p>
+            ) : (
+              <>
+                <form
+                  className="tg-footer-newsletter-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!email.trim()) return;
+                    setSubscribed(true);
+                    setEmail("");
+                  }}
+                >
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <button type="submit" aria-label="Subscribe">
+                    <ArrowRight size={16} strokeWidth={2.2} />
+                  </button>
+                </form>
+                <p className="tg-footer-newsletter-note">
+                  We use your email only for The Goa Letter. Unsubscribe anytime.
+                </p>
+              </>
+            )}
           </div>
         </div>
 

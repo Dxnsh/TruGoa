@@ -4,6 +4,7 @@ import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { isDevelopment } from "../config/env.js";
 import { decorateOpenState, passesOpenNowFilter } from "../utils/isPlaceOpenNow.js";
+import { getDrivingDistance } from "../utils/openRouteService.js";
 
 // Query values reach $regex as raw strings, so any metacharacter the caller
 // sends is interpreted as pattern syntax: "search=.*" matches every document,
@@ -425,4 +426,41 @@ export const getBusinessById = asyncHandler(async (req, res) => {
   if (!business) throw new ApiError(404, "Business not found");
 
   sendSuccess(res, { data: decorateOpenState(business) });
+});
+
+// Real driving distance/duration from a visitor to one business, via
+// OpenRouteService — a best-effort enhancement over the straight-line figure
+// the frontend already computes itself. `available: false` (still a 200, not
+// an error) covers every way this can fail to produce a number: no
+// ORS_API_KEY configured, the business has no coordinates, or ORS itself
+// errored/rate-limited/timed out — the frontend's contract is to fall back to
+// its own straight-line distance whenever `available` is false, so none of
+// those cases should ever surface as a broken UI.
+export const getBusinessDrivingDistance = asyncHandler(async (req, res) => {
+  const business = await Business.findOne({ _id: req.params.id, ...publicVisibility() })
+    .select("latitude longitude")
+    .lean();
+  if (!business) throw new ApiError(404, "Business not found");
+
+  if (typeof business.latitude !== "number" || typeof business.longitude !== "number") {
+    return sendSuccess(res, { data: { available: false } });
+  }
+
+  // Same Express-5 coercion as getNearbyBusinesses above: req.query is a
+  // getter, so express-validator's .toFloat() never persists and these would
+  // otherwise arrive as strings — which doesn't fail loudly here, it fails
+  // deep inside the ORS cache-key builder (`n.toFixed is not a function`)
+  // and gets swallowed into a plain { available: false } by the caller.
+  const result = await getDrivingDistance(
+    { lat: Number(req.query.ulat), lng: Number(req.query.ulng) },
+    { lat: business.latitude, lng: business.longitude }
+  );
+
+  if (!result) {
+    return sendSuccess(res, { data: { available: false } });
+  }
+
+  sendSuccess(res, {
+    data: { available: true, distanceMeters: result.distanceMeters, durationSeconds: result.durationSeconds },
+  });
 });

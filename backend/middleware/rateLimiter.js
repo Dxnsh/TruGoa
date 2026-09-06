@@ -93,3 +93,14 @@ export const itineraryLimiter = rateLimit({
   store: createMongoStore("itinerary"),
   message: msg("Itinerary generation limit reached. Try again in an hour."),
 });
+
+// Driving distance — hits OpenRouteService's free-tier quota, shared across
+// every visitor. One request per detail-page view is the expected shape, so
+// this per-IP cap exists only to blunt a single client hammering it, not to
+// budget normal browsing.
+export const drivingDistanceLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  store: createMongoStore("driving-distance"),
+  message: msg("Too many distance requests. Try again in an hour."),
+});

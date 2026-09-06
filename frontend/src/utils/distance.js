@@ -31,6 +31,13 @@ export const formatDistance = (metres) => {
     : `${(metres / 1000).toFixed(1)} km`;
 };
 
+/** Seconds -> "12 min" / "under a minute", for a driving-time figure. */
+export const formatDuration = (seconds) => {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
+  const minutes = Math.round(seconds / 60);
+  return minutes < 1 ? "under a minute" : `${minutes} min`;
+};
+
 /** True when a record carries a usable coordinate pair. */
 export const hasCoordinates = (place) =>
   typeof place?.latitude === "number" && typeof place?.longitude === "number";
