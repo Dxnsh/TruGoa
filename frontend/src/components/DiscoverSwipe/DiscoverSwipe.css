@@ -373,6 +373,25 @@
   color: rgba(255,255,255,0.85);
 }
 
+/* Sits directly under the category chip, matching .ds-card-near. When the
+   region caption is showing too, it drops to the next line below it. */
+.ds-card-away {
+  position: absolute;
+  top: 44px;
+  left: 14px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: rgba(10,20,14,0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: rgba(255,255,255,0.95);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.ds-card-away--stacked { top: 76px; }
+
 /* ── Fly-out animations ── */
 .ds-card--out-left, .ds-card--out-right {
   animation: none;
