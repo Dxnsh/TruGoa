@@ -39,6 +39,7 @@ const OPTIONAL = [
   { key: "CLOUDINARY_API_SECRET", feature: "image uploads (admin dashboard)" },
   { key: "GROQ_API_KEY", feature: "AI guide chat, and AI itineraries (itinerary falls back to the local generator)" },
   { key: "GOOGLE_CLIENT_ID", feature: "tourist Google sign-in" },
+  { key: "ORS_API_KEY", feature: "real driving distance on business detail pages (falls back to straight-line distance)" },
 ];
 
 const SECRET_KEYS = ["ADMIN_JWT_SECRET", "TOURIST_JWT_SECRET", "JWT_SECRET"];

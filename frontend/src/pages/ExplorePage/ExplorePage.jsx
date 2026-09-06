@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronRight,
   ChevronLeft,
+  Check,
   Compass,
   Heart,
   MapPin,
-  X,
 } from "lucide-react";
 import { CATEGORIES } from "../../constants/categories";
 import { getBusinesses, getFavorites, addFavorite, removeFavorite } from "../../services/api";
@@ -38,6 +38,10 @@ const EDITORS_PICK_FILTER = (b) =>
 const CATEGORY_QUERIES = {
   beaches:      { category: "beach" },
   food:         { category: "restaurant,cafe,bakery", tag: "food" },
+  // Narrower slices of "food" — for links (the homepage category tiles) that
+  // want cafés or restaurants specifically rather than the combined row.
+  cafe:         { category: "cafe" },
+  restaurant:   { category: "restaurant" },
   stays:        { category: "hotel,resort,homestay,stay" },
   hidden:       { tag: "hidden" },
   nightlife:    { category: "nightlife" },
@@ -47,8 +51,45 @@ const CATEGORY_QUERIES = {
   library:      { category: "library" },
 };
 
-// How many cards a page of the grid holds. Matches the API default.
-const PAGE_SIZE = 24;
+// How many cards a page of the grid holds.
+const PAGE_SIZE = 12;
+
+// Full page-number list for small totals, or a windowed 1 … n-1, n, n+1 … last
+// for big ones — never a wall of buttons.
+const paginationRange = (current, totalPages) => {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const keep = new Set([1, 2, totalPages - 1, totalPages, current - 1, current, current + 1]);
+  const sorted = [...keep].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const withGaps = [];
+  let prev = null;
+  for (const p of sorted) {
+    if (prev !== null && p - prev > 1) withGaps.push("gap");
+    withGaps.push(p);
+    prev = p;
+  }
+  return withGaps;
+};
+
+// Shared look for the Prev/Next arrows and the page-number buttons — coral
+// fill on the active page, everything else a plain outline.
+const pagerBtnStyle = ({ active = false, disabled = false } = {}) => ({
+  minWidth: 36,
+  height: 36,
+  padding: "0 10px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  border: `1.5px solid ${active ? theme.colors.accent : theme.colors.borderLight}`,
+  background: active ? theme.colors.accent : theme.colors.bgCard,
+  color: active ? theme.colors.textInverse : theme.colors.textPrimary,
+  fontFamily: theme.typography.fontBody,
+  fontSize: 13,
+  fontWeight: active ? theme.typography.weightBold : theme.typography.weightMedium,
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.4 : 1,
+  transition: theme.transitions.fast,
+});
 
 // Still used for the Editor's Picks row, which is drawn from the cards
 // already loaded rather than costing a request of its own — the API sorts
@@ -56,6 +97,8 @@ const PAGE_SIZE = 24;
 const CATEGORY_FILTERS = {
   beaches:   (b) => isCategory(b, ["beach"]),
   food:      (b) => isCategory(b, ["restaurant", "cafe", "bakery"]) || hasTag(b, "food"),
+  cafe:        (b) => isCategory(b, ["cafe"]),
+  restaurant:  (b) => isCategory(b, ["restaurant"]),
   stays:     (b) => isCategory(b, ["hotel", "resort", "homestay", "stay"]),
   hidden:    (b) => hasTag(b, "hidden"),
   nightlife: (b) => isCategory(b, ["nightlife"]),
@@ -63,88 +106,6 @@ const CATEGORY_FILTERS = {
   art:       (b) => isCategory(b, ["art-gallery"]),
   museum:  (b) => isCategory(b, ["museum"]),
   library: (b) => isCategory(b, ["library"]),
-};
-
-// The whole hero — artwork and words — is dressed per category, so picking a
-// filter doesn't leave a beach headline sitting over a photo of a bar. Keys
-// without an image of their own ("stays" — there's no stays photo in
-// public/images yet) still get their own copy over the default picture.
-const DEFAULT_HERO = {
-  src: "/images/Explore-hero.jpg",
-  alt: "Palm trees along a rocky Goa coastline",
-  eyebrow: "Explore Goa",
-  title: "Beyond the beaches,\nthe real Goa.",
-  sub: "A curated guide to the places, people and experiences that make Goa unforgettable.",
-};
-
-const CATEGORY_HEROES = {
-  beaches: {
-    src: "/images/beaches.jpg",
-    alt: "A wide, empty Goan beach at low tide",
-    eyebrow: "Beaches",
-    title: "Sand, surf and\nsomewhere quieter.",
-    sub: "From the busy northern strips to the coves most visitors never find.",
-  },
-  food: {
-    src: "/images/food.jpg",
-    alt: "A spread of Goan dishes on a table",
-    eyebrow: "Food & Drink",
-    title: "Goa, one plate\nat a time.",
-    sub: "Fish curry rice, bakery counters and the kitchens locals actually queue for.",
-  },
-  stays: {
-    ...DEFAULT_HERO,
-    eyebrow: "Stays",
-    title: "Somewhere worth\nwaking up.",
-    sub: "Heritage homes, beach shacks and homestays picked for character, not star ratings.",
-  },
-  hidden: {
-    src: "/images/hidden-gems.jpg",
-    alt: "A quiet corner of Goa away from the crowds",
-    eyebrow: "Hidden Goa",
-    title: "The Goa that isn't\non the map.",
-    sub: "Back lanes and quiet corners you'd only find if a local pointed you there.",
-  },
-
-  art: {
-  src: "/images/art.jpg",
-  alt: "Contemporary art gallery in Goa",
-  eyebrow: "Art & Galleries",
-  title: "Where Goa\ngets creative.",
-  sub: "Independent galleries, artists and creative spaces that reveal another side of Goa.",
- },
-
-  museum: {
-    src: "/images/Museum.jpg",
-    alt: "Museum showcasing Goa's art and heritage",
-    eyebrow: "Museums & Heritage",
-    title: "Stories\nworth seeing.",
-    sub: "Museums and heritage spaces that bring Goa's history, art and culture to life.",
-  },
-
-  library: {
-    src: "/images/library.jpg",
-    alt: "Quiet library and reading space in Goa",
-    eyebrow: "library & Reading",
-    title: "A quieter\nside of Goa.",
-    sub: "Independent library, reading rooms and cultural spaces for those who like to slow down and explore.",
-  },
-
- sacredPlaces: {
-  src: "/images/sacred-places.png",
-  alt: "Sacred temple, church, mosque and gurdwara heritage in Goa",
-  eyebrow: "Faith & Heritage",
-  title: "Where Goa goes\nquiet.",
-  sub: "Temples, churches, mosques, gurdwaras and sacred spaces that reveal the faith, history and traditions woven into Goa.",
-},
-
-  nightlife: {
-    src: "/images/drinks.jpg",
-    alt: "A bartender mixing a cocktail over ice",
-    eyebrow: "Nightlife",
-    title: "After dark,\nGoa changes.",
-    sub: "Beach bars, live sets and late tables — the good ones, not the tourist traps.",
-  },
 };
 
 // exact pin if the business has one, otherwise falls back to lat/long, then a text search
@@ -230,14 +191,14 @@ function EditorPickCard({ b, onOpen, saved, onToggleSave }) {
           fontWeight: theme.typography.weightMedium,
           letterSpacing: "0.09em",
           textTransform: "uppercase",
-          color: HERITAGE_GOLD,
+          color: theme.colors.accent,
         }}
       >
         {b.category}
       </p>
       <h4
         style={{
-          margin: "0 0 12px",
+          margin: "0 0 6px",
           fontFamily: theme.typography.fontDisplay,
           fontSize: 18,
           fontWeight: theme.typography.weightBold,
@@ -247,6 +208,24 @@ function EditorPickCard({ b, onOpen, saved, onToggleSave }) {
       >
         {b.name}
       </h4>
+      {EDITORS_PICK_FILTER(b) && (
+        <p
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            margin: "0 0 10px",
+            fontSize: 11,
+            fontWeight: theme.typography.weightMedium,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: theme.colors.textMuted,
+          }}
+        >
+          <Check size={12} strokeWidth={2.5} color={theme.colors.secondaryDark} />
+          Picked by a local
+        </p>
+      )}
       <span
         style={{
           display: "inline-flex",
@@ -256,10 +235,10 @@ function EditorPickCard({ b, onOpen, saved, onToggleSave }) {
           fontWeight: theme.typography.weightMedium,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
-          color: theme.colors.textPrimary,
+          color: theme.colors.accent,
         }}
       >
-        Read Story <ChevronRight size={13} strokeWidth={2} />
+        Read the story <ChevronRight size={13} strokeWidth={2} />
       </span>
     </div>
   );
@@ -580,9 +559,7 @@ const ExplorePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
   // Category pages default to places open right now; this reveals the closed
@@ -596,8 +573,13 @@ const ExplorePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryKey = searchParams.get("category");
   const activeCategory = CATEGORY_FILTERS[categoryKey] ? categoryKey : null;
-  const activeCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory);
-  const hero = CATEGORY_HEROES[activeCategory] || DEFAULT_HERO;
+  // "cafe" and "restaurant" are narrower slices of the "food" pill — they
+  // don't get a pill of their own in CATEGORIES, but still need a heading
+  // when linked to directly, e.g. from the homepage's category tiles.
+  const activeCategoryMeta =
+    CATEGORIES.find((c) => c.key === activeCategory) ||
+    { cafe: { label: "Cafés", sub: "Coffee, bakes and slow mornings" },
+      restaurant: { label: "Restaurants", sub: "Kitchens worth the trip" } }[activeCategory];
 
   const setCategory = (key) => {
     if (key && CATEGORY_FILTERS[key]) setSearchParams({ category: key });
@@ -605,25 +587,29 @@ const ExplorePage = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Refetches from page 1 whenever the category changes — the narrowing now
-  // happens in the query, so a different filter is a different result set
-  // rather than a different predicate over one big local array.
+  // Switching category or the open/closed toggle invalidates whatever page
+  // we were on — a filter with fewer results might not even have a page 3.
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory, showAll]);
+
+  // Refetches this exact page whenever the category, toggle or page number
+  // changes — the narrowing happens in the query, so each page is its own
+  // request rather than one big local array sliced client-side.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
         setError(null);
-        const { items, hasMore, total: found } = await getBusinesses({
+        const { items, total: found } = await getBusinesses({
           ...(CATEGORY_QUERIES[activeCategory] || {}),
           openNow: showAll ? false : undefined,
-          page: 1,
+          page,
           limit: PAGE_SIZE,
         });
         if (cancelled) return;
         setBusinesses(items.map((biz, i) => mapBusiness(biz, i)));
-        setPage(1);
-        setHasMore(Boolean(hasMore));
         setTotal(found ?? items.length);
       } catch (err) {
         if (!cancelled) setError("Could not load places. Please check your connection and try again.");
@@ -632,27 +618,15 @@ const ExplorePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeCategory, showAll]);
+  }, [activeCategory, showAll, page]);
 
-  const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const next = page + 1;
-      const { items, hasMore: more } = await getBusinesses({
-        ...(CATEGORY_QUERIES[activeCategory] || {}),
-        openNow: showAll ? false : undefined,
-        page: next,
-        limit: PAGE_SIZE,
-      });
-      setBusinesses((prev) => [...prev, ...items.map((biz, i) => mapBusiness(biz, prev.length + i))]);
-      setPage(next);
-      setHasMore(Boolean(more));
-    } catch {
-      // Leave what is already on screen; the button stays available to retry.
-    } finally {
-      setLoadingMore(false);
-    }
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const goToPage = (p) => {
+    const clamped = Math.min(Math.max(1, p), totalPages);
+    if (clamped === page) return;
+    setPage(clamped);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -716,106 +690,97 @@ const ExplorePage = () => {
       {/* ── HERO ─────────────────────────────────────── */}
       <div
         style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          minHeight: isMobile ? 480 : 620,
+          background: theme.colors.bgPage,
           padding: isMobile
-            ? "48px 20px 40px"
-            : `72px ${theme.spacing.pagePadding} 80px`,
-          overflow: "hidden",
-          background: "#0B0F12",
+            ? "40px 20px 28px"
+            : `64px ${theme.spacing.pagePadding} 40px`,
         }}
       >
-        {/* BACKGROUND — swapped per category. `key` remounts the <img> so the
-            fade replays on every change rather than only the first. */}
-        <style>{`
-          @keyframes exp-hero-in { from { opacity: 0; } to { opacity: 1; } }
-          @media (prefers-reduced-motion: reduce) {
-            .exp-hero-img { animation: none !important; }
-          }
-        `}</style>
-        <img
-          key={hero.src}
-          className="exp-hero-img"
-          src={hero.src}
-          alt={hero.alt}
+        <p
           style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "110%",
-            objectFit: "cover",
-            zIndex: 0,
-            animation: "exp-hero-in 0.45s ease",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 55%, rgba(0,0,0,.05) 100%)",
-            zIndex: 1,
-          }}
-        />
-
-        {/* COPY — over the image, and swapped with it. Keyed on the same
-            category so the words fade in alongside the new picture. */}
-        <div
-          key={hero.eyebrow}
-          className="exp-hero-img"
-          style={{
-            position: "relative",
-            zIndex: 2,
-            flex: isMobile ? "unset" : "0 0 42%",
-            minWidth: 0,
-            animation: "exp-hero-in 0.45s ease",
+            fontSize: 11.5,
+            fontWeight: theme.typography.weightBold,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: theme.colors.accent,
+            margin: "0 0 10px",
           }}
         >
-          <p
-            style={{
-              fontSize: 12,
-              marginTop:"18%",
-              paddingTop:4,
-              fontWeight: theme.typography.weightMedium,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              color: HERITAGE_GOLD,
-              margin: "0 0 18px",
-            }}
-          >
-            {hero.eyebrow}
-          </p>
+          Goa &middot; Curated by locals
+        </p>
 
-          <h1
-            style={{
-              fontFamily: theme.typography.fontDisplay,
-              fontSize: isMobile ? "clamp(30px,8vw,40px)" : "clamp(38px,3.4vw,54px)",
-              fontWeight: theme.typography.weightBold,
-              color: "#FFFFFF",
-              lineHeight: 1.15,
-              margin: "0 0 20px",
-              // Titles carry their own line break, so honour the \n.
-              whiteSpace: "pre-line",
-            }}
-          >
-            {hero.title}
-          </h1>
+        <h1
+          style={{
+            fontFamily: theme.typography.fontDisplay,
+            fontSize: isMobile ? "clamp(28px,8vw,36px)" : "clamp(34px,3.2vw,46px)",
+            fontWeight: theme.typography.weightBold,
+            color: theme.colors.textPrimary,
+            lineHeight: 1.15,
+            margin: "0 0 12px",
+          }}
+        >
+          Featured places in Goa
+        </h1>
 
-          <p
-            style={{
-              fontSize: 15.5,
-              lineHeight: 1.7,
-              color: "rgba(255,255,255,0.85)",
-              margin: "0 0 32px",
-              maxWidth: 420,
-            }}
-          >
-            {hero.sub}
-          </p>
+        <p
+          style={{
+            fontSize: 15,
+            lineHeight: 1.6,
+            color: theme.colors.textMuted,
+            margin: "0 0 24px",
+            maxWidth: 460,
+          }}
+        >
+          Places we love. Not sponsored, ever.
+        </p>
 
-      
+        <div
+          style={{
+            borderTop: `1px solid ${theme.colors.borderLight}`,
+            margin: "0 0 24px",
+          }}
+        />
+
+        {/* Category pills — the primary way to filter the grid below. Single
+            scrollable row rather than wrapping, so it never breaks into a
+            ragged grid on narrower screens. */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            gap: 10,
+          }}
+        >
+          {[{ key: null, label: "All" }, ...CATEGORIES.filter((c) => c.key !== "all")].map((c) => {
+            const isOn = activeCategory === c.key || (!activeCategory && c.key === null);
+            return (
+              <button
+                key={c.key ?? "all"}
+                onClick={() => setCategory(c.key)}
+                aria-pressed={isOn}
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  border: `1.5px solid ${isOn ? theme.colors.textPrimary : theme.colors.borderLight}`,
+                  background: isOn ? theme.colors.textPrimary : "transparent",
+                  color: isOn ? theme.colors.textInverse : theme.colors.textPrimary,
+                  fontFamily: theme.typography.fontBody,
+                  fontSize: 13,
+                  fontWeight: isOn ? theme.typography.weightBold : theme.typography.weightMedium,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: theme.transitions.fast,
+                }}
+              >
+                {c.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -939,53 +904,6 @@ const ExplorePage = () => {
                 padding: isMobile ? "8px 16px 40px" : `8px ${theme.spacing.pagePadding} 56px`,
               }}
             >
-              {/* Filter chips — also the way back to the full list, so a
-                  visitor arriving on a filtered link is never stuck in it. */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  paddingBottom: 4,
-                  marginBottom: isMobile ? 18 : 24,
-                }}
-              >
-                {[{ key: null, label: "All" }, ...CATEGORIES.filter((c) => c.key !== "all")].map((c) => {
-                  const isOn = activeCategory === c.key || (!activeCategory && c.key === null);
-                  return (
-                    <button
-                      key={c.key ?? "all"}
-                      onClick={() => setCategory(c.key)}
-                      aria-pressed={isOn}
-                      style={{
-                        flexShrink: 0,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        minHeight: 40,
-                        padding: "9px 16px",
-                        borderRadius: theme.radii.pill,
-                        border: `1.5px solid ${isOn ? theme.colors.secondary : theme.colors.borderLight}`,
-                        background: isOn ? theme.colors.secondary : theme.colors.bgCard,
-                        color: isOn ? theme.colors.textInverse : theme.colors.textBody,
-                        fontFamily: theme.typography.fontBody,
-                        fontSize: 13,
-                        fontWeight: isOn
-                          ? theme.typography.weightMedium
-                          : theme.typography.weightRegular,
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        transition: theme.transitions.fast,
-                      }}
-                    >
-                      {c.label}
-                      {isOn && c.key && <X size={13} strokeWidth={2.5} />}
-                    </button>
-                  );
-                })}
-              </div>
-
               <div
                 style={{
                   fontFamily: theme.typography.fontDisplay,
@@ -1061,13 +979,59 @@ const ExplorePage = () => {
                   ))}
                 </div>
 
-                {/* Only the first page is fetched up front; the rest is pulled
-                    on request rather than shipped to everyone who opens the page. */}
-                {hasMore && (
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: isMobile ? 28 : 40 }}>
-                    <PrimaryButton onClick={loadMore} disabled={loadingMore}>
-                      {loadingMore ? "Loading…" : `Show more places (${total - visibleBusinesses.length} left)`}
-                    </PrimaryButton>
+                {/* Each page is its own request (12 at a time), so a huge
+                    category never ships the whole catalogue up front. */}
+                {totalPages > 1 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginTop: isMobile ? 28 : 40,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => goToPage(page - 1)}
+                      disabled={page === 1}
+                      aria-label="Previous page"
+                      style={pagerBtnStyle({ disabled: page === 1 })}
+                    >
+                      <ChevronLeft size={16} strokeWidth={2} />
+                    </button>
+
+                    {paginationRange(page, totalPages).map((p, i) =>
+                      p === "gap" ? (
+                        <span
+                          key={`gap-${i}`}
+                          style={{ padding: "0 4px", color: theme.colors.textMuted, fontSize: 13 }}
+                        >
+                          &hellip;
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => goToPage(p)}
+                          aria-current={p === page ? "page" : undefined}
+                          style={pagerBtnStyle({ active: p === page })}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => goToPage(page + 1)}
+                      disabled={page === totalPages}
+                      aria-label="Next page"
+                      style={pagerBtnStyle({ disabled: page === totalPages })}
+                    >
+                      <ChevronRight size={16} strokeWidth={2} />
+                    </button>
                   </div>
                 )}
                 </>

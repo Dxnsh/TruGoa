@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Waves, Landmark, UtensilsCrossed, Mountain, Music2, Flower2,
+  Waves, Landmark, Mountain, Music2, Flower2,
   ArrowRight, ArrowLeft, ChevronRight, MousePointer2, Menu,
   PenLine, BookOpen, Backpack, Camera, Bell, Search, SlidersHorizontal,
   Heart, Wind, MoreHorizontal, User, ArrowUp, LogOut,
-  ChevronLeft, MapPin, TrendingUp, Star, Gem, Moon, Flame,
+  ChevronLeft, Flame,
 } from "lucide-react";
 import Footer from "../../components/Footer/Footer";
 import SEO from "../../components/SEO/SEO";
@@ -17,7 +17,6 @@ import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import MobileMenu from "../../components/MobileMenu/MobileMenu";
-import OpenBadge from "../../components/OpenBadge/OpenBadge";
 import { getTrendingPlaces } from "../../services/api";
 import useIsMobile from "../../hooks/useIsMobile";
 import "./homepage.css"
@@ -40,14 +39,6 @@ const useScrollReveal = (threshold = 0.1) => {
     return () => obs.disconnect();
   }, [threshold]);
   return [ref, visible];
-};
-
-const BADGE_ICON_MAP = {
-  TRENDING: TrendingUp,
-  POPULAR: Star,
-  "HIDDEN GEM": Gem,
-  TONIGHT: Moon,
-  "WHAT'S HOT": UtensilsCrossed,
 };
 
 // inside component
@@ -160,27 +151,38 @@ useEffect(() => {
     if (Math.abs(dx) > 40) goToStep(dx < 0 ? 1 : -1);
   };
 
-  // Featured Places pulls the same "featured" businesses shown on the
-  // Explore page, so marking/unmarking a place there (or from the admin
-  // dashboard) is the single place that controls what shows up here.
-  const [featuredPlaces, setFeaturedPlaces] = useState([]);
+  // "Featured Places" used to list four individual businesses; a name and
+  // a town tells a visitor nothing about what kind of place it is before they
+  // click. Showing what Goa has by *category* — a beach, a café, a
+  // restaurant, a stay — lets each card speak for itself, and sends people
+  // straight into that filtered slice of Explore instead of one listing.
+  const HOME_CATEGORY_TILES = [
+    { key: "beaches",    label: "Beaches",     query: { category: "beach" } },
+    { key: "cafe",       label: "Cafés",  query: { category: "cafe" } },
+    { key: "restaurant", label: "Restaurants", query: { category: "restaurant" } },
+    { key: "stays",      label: "Stays",       query: { category: "hotel,resort,homestay,stay" } },
+  ];
+  const [categoryTiles, setCategoryTiles] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        // Order open places first but don't hide the closed ones — a late-night
-        // visitor should still see a full row, just led by what's open now and
-        // filled out with "Opens 8 AM". Ask for a few extra so the slice to four
-        // always lands on the open ones when there are enough.
-        const { items } = await getBusinesses({
-          featured: true, openNow: false, openFirst: true, limit: 8,
-        });
-        const mapped = items.slice(0, 4).map((biz, i) => mapBusiness(biz, i));
-        if (!cancelled) setFeaturedPlaces(mapped);
-      } catch {
-        if (!cancelled) setFeaturedPlaces([]);
-      }
+      const results = await Promise.all(
+        HOME_CATEGORY_TILES.map(async (tile) => {
+          try {
+            const { items } = await getBusinesses({
+              ...tile.query, openNow: false, openFirst: true, limit: 1,
+            });
+            const biz = items[0] ? mapBusiness(items[0], 0) : null;
+            return { ...tile, image: biz?.image || null };
+          } catch {
+            return { ...tile, image: null };
+          }
+        })
+      );
+      // A category with nothing verified in it yet shouldn't leave an
+      // imageless card sitting in the grid.
+      if (!cancelled) setCategoryTiles(results.filter((t) => t.image));
     })();
     return () => { cancelled = true; };
   }, []);
@@ -382,20 +384,16 @@ useEffect(() => {
           </div>
 
           <div className="places-grid">
-            {featuredPlaces.map((p) => (
+            {categoryTiles.map((t) => (
               <div
-                key={p.id}
+                key={t.key}
                 className="place-card"
-                onClick={() => navigate(`/listings/${p.slug || p.id}`)}
+                onClick={() => navigate(`/explore?category=${t.key}`)}
               >
-                <img src={p.image} alt={p.name} className="place-card-img" />
+                <img src={t.image} alt={t.label} className="place-card-img" />
                 <div className="place-card-overlay" />
                 <div className="place-card-text">
-                  <div className="place-card-name">{p.name}</div>
-                  <div className="place-card-loc">{p.area || p.location}</div>
-                  <div style={{ marginTop: 6 }}>
-                    <OpenBadge place={p} variant="onImage" />
-                  </div>
+                  <div className="place-card-name">{t.label}</div>
                 </div>
               </div>
             ))}
@@ -430,73 +428,28 @@ useEffect(() => {
           </div>
 
          <div className="tr-track" ref={trendingTrackRef}>
-          {trendingItems.map((item) => {
-            const Icon = BADGE_ICON_MAP[item.badge] || TrendingUp;
-            return (
-              <article
-                key={item._id}
-                className="tr-card"
-                onClick={() => navigate(`/trending/${item.slug}`)}
-              >
-                <div className="tr-card-media">
-                  <img src={item.image} alt={item.title} loading="lazy" />
-                  <span className="tr-card-badge">
-                    <Icon size={12} strokeWidth={2.2} />
-                    {item.badge}
-                  </span>
-                </div>
-                <div className="tr-card-body">
-                  <span className="tr-card-loc">
-                    <MapPin size={12} strokeWidth={2} />
-                    {item.location}
-                  </span>
-                  {/* Only appears when the trending card links to a real
-                      listing whose hours we know — keeps someone from tapping
-                      through to a closed door at 11 PM with no warning. */}
-                  {item.openStatus && (
-                    <div style={{ marginTop: 6 }}>
-                      <OpenBadge place={item} />
-                    </div>
-                  )}
-                  <h3 className="tr-card-title">{item.title}</h3>
-                  <p className="tr-card-desc">{item.description}</p>
-                  <div className="tr-card-foot">
-                    <span className="tr-card-avatars">
-                      {(item.avatars || []).map((src, i) => (
-                        <img
-                          key={i}
-                          src={src}
-                          alt=""
-                          className="tr-avatar"
-                          style={{ zIndex: item.avatars.length - i }}
-                        />
-                      ))}
-                    </span>
-                    <span className="tr-card-loved">
-                      Loved by <strong>{(item.lovedCount || 0).toLocaleString()}</strong> travellers
-                    </span>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+          {trendingItems.map((item) => (
+            <article
+              key={item._id}
+              className="tr-card"
+              onClick={() => navigate(`/trending/${item.slug}`)}
+            >
+              <div className="tr-card-media">
+                <img src={item.image} alt={item.title} loading="lazy" />
+              </div>
+              <div className="tr-card-body">
+                <h3 className="tr-card-title">{item.title}</h3>
+              </div>
+            </article>
+          ))}
           </div>
 
-      <div className="tr-dots">
-        {Array.from({ length: trendingItems.length }).map((_, i) => (
-          <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
-        ))}
-      </div>
-
           <div className="tr-dots">
-            {Array.from({ length: trendingTrackRef.length }).map((_, i) => (
+            {Array.from({ length: trendingItems.length }).map((_, i) => (
               <span key={i} className={`tr-dot ${i === activeDot ? "active" : ""}`} />
             ))}
           </div>
 
-          <button className="tr-cta" onClick={() => navigate("/trending")}>
-            Explore all trending places <ArrowRight size={16} strokeWidth={2} />
-          </button>
         </div>
       </section>
 

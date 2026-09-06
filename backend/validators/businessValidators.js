@@ -48,6 +48,18 @@ export const businessIdParamRules = [
   param("id").isMongoId().withMessage("Invalid business id"),
 ];
 
+export const drivingDistanceRules = [
+  param("id").isMongoId().withMessage("Invalid business id"),
+  query("ulat")
+    .exists().withMessage("ulat is required")
+    .isFloat({ min: -90, max: 90 }).withMessage("ulat must be between -90 and 90")
+    .toFloat(),
+  query("ulng")
+    .exists().withMessage("ulng is required")
+    .isFloat({ min: -180, max: 180 }).withMessage("ulng must be between -180 and 180")
+    .toFloat(),
+];
+
 export const businessSlugParamRules = [
   param("slug").isString().trim().notEmpty(),
 ];

@@ -10,11 +10,11 @@ import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../LoginModal/LoginModal";
 import OpenBadge from "../OpenBadge/OpenBadge";
-// $geoNear measures from wherever the deck was fetched, which goes stale the
-// moment someone walks off; with a live fix and the place's own coordinates the
-// card recomputes as they move. Shared with the detail page, which ranks what's
-// near a place — the two must not disagree.
-import { metresBetween, formatDistance } from "../../utils/distance";
+// Used for live-position tracking (has the visitor moved far enough to
+// refetch the deck?), not for any per-card distance display — the deck shows
+// no distance figure at all; that only ever appears on the detail page,
+// backed by a real driving distance rather than this straight-line helper.
+import { metresBetween } from "../../utils/distance";
 import "./DiscoverSwipe.css";
 
 // Approximate centroids used when the browser won't give us a real fix.
@@ -25,16 +25,16 @@ const REGION_CENTRES = {
 };
 
 // How far out the deck looks, and how many cards it asks for. Both get quoted
-// back to the visitor ("within 15 km"), so they live here rather than being
+// back to the visitor ("within 30 km"), so they live here rather than being
 // repeated as bare numbers at each call site.
-const SEARCH_RADIUS_M = 15000;
+const SEARCH_RADIUS_M = 30000;
 const DECK_LIMIT = 20;
 
-// How far the deck can be widened once the first radius runs dry. 15 km is
-// walking-or-short-drive distance and the right default for "what's around
-// me", but a thin catalogue empties it in a few swipes -- South Goa currently
-// holds three places -- and the honest next question is "what if I travel a
-// bit". 100 km covers Goa end to end, so there is no step beyond it.
+// How far the deck can be widened once the first radius runs dry. 30 km
+// covers most of Goa in one pass, but a thin catalogue can still empty it in
+// a few swipes -- South Goa currently holds three places -- and the honest
+// next question is "what if I travel a bit". 100 km covers Goa end to end, so
+// there is no step beyond it.
 const RADIUS_STEPS_M = [SEARCH_RADIUS_M, 40000, 100000];
 const nextRadius = (current) => RADIUS_STEPS_M.find((r) => r > current) ?? null;
 
@@ -87,7 +87,7 @@ const SWIPE_COMMIT_PX = 110;
 const TAP_SLOP_PX = 10;
 
 // How far someone has to travel before the deck is worth re-querying. Inside a
-// 15 km radius a couple of hundred metres barely changes which places are in
+// 30 km radius a couple of hundred metres barely changes which places are in
 // range, and GPS jitters by that much while sitting still — so a low threshold
 // would mean constant refetches that return the same twenty cards. Two
 // kilometres is roughly where the answer genuinely starts to differ.
@@ -95,8 +95,8 @@ const REFETCH_MOVE_M = 2000;
 
 // High-accuracy fixes land about once a second and jitter by a few metres
 // while standing still. Ignoring the ones that don't really move anyone keeps
-// the deck from re-rendering on noise; the card quotes distance to the nearest
-// 100 m, so nothing below this would be visible anyway.
+// the deck from re-rendering on noise — the card shows no distance figure to
+// begin with, so there's nothing finer than this worth chasing.
 const LIVE_MOVE_M = 10;
 
 // Waiting on a position fix is what actually makes the deck feel slow — the
@@ -124,6 +124,48 @@ const SEEN_KEY = "trugoa_discover_seen";
 // seen filter can drop places out from in front of it, so a position wouldn't
 // survive the round trip.
 const RESUME_KEY = "trugoa_discover_resume";
+
+// The mood filter and open-now toggle picked before tapping through to a
+// place. Everything else that shapes the deck (origin, seen set, resume id)
+// already survives the round trip through sessionStorage; without these two
+// as well, coming back re-fetches under "all" categories / open-now-only —
+// a different query than the one that found the place in the first place —
+// so a filtered-in place can simply be absent from the new results rather
+// than just out of position.
+const MOOD_KEY = "trugoa_discover_mood";
+const INCLUDE_CLOSED_KEY = "trugoa_discover_include_closed";
+
+const readStoredMood = () => {
+  try {
+    return sessionStorage.getItem(MOOD_KEY) || "all";
+  } catch {
+    return "all";
+  }
+};
+
+const writeStoredMood = (key) => {
+  try {
+    sessionStorage.setItem(MOOD_KEY, key);
+  } catch {
+    /* storage unavailable — the filter just won't survive a round trip */
+  }
+};
+
+const readStoredIncludeClosed = () => {
+  try {
+    return sessionStorage.getItem(INCLUDE_CLOSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const writeStoredIncludeClosed = (value) => {
+  try {
+    sessionStorage.setItem(INCLUDE_CLOSED_KEY, value ? "1" : "0");
+  } catch {
+    /* storage unavailable — the toggle just won't survive a round trip */
+  }
+};
 
 const readResumeId = () => {
   try {
@@ -202,12 +244,12 @@ const DiscoverSwipe = () => {
   const [savedCount, setSavedCount] = useState(0);
   const [showInfo, setShowInfo]     = useState(false);
   const [showLogin, setShowLogin]   = useState(false);
-  const [mood, setMood] = useState("all");
+  const [mood, setMood] = useState(readStoredMood);
   // The deck queues only currently-open places by default. This lets someone
   // browse closed ones too (each still badged "Opens 8 AM"). A ref alongside
   // the state so the stable runFetch callback can read the latest value.
-  const [includeClosed, setIncludeClosed] = useState(false);
-  const includeClosedRef = useRef(false);
+  const [includeClosed, setIncludeClosed] = useState(readStoredIncludeClosed);
+  const includeClosedRef = useRef(readStoredIncludeClosed());
   // "nearby" | "region" | "goa" — how far the backend had to widen to fill the
   // deck. Drives the caption on each card and the copy on the empty state.
   const [scope, setScope] = useState("nearby");
@@ -227,7 +269,7 @@ const DiscoverSwipe = () => {
   // where they are, but they're part-way through it. See handleFix.
   const [moved, setMoved] = useState(false);
   // Where the deck on screen was fetched from, and whether that came from a
-  // real fix or a region they picked by hand — "within 15 km of you" is only
+  // real fix or a region they picked by hand — "within 30 km of you" is only
   // true for the former.
   const [centre, setCentre] = useState(null);
   // How far the current deck reached. Mirrored into a ref so runFetch can read
@@ -324,13 +366,13 @@ const DiscoverSwipe = () => {
       const filtered = results.filter((place) => !seen.current.has(place._id));
 
       // $geoNear returns nearest-first, but it only runs on the proximity
-      // tier — the region and Goa fallbacks sort by curation instead. Since
-      // every card carries coordinates and prints a distance, those arrive
-      // visibly out of order: filtering to temples from Palolem put 53.7 km
-      // first and the nearest at 21.1 km last. Sorting here by the distance
-      // we can measure makes "nearest first" true in every tier. Places
-      // without coordinates can't be placed, so they go last rather than
-      // being assumed close.
+      // tier — the region and Goa fallbacks sort by curation instead, so a
+      // "nearest first" deck wasn't actually nearest-first in those tiers:
+      // filtering to temples from Palolem put a 53.7 km place first and the
+      // nearest, 21.1 km, last. Sorting here by the distance we can measure
+      // makes "nearest first" true in every tier, even though no distance
+      // number is printed on the card itself. Places without coordinates
+      // can't be placed, so they go last rather than being assumed close.
       const distanceFrom = (place) => {
         if (typeof place.latitude === "number" && typeof place.longitude === "number") {
           return metresBetween({ lat, lng }, { lat: place.latitude, lng: place.longitude });
@@ -377,6 +419,7 @@ const DiscoverSwipe = () => {
   // Switching mood re-queries the same coordinates with a new category.
   const applyMood = useCallback(async (key) => {
     setMood(key);
+    writeStoredMood(key);
     setShowFilter(false);
     const at = origin.current;
     if (!at) return;
@@ -388,6 +431,7 @@ const DiscoverSwipe = () => {
     const next = !includeClosedRef.current;
     includeClosedRef.current = next;
     setIncludeClosed(next);
+    writeStoredIncludeClosed(next);
     setShowFilter(false);
     seen.current = new Set();          // widening the pool — start the pass fresh
     storeSeen(seen.current);
@@ -673,13 +717,22 @@ const DiscoverSwipe = () => {
 
   // Slug URLs are canonical, but DetailPage falls back to an ID lookup, so
   // a place without one still opens.
+  //
+  // The deck itself shows no distance, but DetailPage does — and needs to
+  // know where the visitor actually is to compute it. Left alone, DetailPage
+  // has no idea where that was, so its distance (and its "Directions" link)
+  // would fall back to whatever Google reads as the device's current
+  // location at that later moment, which needn't be the same fix. Passing
+  // the position along here means both are anchored on the same point.
   const openCurrent = useCallback(() => {
     if (!current) return;
     // Noted before leaving, so the deck can come back to this card. Not marked
     // as seen — opening a place is interest in it, the opposite of dismissing it.
     writeResumeId(current._id);
-    navigate(`/listings/${current.slug || current._id}`);
-  }, [current, navigate]);
+    const pos = livePos || (origin.current?.precise ? origin.current : null);
+    const suffix = pos ? `?ulat=${pos.lat}&ulng=${pos.lng}` : "";
+    navigate(`/listings/${current.slug || current._id}${suffix}`);
+  }, [current, navigate, livePos]);
 
   // ── Render states ──────────────────────────────────────────────────────────
   if (status === "locating" || status === "loading") {
@@ -763,41 +816,18 @@ const DiscoverSwipe = () => {
   const image = rawImage && !failedImages.has(rawImage) ? rawImage : null;
   const nextImage = next ? next.heroImage || next.gallery?.[0] || null : null;
 
-  // Recomputed against the live fix when we have one, so it counts down as the
-  // person walks. The server's own figure is the fallback for places saved
-  // without coordinates, and for the moments before the first fix arrives.
-  const liveDistance =
-    current && livePos &&
-    typeof current.latitude === "number" && typeof current.longitude === "number"
-      ? metresBetween(livePos, { lat: current.latitude, lng: current.longitude })
-      : null;
-
-  const serverDistance = typeof current?.distance === "number" ? current.distance : null;
-  const distanceNow = liveDistance ?? serverDistance;
-
-  // Whether that number was measured from the person or from somewhere else.
-  // A live fix is their own position by definition. The server's figure is
-  // measured from wherever the deck was anchored, which is only them when that
-  // came from a real fix — pick "North Goa" while standing in the south and
-  // $geoNear measures from the middle of North Goa, so a place an hour's drive
-  // away comes back as 2 km.
-  const fromUser = liveDistance !== null || Boolean(centre?.precise);
-
-  // A card shows its distance when we have one, and otherwise says which wider
-  // net caught it. Never both — the two answer the same question.
-  //
-  // A measurement taken from a picked region is dropped rather than relabelled.
-  // The origin is a fixed centroid — North Goa's sits near Assagao — so the
-  // number is the distance from a point the reader never chose and cannot see.
-  // Several places cluster within a few kilometres of it, which puts a row of
-  // "3.5 km" captions in front of someone standing an hour's drive south, and
-  // naming the origin doesn't stop that reading as "everything is close".
-  // Where they are is the only origin that makes a distance worth printing.
-  const measured = formatDistance(distanceNow);
+  // No distance figure is shown on the deck at all — a straight-line
+  // estimate here was found to read as flatly wrong next to the real,
+  // driving-distance figure now shown on the detail page (a straight line
+  // across one of Goa's rivers can be half the actual road distance), and
+  // running the real distance for every card in the deck isn't viable on
+  // OpenRouteService's free-tier quota (2,000/day, shared across the whole
+  // site) — a single deck load is already 20 places. So the card names which
+  // wider net caught it instead of guessing at a number: nothing when it's a
+  // precise "near you" fetch (the header above already says "Within X km of
+  // you"), the picked region's name otherwise.
   const caption = !current
     ? null
-    : fromUser && measured
-    ? `${measured} away`
     : centre && !centre.precise
     ? `In ${centre.label}`
     : SCOPE_NOTE[scope] ?? null;

@@ -4,14 +4,17 @@ import {
   getBusinessBySlug,
   getBusinessById,
   getNearbyBusinesses,
+  getBusinessDrivingDistance,
 } from "../controllers/businessController.js";
 import {
   listBusinessesRules,
   businessIdParamRules,
   businessSlugParamRules,
   nearbyBusinessesRules,
+  drivingDistanceRules,
 } from "../validators/businessValidators.js";
 import { validate } from "../middleware/validate.js";
+import { drivingDistanceLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -29,6 +32,18 @@ router.get("/slug/:slug", businessSlugParamRules, validate, getBusinessBySlug);
 
 // GET /api/v1/businesses/:id — MongoDB ID lookup
 router.get("/:id", businessIdParamRules, validate, getBusinessById);
+
+// GET /api/v1/businesses/:id/driving-distance?ulat=&ulng= — real driving
+// distance/duration from the visitor to this business (OpenRouteService),
+// with a graceful { available: false } instead of an error when it can't be
+// produced. Called once per detail-page view, never per card/list.
+router.get(
+  "/:id/driving-distance",
+  drivingDistanceLimiter,
+  drivingDistanceRules,
+  validate,
+  getBusinessDrivingDistance
+);
 
 // Business creation is admin-curated only — see POST /api/v1/admin/businesses.
 

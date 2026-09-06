@@ -104,6 +104,22 @@ export const getBusinessBySlug = async (slug) => {
   return unwrap(await res.json());
 };
 
+// Real driving distance/duration from { lat, lng } to one business, via the
+// backend's OpenRouteService integration. Never throws — every failure mode
+// (no key configured server-side, ORS down/rate-limited, network error)
+// resolves to { available: false } so the caller can fall back to its own
+// straight-line distance without a try/catch at every call site.
+export const getBusinessDrivingDistance = async (businessId, { lat, lng }) => {
+  try {
+    const query = new URLSearchParams({ ulat: String(lat), ulng: String(lng) });
+    const res = await fetch(`${BUSINESS_URL}/${businessId}/driving-distance?${query.toString()}`);
+    if (!res.ok) return { available: false };
+    return unwrap(await res.json());
+  } catch {
+    return { available: false };
+  }
+};
+
 // ─── STORIES (Public) ─────────────────────────────────────────────────────────
 
 // GET all story collections (summary fields only)

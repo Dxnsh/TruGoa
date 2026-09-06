@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   MapPin, Heart, Share2, Camera, ChevronRight, ChevronLeft, Navigation,
   Bookmark, Clock, Users, Sun, Compass, Utensils, Waves,
@@ -11,6 +11,7 @@ import {
   getBusinessById, getBusinessBySlug, getNearbyBusinesses,
   getReviewsForBusiness, markReviewHelpful,
   getFavorites, addFavorite, removeFavorite,
+  getBusinessDrivingDistance,
 } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
 import { isPlaceOpenNow, openLabel, to12Hour } from "../../utils/isPlaceOpenNow";
@@ -162,7 +163,7 @@ function MapModal({ biz, mapEmbedSrc, directionsUrl, onClose, saved, onToggleSav
    directions/save actions, and a quick-facts list. Rows only
    render when the underlying data actually exists.
 ══════════════════════════════════════════════════════════ */
-function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
+function InfoCard({ biz, nearbyNames, userDistance, userOrigin, driving, saved, onToggleSave }) {
   const [expanded, setExpanded] = useState(false);
   const hasCoords = biz.latitude && biz.longitude;
   const mapEmbedSrc = hasCoords
@@ -170,10 +171,23 @@ function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
     : biz.location
     ? `https://www.google.com/maps?q=${encodeURIComponent(biz.location)}&z=13&output=embed`
     : null;
-  const directionsUrl = biz.googleMapUrl
-    || (hasCoords
-      ? `https://www.google.com/maps/dir/?api=1&destination=${biz.latitude},${biz.longitude}`
-      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(biz.location)}`);
+  // Anchoring on the same point the "X km away" figure was measured from
+  // means the only thing left to explain a gap from what Maps shows next is
+  // the real one — a driving route bends around rivers and coastline, a
+  // straight line doesn't — rather than the two having quietly compared
+  // different starting points. An admin-pasted `googleMapUrl` breaks that:
+  // it's an opaque link to Google's own resolved pin, which can sit tens or
+  // hundreds of metres from the stored lat/lng the badge measured to, and it
+  // carries no `origin` param, so Maps falls back to a fresh device fix
+  // instead of the one the badge used. That combination is enough on its own
+  // to make "395 m away" and Maps' "800 m" both be correct answers to
+  // different questions — so prefer our own coordinate-based link (same
+  // origin, same destination as the badge) whenever we have both, and only
+  // fall back to `googleMapUrl` when we don't.
+  const directionsUrl = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1${userOrigin ? `&origin=${userOrigin.lat},${userOrigin.lng}` : ""}&destination=${biz.latitude},${biz.longitude}`
+    : biz.googleMapUrl
+    || `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(biz.location)}`;
 
   // Prefer a live "Open now — closes 10 PM" line derived in IST; fall back to
   // the freeform note ("Seasonal, call ahead") when there are no structured
@@ -186,14 +200,25 @@ function InfoCard({ biz, nearbyNames, saved, onToggleSave }) {
     : biz.openingHoursNote;
   const week = weeklyHours(biz.openingHours);
 
+  // Exactly one number is shown, never both: the real driving distance
+  // (OpenRouteService, fetched once for this page) whenever it resolved in
+  // time, or the straight-line figure as the fallback — before the ORS call
+  // finishes, when it fails, or when ORS_API_KEY isn't configured on the
+  // server. The straight-line fallback stays labelled as such so it's never
+  // mistaken for the real (driving) figure once ORS isn't in the picture.
+  const distanceValue = driving?.available
+    ? `${formatDistance(driving.distanceMeters)} away`
+    : userDistance ? `${formatDistance(userDistance)} away (straight-line)` : "";
+
   const facts = [
+    { label: "Distance from You",  value: distanceValue, icon: Navigation },
     { label: "Best Time to Visit", value: biz.bestTime, icon: Sun },
     { label: "Ideal For",          value: biz.idealFor?.length ? biz.idealFor.join(", ") : "", icon: Users },
     { label: "Price",              value: biz.price && biz.price !== "Contact for price" ? biz.price : "", icon: IndianRupee },
     { label: "Timings",            value: timingsValue, icon: Clock },
     { label: "Duration",           value: biz.visitDuration, icon: Compass },
     { label: "Phone",              value: biz.phone, icon: Phone },
-    { label: "Nearest Places",     value: nearbyNames, icon: MapPin },
+    { label: "Nearest Places", value: nearbyNames, icon: MapPin },
   ].filter(f => f.value);
 
   return (
@@ -507,6 +532,26 @@ export default function DetailPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const contentRef = useRef(null);
+  // Carried over from the swipe deck's "X km away" card, when it had a fix on
+  // where the visitor was. Reusing it here — rather than asking the browser
+  // again — means this page's own distance and its "Directions" link are
+  // anchored on the exact point the deck's figure came from.
+  const [searchParams] = useSearchParams();
+  const userOrigin = (() => {
+    // `searchParams.get` returns null, not undefined, when the param is
+    // absent — and Number(null) is 0, not NaN. Coercing straight to Number
+    // before checking presence turned "no ulat/ulng at all" (opening a
+    // listing from Explore, the homepage, or a bare shared link, none of
+    // which attach them) into a false, valid-looking origin of (0, 0) —
+    // "Null Island", off the coast of Africa — which is why this page could
+    // show something like "8,293.9 km away" instead of hiding the row.
+    const latRaw = searchParams.get("ulat");
+    const lngRaw = searchParams.get("ulng");
+    if (latRaw == null || lngRaw == null) return null;
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  })();
 
   const [biz, setBiz] = useState(null);
   const [similar, setSimilar] = useState([]);
@@ -531,9 +576,12 @@ export default function DetailPage() {
         const mapped = mapBusiness(bizData, 0);
         setBiz(mapped);
 
-        // If the URL didn't already use the canonical slug, swap it in for better SEO.
+        // If the URL didn't already use the canonical slug, swap it in for
+        // better SEO — keeping the query string, or a redirect from an old
+        // slug would silently drop the ulat/ulng the swipe deck attached.
         if (mapped.slug && mapped.slug !== slug) {
-          navigate(`/listings/${mapped.slug}`, { replace: true });
+          const qs = searchParams.toString();
+          navigate(`/listings/${mapped.slug}${qs ? `?${qs}` : ""}`, { replace: true });
         }
 
         // "Nearest Places" is ranked by actual distance from this listing,
@@ -562,15 +610,7 @@ export default function DetailPage() {
               places
                 .filter((b) => String(b._id) !== String(bizData._id))
                 .slice(0, 4)
-                .map((b, i) => ({
-                  ...mapBusiness(b, i),
-                  // `distance` is only present on the proximity tier; recompute
-                  // from the coordinates the deck projection carries so the
-                  // regional and catalogue-wide tiers can still show a figure.
-                  metres: hasCoordinates(b)
-                    ? metresBetween(pointOf(bizData), pointOf(b))
-                    : undefined,
-                }))
+                .map((b, i) => mapBusiness(b, i))
             );
           } catch {
             setSimilar([]);
@@ -608,6 +648,30 @@ export default function DetailPage() {
     return () => { cancelled = true; };
   }, [isTouristLoggedIn, biz?.id]);
 
+  // Best-effort real driving distance, layered over the straight-line figure
+  // computed below. Fired once per (place, visitor-origin) pair — never on
+  // every card in a list — so a free-tier ORS quota lasts. `available` stays
+  // false (rather than throwing) for every failure mode: no origin yet, no
+  // coordinates on this business, missing/invalid ORS key, or ORS itself
+  // being down/rate-limited/slow — the straight-line figure is always ready
+  // as a fallback so the UI never shows nothing.
+  const [driving, setDriving] = useState({ available: false });
+  const bizId = biz?.id;
+  const hasBizCoords = hasCoordinates(biz);
+  const originLat = userOrigin?.lat;
+  const originLng = userOrigin?.lng;
+  useEffect(() => {
+    if (!bizId || !hasBizCoords || originLat == null || originLng == null) {
+      setDriving({ available: false });
+      return;
+    }
+    let cancelled = false;
+    getBusinessDrivingDistance(bizId, { lat: originLat, lng: originLng }).then((result) => {
+      if (!cancelled) setDriving(result);
+    });
+    return () => { cancelled = true; };
+  }, [bizId, hasBizCoords, originLat, originLng]);
+
   if (loading) return (
     <div className="dp-loading">
       <div className="dp-loading-ring" />
@@ -642,10 +706,18 @@ export default function DetailPage() {
 
   const heroHeadline = biz.tagline || biz.name;
   const heroDescription = biz.desc;
+  // Names only, no distance figure — same call as the swipe deck's cards:
+  // a straight-line number here reads as wrong next to the real driving
+  // distance now shown for "Distance from You" above, and getting a real
+  // one for every listed neighbour would mean an extra ORS call per name.
   const nearbyNames = similar
     .slice(0, 2)
-    .map(s => `${s.name} (${formatDistance(s.metres)})`)
+    .map(s => s.name)
     .join(", ");
+
+  const userDistance = userOrigin && hasCoordinates(biz)
+    ? metresBetween(userOrigin, pointOf(biz))
+    : null;
 
   const scrollToContent = () => {
     contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -789,6 +861,9 @@ export default function DetailPage() {
               <InfoCard
                 biz={biz}
                 nearbyNames={nearbyNames}
+                userDistance={userDistance}
+                userOrigin={userOrigin}
+                driving={driving}
                 saved={saved}
                 onToggleSave={toggleFavorite}
               />
@@ -874,7 +949,15 @@ export default function DetailPage() {
              inline after the story, and two instances would duplicate it. */}
         {!isMobile && (
           <div className="dp-sidebar">
-            <InfoCard biz={biz} nearbyNames={nearbyNames} saved={saved} onToggleSave={toggleFavorite} />
+            <InfoCard
+              biz={biz}
+              nearbyNames={nearbyNames}
+              userDistance={userDistance}
+              userOrigin={userOrigin}
+              driving={driving}
+              saved={saved}
+              onToggleSave={toggleFavorite}
+            />
           </div>
         )}
       </div>
