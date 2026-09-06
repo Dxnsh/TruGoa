@@ -10,11 +10,11 @@ import { getNearbyBusinesses, addFavorite } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../LoginModal/LoginModal";
 import OpenBadge from "../OpenBadge/OpenBadge";
-// Used for live-position tracking (has the visitor moved far enough to
-// refetch the deck?), not for any per-card distance display — the deck shows
-// no distance figure at all; that only ever appears on the detail page,
-// backed by a real driving distance rather than this straight-line helper.
-import { metresBetween } from "../../utils/distance";
+// metresBetween: live-position tracking (has the visitor moved far enough to
+// refetch the deck?). formatDistance: the "away" figure on each card, fed the
+// distance $geoNear already measured server-side — not a client estimate, and
+// nothing to do with the driving distance the detail page fetches.
+import { metresBetween, formatDistance } from "../../utils/distance";
 import "./DiscoverSwipe.css";
 
 // Approximate centroids used when the browser won't give us a real fix.
@@ -816,21 +816,27 @@ const DiscoverSwipe = () => {
   const image = rawImage && !failedImages.has(rawImage) ? rawImage : null;
   const nextImage = next ? next.heroImage || next.gallery?.[0] || null : null;
 
-  // No distance figure is shown on the deck at all — a straight-line
-  // estimate here was found to read as flatly wrong next to the real,
-  // driving-distance figure now shown on the detail page (a straight line
-  // across one of Goa's rivers can be half the actual road distance), and
-  // running the real distance for every card in the deck isn't viable on
-  // OpenRouteService's free-tier quota (2,000/day, shared across the whole
-  // site) — a single deck load is already 20 places. So the card names which
-  // wider net caught it instead of guessing at a number: nothing when it's a
-  // precise "near you" fetch (the header above already says "Within X km of
-  // you"), the picked region's name otherwise.
+  // The card shows the distance $geoNear measured (see awayLabel below) on the
+  // proximity tier, but no per-card driving distance: that needs one
+  // OpenRouteService call per place and the free tier is 2,000/day for the
+  // whole site, while a single deck load is 20 places. The detail page fetches
+  // the real road distance for the one place you open.
+  //
+  // The caption names which wider net caught the place: nothing on a precise
+  // "near you" fetch (the header already says "Within X km of you"), the
+  // picked region's name otherwise.
   const caption = !current
     ? null
     : centre && !centre.precise
     ? `In ${centre.label}`
     : SCOPE_NOTE[scope] ?? null;
+
+  // Distance as $geoNear measured it on the server — only the proximity tier
+  // carries one, so it just doesn't show on the region/Goa decks.
+  const awayLabel =
+    current && typeof current.distance === "number"
+      ? formatDistance(current.distance)
+      : null;
 
   // ── "You are here" ─────────────────────────────────────────────────────────
   // What the deck is actually showing, phrased so it never overstates: only
@@ -1083,6 +1089,11 @@ const DiscoverSwipe = () => {
           {/* Directly under the category, where it reads as a property of the
               place rather than as the last line of a paragraph about it. */}
           {caption && <span className="ds-card-near">{caption}</span>}
+          {awayLabel && (
+            <span className={`ds-card-away${caption ? " ds-card-away--stacked" : ""}`}>
+              {awayLabel} away
+            </span>
+          )}
           {current.verified && <span className="ds-card-verified">Verified</span>}
 
           {/* Name and location only. Everything else the card used to carry —
