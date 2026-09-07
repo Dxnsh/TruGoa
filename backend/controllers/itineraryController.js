@@ -7,6 +7,7 @@
 
 import OpenAI from "openai";
 import Itinerary from "../models/Itinerary.js";
+import Business from "../models/Business.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -293,18 +294,70 @@ ${JSON.stringify(PLACE_POOL)}`;
   return parsed;
 }
 
+// Escapes a place name before it goes into a $regex, so a name with regex
+// metacharacters ("Café Bodega", "Brittos") matches literally.
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Attaches the real listing behind each slot when one exists, in a single
+ * query for the whole itinerary. A slot's `place` is the name the generator
+ * chose; if an approved Business has that name (case-insensitive, exact) we
+ * copy its cover photo, slug and coordinates onto the slot. Slots with no
+ * match are left untouched — the result page renders a placeholder card for
+ * those. Best-effort: any failure here just means no photos, never a failed
+ * generation.
+ */
+async function enrichSlotsWithListings(itinerary) {
+  try {
+    const names = [
+      ...new Set(
+        (itinerary.days || [])
+          .flatMap((d) => d.slots || [])
+          .map((s) => (s.place || "").trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (names.length === 0) return itinerary;
+
+    const listings = await Business.find({
+      status: "approved",
+      $or: names.map((n) => ({ name: new RegExp(`^${escapeRegex(n)}$`, "i") })),
+    })
+      .select("name slug heroImage gallery latitude longitude")
+      .lean();
+
+    const byName = new Map(listings.map((b) => [b.name.toLowerCase(), b]));
+
+    for (const day of itinerary.days || []) {
+      for (const slot of day.slots || []) {
+        const match = byName.get((slot.place || "").trim().toLowerCase());
+        if (!match) continue;
+        slot.image = match.heroImage || match.gallery?.[0] || undefined;
+        slot.slug = match.slug || undefined;
+        if (typeof match.latitude === "number") slot.latitude = match.latitude;
+        if (typeof match.longitude === "number") slot.longitude = match.longitude;
+      }
+    }
+  } catch (err) {
+    logger.warn(`Itinerary listing enrichment skipped: ${err.message}`);
+  }
+  return itinerary;
+}
+
 export const generateItinerary = asyncHandler(async (req, res) => {
   const { duration, budget, vibe, interests, style } = req.body;
   const params = { duration, budget, vibe, interests, style };
 
+  let itinerary;
   try {
-    const itinerary = await generateWithAI(params);
-    return sendSuccess(res, { data: itinerary });
+    itinerary = await generateWithAI(params);
   } catch (err) {
     logger.warn(`Itinerary AI generation failed, falling back to local generator: ${err.message}`);
-    const itinerary = buildMockItinerary(params);
-    return sendSuccess(res, { data: itinerary });
+    itinerary = buildMockItinerary(params);
   }
+
+  await enrichSlotsWithListings(itinerary);
+  return sendSuccess(res, { data: itinerary });
 });
 
 // GET /api/v1/itinerary/mine — the signed-in tourist's last saved itinerary

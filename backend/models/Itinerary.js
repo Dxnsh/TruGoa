@@ -13,6 +13,15 @@ const slotSchema = new mongoose.Schema({
   description:   { type: String, maxlength: 2000 },
   insiderTip:    { type: String, maxlength: 1000 },
   estimatedCost: { type: String, trim: true, maxlength: 80 },
+  // Filled in by enrichSlotsWithListings() when the slot's `place` matches a
+  // real curated listing — the result page uses `image` for the card photo and
+  // `slug` to link through to the full listing; the coordinates let the day's
+  // "View on map" build a real route. All optional: a slot with no catalogue
+  // match keeps only the text fields above and the card shows a placeholder.
+  image:         { type: String, maxlength: 500 },
+  slug:          { type: String, trim: true, maxlength: 200 },
+  latitude:      { type: Number, min: -90,  max: 90 },
+  longitude:     { type: Number, min: -180, max: 180 },
 }, { _id: false });
 
 const daySchema = new mongoose.Schema({
