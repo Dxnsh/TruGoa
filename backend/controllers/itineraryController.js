@@ -141,6 +141,75 @@ const POOL_COORDS = {
 
 const PERIOD_ORDER = ["Morning", "Afternoon", "Evening"];
 
+// How a real listing's category maps into the shape the generators expect —
+// the card `type` label, a sensible default time-of-day, and which vibes the
+// place suits. Anything not listed (hotel/stay) is not an itinerary stop.
+const CATEGORY_MAP = {
+  restaurant:    { type: "Restaurant",   period: "Afternoon", vibe: ["beach", "romantic", "heritage", "party"] },
+  cafe:          { type: "Café",         period: "Morning",   vibe: ["hidden", "heritage", "romantic"] },
+  beach:         { type: "Beach",        period: "Morning",   vibe: ["beach", "romantic", "hidden", "adventure"] },
+  nightlife:     { type: "Bar",          period: "Evening",   vibe: ["party", "beach"] },
+  market:        { type: "Market",       period: "Afternoon", vibe: ["party", "hidden", "heritage"] },
+  heritage:      { type: "Heritage",     period: "Morning",   vibe: ["heritage", "hidden"] },
+  spiritual:     { type: "Spiritual",    period: "Morning",   vibe: ["heritage", "hidden"] },
+  museum:        { type: "Museum",       period: "Afternoon", vibe: ["heritage", "hidden"] },
+  "art-gallery": { type: "Gallery",      period: "Afternoon", vibe: ["heritage", "hidden", "romantic"] },
+  library:      { type: "Library",      period: "Afternoon", vibe: ["heritage", "hidden"] },
+  activity:      { type: "Activity",     period: "Morning",   vibe: ["adventure", "hidden", "beach"] },
+};
+
+// Build the place pool from the live catalogue so the generator picks real
+// listings — every one then carries its own photo, slug and coordinates
+// straight through to the result page. Falls back to nothing (the caller
+// tops up with the hardcoded PLACE_POOL) when the catalogue is thin.
+async function buildCatalogPool() {
+  try {
+    const listings = await Business.find({
+      status: "approved",
+      category: { $in: Object.keys(CATEGORY_MAP) },
+    })
+      .select("name slug category location area latitude longitude description tagline localTip safetyTip bestTime heroImage gallery")
+      .lean();
+
+    return listings
+      .map((b) => {
+        const map = CATEGORY_MAP[b.category];
+        if (!map) return null;
+        const image = b.heroImage || b.gallery?.[0] || null;
+        return {
+          name: b.name,
+          area: b.location || b.area || "Goa",
+          type: map.type,
+          period: map.period,
+          vibe: map.vibe,
+          desc: (b.description || b.tagline || "").slice(0, 600),
+          tip: b.localTip || b.safetyTip || b.bestTime || "",
+          image: image || undefined,
+          slug: b.slug || undefined,
+          lat: typeof b.latitude === "number" ? b.latitude : undefined,
+          lng: typeof b.longitude === "number" ? b.longitude : undefined,
+        };
+      })
+      .filter(Boolean);
+  } catch (err) {
+    logger.warn(`Itinerary catalogue pool unavailable, using curated fallback only: ${err.message}`);
+    return [];
+  }
+}
+
+// Merge the live catalogue in front of the hardcoded pool, de-duped by name,
+// so real listings are always preferred and the curated list only fills gaps.
+function mergePools(catalogPool) {
+  const seen = new Set(catalogPool.map((p) => p.name.toLowerCase()));
+  const fallback = PLACE_POOL
+    .filter((p) => !seen.has(p.name.toLowerCase()))
+    .map((p) => {
+      const coords = POOL_COORDS[p.name];
+      return coords ? { ...p, lat: coords.lat, lng: coords.lng } : p;
+    });
+  return [...catalogPool, ...fallback];
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -195,15 +264,15 @@ function pickSlotsForDay(pool, usedIndexes, slotCount, costTier) {
   return slots;
 }
 
-function buildMockItinerary({ duration, budget, vibe, style }) {
+function buildMockItinerary({ duration, budget, vibe, style }, pool = PLACE_POOL) {
   const days = Number(duration);
   const costTier = COST_TIERS[budget];
   const copy = VIBE_COPY[vibe];
 
   // pool favouring the chosen vibe, falling back to the full pool if too small
-  let scopedPool = PLACE_POOL.filter((p) => p.vibe.includes(vibe));
+  let scopedPool = pool.filter((p) => p.vibe?.includes(vibe));
   if (scopedPool.length < days * 3) {
-    scopedPool = [...scopedPool, ...PLACE_POOL.filter((p) => !scopedPool.includes(p))];
+    scopedPool = [...scopedPool, ...pool.filter((p) => !scopedPool.includes(p))];
   }
   scopedPool = shuffle(scopedPool);
 
@@ -286,9 +355,16 @@ Return STRICT JSON only, matching exactly this shape (no markdown, no commentary
   ]
 }`;
 
-async function generateWithAI({ duration, budget, vibe, interests, style }) {
+async function generateWithAI({ duration, budget, vibe, interests, style }, pool = PLACE_POOL) {
   const days = Number(duration);
   const slotsPerDay = days <= 3 ? 4 : 3;
+
+  // Only the fields the model needs to choose and describe a place — image,
+  // slug and coordinates are attached afterwards from the same pool by name.
+  const promptPool = pool.map((p) => ({
+    name: p.name, area: p.area, type: p.type, period: p.period,
+    vibe: p.vibe, desc: p.desc, tip: p.tip,
+  }));
 
   const userPrompt = `Build a ${days}-day Goa itinerary.
 Budget tier: ${budget}
@@ -298,7 +374,7 @@ Traveller style: ${style}
 Slots per day: ${slotsPerDay} (Morning/Afternoon/Evening)
 
 CURATED_PLACES (JSON — the only places you may use):
-${JSON.stringify(PLACE_POOL)}`;
+${JSON.stringify(promptPool)}`;
 
   const response = await client.chat.completions.create({
     model: "llama-3.3-70b-versatile",
@@ -326,57 +402,64 @@ ${JSON.stringify(PLACE_POOL)}`;
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Attaches the real listing behind each slot when one exists, in a single
- * query for the whole itinerary. A slot's `place` is the name the generator
- * chose; if an approved Business has that name (case-insensitive, exact) we
- * copy its cover photo, slug and coordinates onto the slot. Slots with no
- * match are left untouched — the result page renders a placeholder card for
- * those. Best-effort: any failure here just means no photos, never a failed
- * generation.
+ * Attaches a photo, slug and coordinates to every slot by matching its `place`
+ * name (case-insensitive) back to the pool the generator chose from — which is
+ * catalogue-first, so most slots resolve to a real listing and carry that
+ * listing's own cover photo. Any slot still missing an image or coordinates
+ * after that is topped up: coordinates from the hardcoded pool table, and a
+ * one-shot DB lookup for a photo in case the generator named a listing the
+ * pool build missed. Best-effort — a failure here just means fewer photos.
  */
-async function enrichSlots(itinerary) {
-  // 1. Fall back to the curated pool coordinates for every slot, so the map
-  //    has a pin per stop even with no listing behind it.
-  for (const day of itinerary.days || []) {
-    for (const slot of day.slots || []) {
-      const coords = POOL_COORDS[(slot.place || "").trim()];
-      if (coords && typeof slot.latitude !== "number") {
-        slot.latitude = coords.lat;
-        slot.longitude = coords.lng;
+async function enrichSlots(itinerary, pool = []) {
+  const poolByName = new Map(pool.map((p) => [p.name.trim().toLowerCase(), p]));
+
+  const slots = (itinerary.days || []).flatMap((d) => d.slots || []);
+
+  // 1. Fill from the pool entry the generator picked.
+  for (const slot of slots) {
+    const entry = poolByName.get((slot.place || "").trim().toLowerCase());
+    if (entry) {
+      if (!slot.image && entry.image) slot.image = entry.image;
+      if (!slot.slug && entry.slug) slot.slug = entry.slug;
+      if (typeof slot.latitude !== "number" && typeof entry.lat === "number") {
+        slot.latitude = entry.lat;
+        slot.longitude = entry.lng;
       }
+    }
+    // Hardcoded-pool coordinate table as a last resort for the map.
+    const coords = POOL_COORDS[(slot.place || "").trim()];
+    if (coords && typeof slot.latitude !== "number") {
+      slot.latitude = coords.lat;
+      slot.longitude = coords.lng;
     }
   }
 
-  // 2. Overlay real listing data (photo, slug, exact geo) where a matching
-  //    approved Business exists.
+  // 2. For anything still without a photo, one DB lookup by exact name.
   try {
-    const names = [
+    const need = [
       ...new Set(
-        (itinerary.days || [])
-          .flatMap((d) => d.slots || [])
-          .map((s) => (s.place || "").trim())
-          .filter(Boolean)
+        slots.filter((s) => !s.image).map((s) => (s.place || "").trim()).filter(Boolean)
       ),
     ];
-    if (names.length === 0) return itinerary;
+    if (need.length === 0) return itinerary;
 
     const listings = await Business.find({
       status: "approved",
-      $or: names.map((n) => ({ name: new RegExp(`^${escapeRegex(n)}$`, "i") })),
+      $or: need.map((n) => ({ name: new RegExp(`^${escapeRegex(n)}$`, "i") })),
     })
       .select("name slug heroImage gallery latitude longitude")
       .lean();
 
     const byName = new Map(listings.map((b) => [b.name.toLowerCase(), b]));
-
-    for (const day of itinerary.days || []) {
-      for (const slot of day.slots || []) {
-        const match = byName.get((slot.place || "").trim().toLowerCase());
-        if (!match) continue;
-        slot.image = match.heroImage || match.gallery?.[0] || slot.image;
-        slot.slug = match.slug || slot.slug;
-        if (typeof match.latitude === "number") slot.latitude = match.latitude;
-        if (typeof match.longitude === "number") slot.longitude = match.longitude;
+    for (const slot of slots) {
+      if (slot.image) continue;
+      const match = byName.get((slot.place || "").trim().toLowerCase());
+      if (!match) continue;
+      slot.image = match.heroImage || match.gallery?.[0] || undefined;
+      slot.slug = slot.slug || match.slug || undefined;
+      if (typeof slot.latitude !== "number" && typeof match.latitude === "number") {
+        slot.latitude = match.latitude;
+        slot.longitude = match.longitude;
       }
     }
   } catch (err) {
@@ -389,15 +472,19 @@ export const generateItinerary = asyncHandler(async (req, res) => {
   const { duration, budget, vibe, interests, style } = req.body;
   const params = { duration, budget, vibe, interests, style };
 
+  // Catalogue-first pool: real listings (each with its own photo) preferred,
+  // the curated hardcoded list only filling gaps.
+  const pool = mergePools(await buildCatalogPool());
+
   let itinerary;
   try {
-    itinerary = await generateWithAI(params);
+    itinerary = await generateWithAI(params, pool);
   } catch (err) {
     logger.warn(`Itinerary AI generation failed, falling back to local generator: ${err.message}`);
-    itinerary = buildMockItinerary(params);
+    itinerary = buildMockItinerary(params, pool);
   }
 
-  await enrichSlots(itinerary);
+  await enrichSlots(itinerary, pool);
   return sendSuccess(res, { data: itinerary });
 });
 
