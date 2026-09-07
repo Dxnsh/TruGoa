@@ -8,6 +8,7 @@
 import OpenAI from "openai";
 import Itinerary from "../models/Itinerary.js";
 import Business from "../models/Business.js";
+import { getPlacePhoto } from "../utils/googlePlacesPhoto.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -522,6 +523,25 @@ async function enrichSlots(itinerary, pool = []) {
   } catch (err) {
     logger.warn(`Itinerary listing enrichment skipped: ${err.message}`);
   }
+
+  // 3. Still no photo (no matching listing) — pull one straight from Google
+  //    Places for the real place. No-op unless GOOGLE_PLACES_API_KEY is set;
+  //    results are cached in the util, so repeated places cost nothing.
+  if (process.env.GOOGLE_PLACES_API_KEY) {
+    const pending = slots.filter((s) => !s.image && (s.place || "").trim());
+    await Promise.all(
+      pending.map(async (slot) => {
+        const query = [slot.place, slot.area].filter(Boolean).join(", ") || slot.place;
+        const bias =
+          typeof slot.latitude === "number"
+            ? { lat: slot.latitude, lng: slot.longitude }
+            : undefined;
+        const url = await getPlacePhoto(query, bias);
+        if (url) slot.image = url;
+      })
+    );
+  }
+
   return itinerary;
 }
 
