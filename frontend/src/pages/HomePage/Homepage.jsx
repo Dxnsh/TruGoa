@@ -516,11 +516,18 @@ useEffect(() => {
 
       <Footer />
 
-      {!isMobile && (
-        <button className="fab-ai" onClick={() => navigate("/goaguide")}>
-          Ask GoaGuide AI
-        </button>
-      )}
+      {/* Floating AI-guide launcher — a round mark that sits above the page on
+          every screen size, the way a chat widget does, and opens GoaGuide. */}
+      <button
+        className="fab-ai"
+        onClick={() => navigate("/goaguide")}
+        aria-label="Ask GoaGuide AI"
+      >
+        <span className="fab-ai-mark">
+          <Logo size={24} withWord={false} />
+        </span>
+        <span className="fab-ai-label">Ask GoaGuide AI</span>
+      </button>
     </div>
   );
 };
