@@ -15,8 +15,14 @@ import {
 } from "../validators/businessValidators.js";
 import { validate } from "../middleware/validate.js";
 import { drivingDistanceLimiter } from "../middleware/rateLimiter.js";
+import { publicCache } from "../middleware/cacheControl.js";
 
 const router = express.Router();
+
+// Every read below is a public, non-personalised view of the catalogue — safe
+// to cache briefly at the CDN/browser so repeat navigation doesn't re-hit the
+// DB (and the rate limiter) for bytes that change a few times a day.
+router.use(publicCache(60, 300));
 
 // GET /api/v1/businesses
 // Optional query params: ?category=restaurant&area=north-goa&priceLevel=budget&featured=true&search=britto

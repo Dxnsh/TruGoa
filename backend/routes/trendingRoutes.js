@@ -3,8 +3,13 @@ import mongoose from "mongoose";
 import TrendingPlace from "../models/TrendingPlace.js";
 import adminAuth from "../middleware/adminAuth.js";
 import { isPlaceOpenNow } from "../utils/isPlaceOpenNow.js";
+import { publicCache } from "../middleware/cacheControl.js";
 
 const router = express.Router();
+
+// Public GETs (list + detail) are cacheable; the admin routes below carry an
+// Authorization header, which publicCache turns into `no-store`.
+router.use(publicCache(120, 600));
 
 // Trending is curated buzz, not a "what's open right now" list, so it is never
 // filtered by open-state. But when a trending card links to a real Business we
@@ -76,7 +81,8 @@ router.get("/", async (req, res) => {
   try {
     const items = await TrendingPlace.find({ isActive: true })
       .sort({ order: 1, createdAt: -1 })
-      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS);
+      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS)
+      .lean();
     res.json({ success: true, data: items.map(withOpenState) });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to load trending places" });
@@ -97,7 +103,8 @@ router.get("/admin/all", adminAuth, async (req, res) => {
 router.get("/:slug", async (req, res) => {
   try {
     const item = await TrendingPlace.findOne({ slug: req.params.slug, isActive: true })
-      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS);
+      .populate("relatedBusiness", LINKED_BUSINESS_FIELDS)
+      .lean();
     if (!item) return res.status(404).json({ success: false, message: "Not found" });
     res.json({ success: true, data: withOpenState(item) });
   } catch (err) {

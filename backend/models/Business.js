@@ -344,6 +344,11 @@ businessSchema.index({ category: 1, status: 1 });
 businessSchema.index({ area: 1, status: 1 });
 businessSchema.index({ priceLevel: 1, status: 1 });
 businessSchema.index({ featured: -1, createdAt: -1 });
+// The discovery feeds all sort by this exact key after filtering on status
+// (see businessController LIST_FIELDS / `sort`). Without a compound index that
+// leads with status and matches the sort order, every list and nearby-fallback
+// query does an in-memory sort of the whole approved set.
+businessSchema.index({ status: 1, editorPick: -1, featured: -1, createdAt: -1 });
 businessSchema.index({ name: "text", description: "text", story: "text" });
 // Required by $near / $geoNear — proximity search errors out without it.
 businessSchema.index({ geo: "2dsphere" });

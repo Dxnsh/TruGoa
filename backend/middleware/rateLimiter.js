@@ -11,12 +11,19 @@ const msg = (message) => ({ success: false, message });
 
 // Burst limiter — blunts rapid-fire request floods (script/bot hammering)
 // within a short window, ahead of the longer 15-min window below.
+//
+// This one deliberately uses the in-process MemoryStore rather than the shared
+// Mongo store: it runs on EVERY request, so a Mongo round-trip here adds DB
+// latency to the whole API. Its only job is to flatten a rapid spike, and a
+// per-worker ceiling of 30 requests / 10s does that fine as a first pass —
+// the real cross-worker budget is still enforced by apiLimiter below on its
+// shared store. The trade (N workers ⇒ up to 30·N in a 10s burst) is
+// acceptable for a spike-flattener; correctness lives in the 15-minute window.
 export const burstLimiter = rateLimit({
   windowMs: 10 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  store: createMongoStore("burst"),
   message: msg("Too many requests in a short time. Slow down and try again."),
 });
 

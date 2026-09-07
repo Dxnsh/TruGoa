@@ -37,7 +37,8 @@ const requireSlug = (value) => {
 export const getJournals = asyncHandler(async (req, res) => {
   const journals = await Journal.find({ published: true })
     .select(SUMMARY_FIELDS)
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   sendSuccess(res, { data: journals });
 });
@@ -45,7 +46,7 @@ export const getJournals = asyncHandler(async (req, res) => {
 // GET /journals/:slug — published entry, full detail. Drafts 404 here on
 // purpose: knowing a slug shouldn't expose an unfinished entry.
 export const getJournalBySlug = asyncHandler(async (req, res) => {
-  const journal = await Journal.findOne({ slug: req.params.slug, published: true });
+  const journal = await Journal.findOne({ slug: req.params.slug, published: true }).lean();
   if (!journal) throw new ApiError(404, "Journal entry not found");
 
   sendSuccess(res, { data: journal });
