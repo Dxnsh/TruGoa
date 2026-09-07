@@ -632,45 +632,106 @@
   .ir-day-head { flex-wrap: wrap; }
 }
 
-/* ── Trip map ────────────────────────────────── */
+/* ── Day map (inline + expand modal, same pattern as the listing page) ── */
 .ir-mapsection { background: #EFEBE4; max-width: 1100px; margin: 0 auto; }
 .ir-mapsection-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
 }
-.ir-mapsection-sub {
-  font-size: 13px; color: rgba(0,0,0,0.5); margin: 4px 0 0;
-}
-.ir-map {
-  width: 100%; height: 360px; border-radius: 4px; overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.1); background: #E4DFD5; z-index: 0;
-}
-.ir-map .leaflet-container { font: inherit; background: #E8E4DC; }
-.ir-map .leaflet-popup-content { font-size: 13px; line-height: 1.5; }
-.ir-map .leaflet-popup-content a { color: #E5471F; font-weight: 600; }
+.ir-mapsection-sub { font-size: 13px; color: rgba(0,0,0,0.5); margin: 4px 0 0; }
 
-.ir-map-pinwrap { background: none; border: none; }
-.ir-map-pin {
+.ir-map-wrap {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  border-radius: 6px; overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.1); background: #E4DFD5;
+  cursor: pointer;
+}
+.ir-map-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+.ir-map-expand {
+  position: absolute; right: 12px; bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+  background: #fff; color: #1A1F1C; border-radius: 8px;
+  padding: 8px 13px; font-size: 11.5px; font-weight: 700;
+  font-family: var(--font-body);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+.ir-map-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: rgba(0,0,0,0.4); font-size: 12px; font-family: var(--font-body);
+}
+
+.ir-map-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 12px 16px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.3px; text-decoration: none; cursor: pointer;
+  font-family: var(--font-body); border: 1px solid rgba(0,0,0,0.12);
+  background: #fff; color: #1A1F1C; transition: all 0.2s;
+}
+.ir-map-btn.primary { background: #1A1F1C; color: #fff; border-color: #1A1F1C; }
+.ir-map-btn.primary:hover { background: #2D6A4F; border-color: #2D6A4F; }
+
+.ir-mapmodal-overlay {
+  position: fixed; inset: 0; background: rgba(10,10,8,0.55);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: clamp(16px,4vw,64px); animation: ir-toast-in 0.2s ease;
+}
+.ir-mapmodal {
+  width: 100%; height: 100%; max-width: 1400px;
+  background: #fff; border-radius: 16px; overflow: hidden;
+  display: grid; grid-template-columns: 1fr 340px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+}
+.ir-mapmodal-frame { position: relative; background: #EDE8DD; }
+.ir-mapmodal-frame iframe { width: 100%; height: 100%; border: none; }
+.ir-mapmodal-side {
+  padding: 28px 26px; display: flex; flex-direction: column;
+  position: relative; border-left: 1px solid rgba(0,0,0,0.07); overflow-y: auto;
+}
+.ir-mapmodal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(0,0,0,0.05); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%;
-  color: #fff; font-size: 11px; font-weight: 700;
-  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  color: #1A1F1C; transition: background 0.2s;
 }
-
-.ir-maplegend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.ir-maplegend-item {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.55);
-  background: transparent; border: 1px solid rgba(0,0,0,0.14);
-  border-radius: 20px; padding: 6px 12px; cursor: pointer;
-  font-family: inherit; transition: all 0.15s;
+.ir-mapmodal-close:hover { background: rgba(0,0,0,0.1); }
+.ir-mapmodal-title {
+  font-family: var(--font-display); font-weight: 600;
+  font-size: 22px; color: #1A1F1C; margin: 0 8px 6px 0; padding-right: 34px;
+  line-height: 1.15;
 }
-.ir-maplegend-item:hover { border-color: rgba(0,0,0,0.35); }
-.ir-maplegend-item.active { background: #14100D; border-color: #14100D; color: #fff; }
-.ir-maplegend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.ir-mapmodal-sub {
+  font-family: var(--font-display); font-style: italic; font-size: 14px;
+  color: rgba(0,0,0,0.5); margin: 0 0 14px;
+}
+.ir-mapmodal-rule { height: 1px; background: rgba(0,0,0,0.08); margin-bottom: 14px; }
+.ir-mapmodal-stops { list-style: none; margin: 0 0 20px; padding: 0; }
+.ir-mapmodal-stops li {
+  display: flex; align-items: flex-start; gap: 11px; padding: 9px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.ir-mapmodal-stopnum {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  background: #14100D; color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-body);
+}
+.ir-mapmodal-stopname {
+  display: block; font-family: var(--font-display); font-size: 16px;
+  font-weight: 600; color: #1A1F1C; line-height: 1.2;
+}
+.ir-mapmodal-stoptime {
+  display: block; font-size: 11px; color: rgba(0,0,0,0.45);
+  font-family: var(--font-body); margin-top: 2px;
+}
+@media (max-width: 768px) {
+  .ir-mapmodal { grid-template-columns: 1fr; grid-template-rows: 1.4fr 1fr; }
+  .ir-mapmodal-side { border-left: none; border-top: 1px solid rgba(0,0,0,0.07); }
+}
 
 @media print {
   .ir-cover-top, .ir-daytabs, .ir-mapbtn, .ir-nav, .ir-foot,
-  .ir-mapsection { display: none !important; }
+  .ir-mapsection, .ir-mapmodal-overlay { display: none !important; }
   .ir-slot { break-inside: avoid; }
 }

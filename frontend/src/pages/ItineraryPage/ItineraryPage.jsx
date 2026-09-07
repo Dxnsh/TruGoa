@@ -5,7 +5,6 @@ import { useTourist } from "../../context/TouristContext";
 import { generateItinerary, getMyItinerary, saveMyItinerary } from "../../services/api";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import SEO from "../../components/SEO/SEO";
-import ItineraryMap, { DAY_COLORS } from "./ItineraryMap";
 import {
   Waves,
   Landmark,
@@ -29,6 +28,9 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Maximize2,
+  Navigation,
+  X,
 } from "lucide-react";
 import "./ItineraryPage.css";
 
@@ -83,6 +85,72 @@ const PERIOD_COLORS = { Morning: "#B86A00", Afternoon: "#1A5C38", Evening: "#4A2
 // listing. No stand-in / category images: a stop with no listing photo shows
 // a blank panel rather than a picture of somewhere else.
 const slotImage = (slot) => slot?.image || null;
+
+/* ─── map modal — expands the day map in-page, no new tab (mirrors the
+   listing page's MapModal) ─────────────────────────────────────────── */
+function ItineraryMapModal({ title, subtitle, embedSrc, directionsUrl, stops = [], onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div className="ir-mapmodal-overlay" onClick={onClose}>
+      <div className="ir-mapmodal" onClick={(e) => e.stopPropagation()}>
+        <div className="ir-mapmodal-frame">
+          {embedSrc ? (
+            <iframe
+              title="expanded itinerary map"
+              src={embedSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="ir-map-placeholder">
+              <MapPin size={22} /> <span>Map unavailable</span>
+            </div>
+          )}
+        </div>
+
+        <div className="ir-mapmodal-side">
+          <button className="ir-mapmodal-close" onClick={onClose} aria-label="Close map">
+            <X size={18} />
+          </button>
+          <h3 className="ir-mapmodal-title">{title}</h3>
+          {subtitle && <p className="ir-mapmodal-sub">{subtitle}</p>}
+          <div className="ir-mapmodal-rule" />
+
+          <ol className="ir-mapmodal-stops">
+            {stops.map((s, i) => (
+              <li key={i}>
+                <span className="ir-mapmodal-stopnum">{i + 1}</span>
+                <span>
+                  <span className="ir-mapmodal-stopname">{s.place}</span>
+                  {s.time && <span className="ir-mapmodal-stoptime">{s.time}</span>}
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <a
+            className="ir-map-btn primary"
+            href={directionsUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ marginTop: "auto" }}
+          >
+            <Navigation size={14} /> Directions
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LOADING_LINES = [
   "Asking our local correspondents in Anjuna…",
@@ -174,6 +242,7 @@ export default function ItineraryPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const [form, setForm] = useState({
     duration: "", budget: "", vibe: "", interests: [], style: "",
@@ -567,30 +636,35 @@ export default function ItineraryPage() {
 
     const goToDay = (i) => {
       setActiveDay(i);
+      setMapOpen(false);
       requestAnimationFrame(() =>
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
       );
     };
 
-    // A Google Maps route through a list of stops (a plain search when there's
-    // only one) — built from place names + area, since Google geocodes those
-    // fine and it works even for stops with no coordinates.
+    const stopQuery = (s) => `${s.place}${s.area ? `, ${s.area}` : ", Goa"}`;
+
+    // Google Maps *directions* link, opened in a new tab by the "Directions"
+    // button — same behaviour as the listing page's directions button.
     const gmapsRoute = (slots) => {
-      const stops = (slots || [])
-        .map(s => `${s.place}${s.area ? `, ${s.area}` : ", Goa"}`)
-        .map(encodeURIComponent);
+      const stops = (slots || []).map(s => encodeURIComponent(stopQuery(s)));
       if (stops.length === 0) return "https://www.google.com/maps/search/?api=1&query=Goa";
       if (stops.length === 1)
         return `https://www.google.com/maps/search/?api=1&query=${stops[0]}`;
       return `https://www.google.com/maps/dir/${stops.join("/")}`;
     };
 
-    const allSlots = days.flatMap(d => d.slots || []);
-    const totalStops = allSlots.length;
-    const pinnedCount = allSlots.filter(
-      s => typeof s.latitude === "number" && typeof s.longitude === "number"
-    ).length;
-    const tripMapUrl = gmapsRoute(allSlots);
+    // Keyless Google Maps embed for the in-page map — a route through the day's
+    // stops (saddr/daddr classic embed shows every waypoint), or a single-point
+    // search when the day has one stop. Same iframe approach as the listing.
+    const dayEmbed = (slots) => {
+      const stops = (slots || []).map(s => encodeURIComponent(stopQuery(s)));
+      if (stops.length === 0) return null;
+      if (stops.length === 1)
+        return `https://maps.google.com/maps?q=${stops[0]}&z=13&output=embed`;
+      return `https://maps.google.com/maps?saddr=${stops[0]}&daddr=${stops.slice(1).join("+to:")}&output=embed`;
+    };
+    const dayEmbedSrc = dayEmbed(day.slots);
 
     return (
       <div className="ir-page" ref={resultRef}>
@@ -604,6 +678,17 @@ export default function ItineraryPage() {
             <span className="ir-toast-icon">{toast.kind === "ok" ? "✓" : "!"}</span>
             {toast.text}
           </div>
+        )}
+
+        {mapOpen && (
+          <ItineraryMapModal
+            title={`Day ${day.day} — ${day.title}`}
+            subtitle={day.theme}
+            embedSrc={dayEmbedSrc}
+            directionsUrl={gmapsRoute(day.slots)}
+            stops={day.slots || []}
+            onClose={() => setMapOpen(false)}
+          />
         )}
 
         {/* ── COVER RECAP ──────────────────────────── */}
@@ -670,38 +755,41 @@ export default function ItineraryPage() {
           </div>
         </section>
 
-        {/* ── TRIP MAP ─────────────────────────────── */}
-        <section className="ir-mapsection"
-          style={{ padding: isMobile ? "0 20px 8px" : "0 clamp(40px,7vw,120px) 8px" }}>
-          <div className="ir-mapsection-head">
-            <div>
-              <span className="ir-brief-label">The whole trip</span>
-              <p className="ir-mapsection-sub">
-                {pinnedCount > 0
-                  ? `${pinnedCount} of ${totalStops} stops mapped · Day ${day.day} highlighted`
-                  : "Stops for this trip"}
-              </p>
+        {/* ── DAY MAP (inline, click to expand — same as the listing page) ── */}
+        {dayEmbedSrc && (
+          <section className="ir-mapsection"
+            style={{ padding: isMobile ? "0 20px 8px" : "0 clamp(40px,7vw,120px) 8px" }}>
+            <div className="ir-mapsection-head">
+              <div>
+                <span className="ir-brief-label">Day {day.day} on the map</span>
+                <p className="ir-mapsection-sub">
+                  {(day.slots || []).length} {(day.slots || []).length === 1 ? "stop" : "stops"} · tap to expand
+                </p>
+              </div>
+              <a className="ir-mapbtn" href={gmapsRoute(day.slots)} target="_blank" rel="noreferrer">
+                <Navigation size={13} strokeWidth={2} /> Directions
+                <ArrowUpRight size={13} strokeWidth={2} />
+              </a>
             </div>
-            <a className="ir-mapbtn" href={tripMapUrl} target="_blank" rel="noreferrer">
-              <MapPin size={13} strokeWidth={2} /> Open in Google Maps
-              <ArrowUpRight size={13} strokeWidth={2} />
-            </a>
-          </div>
 
-          <ItineraryMap days={days} activeDay={activeDay} onSelectDay={goToDay} />
-
-          <div className="ir-maplegend">
-            {days.map((d, i) => (
-              <button key={i}
-                className={`ir-maplegend-item ${i === activeDay ? "active" : ""}`}
-                onClick={() => goToDay(i)}>
-                <span className="ir-maplegend-dot"
-                  style={{ background: DAY_COLORS[i % DAY_COLORS.length] }} />
-                Day {d.day}
-              </button>
-            ))}
-          </div>
-        </section>
+            <div
+              className="ir-map-wrap"
+              role="button"
+              tabIndex={0}
+              onClick={() => setMapOpen(true)}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setMapOpen(true)}
+            >
+              <iframe
+                title={`Day ${day.day} map`}
+                src={dayEmbedSrc}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                style={{ pointerEvents: "none" }}
+              />
+              <div className="ir-map-expand"><Maximize2 size={14} /> Expand</div>
+            </div>
+          </section>
+        )}
 
         {/* ── ACTIVE DAY ───────────────────────────── */}
         <section className="ir-day"
