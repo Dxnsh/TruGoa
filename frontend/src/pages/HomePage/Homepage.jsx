@@ -170,8 +170,11 @@ useEffect(() => {
       const results = await Promise.all(
         HOME_CATEGORY_TILES.map(async (tile) => {
           try {
+            // Just need one cover image per category — the fast DB-paginated
+            // path. openFirst here forced the server's in-memory open-now
+            // scan/sort for every tile, four times, on every homepage load.
             const { items } = await getBusinesses({
-              ...tile.query, openNow: false, openFirst: true, limit: 1,
+              ...tile.query, openNow: false, limit: 1,
             });
             const biz = items[0] ? mapBusiness(items[0], 0) : null;
             return { ...tile, image: biz?.image || null };

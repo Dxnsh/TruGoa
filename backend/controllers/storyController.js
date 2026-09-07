@@ -9,7 +9,8 @@ import { ApiError } from "../utils/ApiError.js";
 export const getStories = asyncHandler(async (req, res) => {
   const stories = await Story.find({ published: true })
     .select("category slug title desc image readTime")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   sendSuccess(res, { data: stories });
 });
@@ -17,7 +18,7 @@ export const getStories = asyncHandler(async (req, res) => {
 // GET /stories/:slug — published only, full detail. A draft 404s here rather
 // than being reachable by anyone who guesses or is sent the slug.
 export const getStoryBySlug = asyncHandler(async (req, res) => {
-  const story = await Story.findOne({ slug: req.params.slug, published: true });
+  const story = await Story.findOne({ slug: req.params.slug, published: true }).lean();
   if (!story) throw new ApiError(404, "Story not found");
 
   sendSuccess(res, { data: story });
