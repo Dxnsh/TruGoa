@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, MapPin, ChevronRight } from "lucide-react";
-import { getFavorites, removeFavorite } from "../../services/api";
+import { Heart, MapPin, ChevronRight, Map as MapIcon } from "lucide-react";
+import { getFavorites, removeFavorite, getMyItinerary } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
 import { theme } from "../../Theme";
 import { LoadingState, EmptyState, PrimaryButton } from "../../Theme";
@@ -14,6 +14,7 @@ const SavedPlacesPage = () => {
   const isMobile = useIsMobile();
   const { isTouristLoggedIn, touristLoading } = useTourist();
   const [places, setPlaces] = useState([]);
+  const [itinerary, setItinerary] = useState(null); // { form, data } or null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,8 +27,12 @@ const SavedPlacesPage = () => {
       try {
         setLoading(true);
         setError(null);
-        const favs = await getFavorites();
+        const [favs, saved] = await Promise.all([
+          getFavorites(),
+          getMyItinerary().catch(() => null),
+        ]);
         setPlaces(favs.map((b, i) => mapBusiness(b, i)));
+        setItinerary(saved?.data ? saved : null);
       } catch {
         setError("Could not load your saved places. Please try again.");
       } finally {
@@ -66,7 +71,7 @@ const SavedPlacesPage = () => {
 
   return (
     <div style={{ fontFamily: theme.typography.fontBody, background: theme.colors.bgPage, minHeight: "100vh" }}>
-      <SEO path="/saved" title="Saved Places" noindex />
+      <SEO path="/saved" title="Saved" noindex />
       <div style={{ padding: isMobile ? "40px 16px 24px" : `56px ${theme.spacing.pagePadding} 32px` }}>
         <p style={{
           fontSize: 11, fontWeight: theme.typography.weightMedium, letterSpacing: "0.09em",
@@ -78,7 +83,7 @@ const SavedPlacesPage = () => {
           fontFamily: theme.typography.fontDisplay, fontSize: isMobile ? 28 : 38,
           fontWeight: theme.typography.weightBold, color: theme.colors.textPrimary, margin: 0,
         }}>
-          Saved Places
+          Saved
         </h1>
       </div>
 
@@ -95,7 +100,53 @@ const SavedPlacesPage = () => {
         </div>
       )}
 
-      {!loading && !error && places.length === 0 && (
+      {!loading && !error && itinerary?.data && (
+        <div style={{ padding: isMobile ? "0 16px 8px" : `0 ${theme.spacing.pagePadding} 8px` }}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("/itinerary")}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && navigate("/itinerary")}
+            style={{
+              display: "flex", alignItems: "center", gap: 16,
+              background: theme.colors.bgDark, color: "#fff",
+              border: "none", borderRadius: theme.radii.lg || 16,
+              padding: isMobile ? "18px 18px" : "22px 26px", cursor: "pointer",
+              marginBottom: isMobile ? 28 : 36,
+            }}
+          >
+            <span style={{
+              flexShrink: 0, width: 42, height: 42, borderRadius: "50%",
+              background: "rgba(255,255,255,0.12)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <MapIcon size={18} strokeWidth={2} />
+            </span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{
+                display: "block", fontSize: 10, letterSpacing: "0.14em",
+                textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 4,
+              }}>
+                Your saved trip
+              </span>
+              <span style={{
+                display: "block", fontFamily: theme.typography.fontDisplay,
+                fontSize: isMobile ? 18 : 22, fontWeight: theme.typography.weightBold,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {itinerary.data.title}
+              </span>
+              <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>
+                {itinerary.data.days?.length || 0} days
+                {itinerary.data.totalBudget ? ` · ${itinerary.data.totalBudget}` : ""}
+              </span>
+            </span>
+            <ChevronRight size={18} strokeWidth={2} style={{ flexShrink: 0, color: "rgba(255,255,255,0.7)" }} />
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && places.length === 0 && !itinerary?.data && (
         <div style={{ padding: isMobile ? "0 16px 60px" : `0 ${theme.spacing.pagePadding} 60px` }}>
           <EmptyState
             icon="🤍"
@@ -103,6 +154,12 @@ const SavedPlacesPage = () => {
             subtitle="Tap the heart on any place in Explore to save it here for later."
             action={<PrimaryButton onClick={() => navigate("/explore")}>Browse Explore</PrimaryButton>}
           />
+        </div>
+      )}
+
+      {!loading && !error && places.length === 0 && itinerary?.data && (
+        <div style={{ padding: isMobile ? "0 16px 50px" : `0 ${theme.spacing.pagePadding} 50px`, fontSize: 13.5, color: theme.colors.textMuted }}>
+          No saved places yet — tap the heart on any place in Explore to keep it here.
         </div>
       )}
 

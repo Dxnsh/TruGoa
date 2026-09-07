@@ -253,12 +253,9 @@ export default function ItineraryPage() {
     setItinerary(data);
     setActiveDay(0);
     setStep("result");
-
-    // Persist to the account so the tourist sees this same itinerary next
-    // time instead of it being lost or having to regenerate one.
-    saveMyItinerary(form, data)
-      .then(() => setSaved(true))
-      .catch(e => console.error("Failed to save itinerary to account", e));
+    // Not saved yet — the traveller saves it once, deliberately, from the
+    // button at the end. (It used to auto-save here, which then left that
+    // button doing nothing.)
   } catch (e) {
     console.error(e);
     setError(
@@ -288,12 +285,12 @@ export default function ItineraryPage() {
   useEffect(() => clearToastTimers, []);
 
   const handleSave = async () => {
-    if (!itinerary || saving) return;
+    if (!itinerary || saving || saved) return;
     setSaving(true);
     try {
       await saveMyItinerary(form, itinerary);
       setSaved(true);
-      showToast("ok", "Itinerary saved to your account");
+      showToast("ok", "Saved — find it under Saved");
     } catch (e) {
       console.error("Failed to save itinerary", e);
       showToast("err", "Couldn’t save — please try again");
@@ -800,13 +797,22 @@ export default function ItineraryPage() {
                 <ArrowRight size={16} strokeWidth={2} />
               </button>
             ) : (
-              <button
-                className={`ir-nav-save${saved ? " is-saved" : ""}`}
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : saved ? "Saved — save again" : "Save this itinerary"}
-              </button>
+              saved ? (
+                <button
+                  className="ir-nav-save is-saved"
+                  onClick={() => navigate("/saved")}
+                >
+                  ✓ Saved · View in Saved
+                </button>
+              ) : (
+                <button
+                  className="ir-nav-save"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save this itinerary"}
+                </button>
+              )
             )}
           </div>
         </section>
