@@ -350,26 +350,38 @@
 
 /* ── Save toast ──────────────────────────────── */
 .ir-toast {
-  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: 32px;
   z-index: 200;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 11px;
   max-width: calc(100vw - 32px);
-  padding: 13px 20px; border-radius: 8px;
-  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  padding: 14px 22px 14px 16px; border-radius: 999px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600; letter-spacing: 0.1px;
   color: #fff; background: #14100D;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
-  animation: ir-toast-in 0.28s cubic-bezier(0.18,0.89,0.32,1.28);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.32), 0 2px 8px rgba(0,0,0,0.18);
+  transform: translate(-50%, 0);
+  animation: ir-toast-in 0.42s cubic-bezier(0.16,1,0.3,1);
+  transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.4,0,1,1);
 }
-.ir-toast--ok  { background: #1E4D36; }
-.ir-toast--err { background: #7A2418; }
+.ir-toast--leaving { opacity: 0; transform: translate(-50%, 14px); }
+.ir-toast--ok  { background: linear-gradient(180deg,#25634A,#1C4E39); }
+.ir-toast--err { background: linear-gradient(180deg,#8A2C1D,#6E2013); }
 .ir-toast-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
-  background: rgba(255,255,255,0.18); font-size: 12px;
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.2); font-size: 12px; font-weight: 700;
+  animation: ir-toast-pop 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;
 }
 @keyframes ir-toast-in {
-  from { opacity: 0; transform: translate(-50%, 16px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translate(-50%, 22px) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes ir-toast-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ir-toast, .ir-toast-icon { animation: none; }
 }
 @media print { .ir-toast { display: none !important; } }
 
@@ -598,7 +610,10 @@
   font-family: inherit; transition: all 0.2s;
 }
 .ir-nav-next:hover, .ir-nav-save:hover:not(:disabled) { background: #C93C17; }
-.ir-nav-save:disabled { background: #2D6A4F; cursor: default; }
+.ir-nav-save:disabled { opacity: 0.75; cursor: progress; }
+/* Already saved once — still a live "save again" button, just calmer. */
+.ir-nav-save.is-saved { background: #2D6A4F; }
+.ir-nav-save.is-saved:hover:not(:disabled) { background: #245A41; }
 
 /* ── Footer ──────────────────────────────────── */
 .ir-foot {

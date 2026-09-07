@@ -268,14 +268,24 @@ export default function ItineraryPage() {
   }
 };
 
-  const [toast, setToast] = useState(null); // { kind: "ok"|"err", text }
-  const toastTimer = useRef(null);
-  const showToast = (kind, text) => {
-    setToast({ kind, text });
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  // In-app toast. `leaving` drives the slide-out so it dismisses smoothly
+  // instead of vanishing. All timers are tracked so a rapid re-save resets
+  // the sequence cleanly and nothing fires after unmount.
+  const [toast, setToast] = useState(null); // { kind: "ok"|"err", text, leaving }
+  const toastTimers = useRef([]);
+  const clearToastTimers = () => {
+    toastTimers.current.forEach(clearTimeout);
+    toastTimers.current = [];
   };
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  const showToast = (kind, text) => {
+    clearToastTimers();
+    setToast({ kind, text, leaving: false });
+    toastTimers.current.push(
+      setTimeout(() => setToast((t) => (t ? { ...t, leaving: true } : t)), 3200),
+      setTimeout(() => setToast(null), 3600)
+    );
+  };
+  useEffect(() => clearToastTimers, []);
 
   const handleSave = async () => {
     if (!itinerary || saving) return;
@@ -589,7 +599,11 @@ export default function ItineraryPage() {
       <div className="ir-page" ref={resultRef}>
 
         {toast && (
-          <div className={`ir-toast ir-toast--${toast.kind}`} role="status" aria-live="polite">
+          <div
+            className={`ir-toast ir-toast--${toast.kind}${toast.leaving ? " ir-toast--leaving" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
             <span className="ir-toast-icon">{toast.kind === "ok" ? "✓" : "!"}</span>
             {toast.text}
           </div>
@@ -786,8 +800,12 @@ export default function ItineraryPage() {
                 <ArrowRight size={16} strokeWidth={2} />
               </button>
             ) : (
-              <button className="ir-nav-save" onClick={handleSave} disabled={saved || saving}>
-                {saving ? "Saving…" : saved ? "Itinerary saved ✓" : "Save this itinerary"}
+              <button
+                className={`ir-nav-save${saved ? " is-saved" : ""}`}
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Saving…" : saved ? "Saved — save again" : "Save this itinerary"}
               </button>
             )}
           </div>
