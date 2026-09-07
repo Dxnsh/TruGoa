@@ -26,7 +26,6 @@ import {
   Users,
   Baby,
   MapPin,
-  Image as ImageIcon,
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
@@ -79,6 +78,30 @@ const TRAVEL_STYLES = [
 ];
 
 const PERIOD_COLORS = { Morning: "#B86A00", Afternoon: "#1A5C38", Evening: "#4A2882", Night: "#3A2A6B" };
+
+// Slot photos come from the matched listing when there is one. Everything else
+// falls back to a bundled category photo keyed off the slot's type/name, so a
+// card is never a bare grey box. First match wins; order matters.
+const CATEGORY_IMAGE = [
+  [/beach|sand|bay|shore/i,                       "/images/beaches.jpg"],
+  [/caf[eé]|coffee|bakery|brunch/i,               "/images/food.jpg"],
+  [/bar|club|night|party|lounge|pub|shack/i,      "/images/drinks.jpg"],
+  [/restaurant|food|thali|dining|kitchen|eatery/i,"/images/restraunt.png"],
+  [/market|flea|bazaar|shop/i,                    "/images/hidden-gems.jpg"],
+  [/museum|gallery|art/i,                         "/images/art.jpg"],
+  [/library/i,                                    "/images/library.jpg"],
+  [/temple|church|spiritual|sacred|faith|mosque/i,"/images/sacred-places.png"],
+  [/fort|heritage|history|monument|palace|ruin/i, "/images/destination.jpg"],
+  [/falls|island|cruise|trek|kayak|scuba|dive|safari|activity|adventure|watersport/i, "/images/Explore-hero.jpg"],
+];
+const FALLBACK_IMAGE = "/images/destination.jpg";
+
+const slotImage = (slot) => {
+  if (slot?.image) return slot.image;
+  const hay = `${slot?.type || ""} ${slot?.place || ""} ${slot?.area || ""}`;
+  for (const [re, src] of CATEGORY_IMAGE) if (re.test(hay)) return src;
+  return FALLBACK_IMAGE;
+};
 
 const LOADING_LINES = [
   "Asking our local correspondents in Anjuna…",
@@ -539,10 +562,13 @@ export default function ItineraryPage() {
     const badge = [`${form.duration} Days`, budgetSub, vibeLabel]
       .filter(Boolean).join(" · ");
 
-    // Cover photo: the first real listing image anywhere in the trip. Every
-    // slot with no catalogue match falls through to a placeholder card.
+    // Cover photo: the first real listing image in the trip, else a category
+    // photo for the first stop, else the site hero.
+    const firstSlot = days.flatMap(d => d.slots || [])[0];
     const coverImage =
-      days.flatMap(d => d.slots || []).find(s => s.image)?.image || null;
+      days.flatMap(d => d.slots || []).find(s => s.image)?.image ||
+      (firstSlot ? slotImage(firstSlot) : null) ||
+      "/images/Hero-img.jpg";
 
     const goToDay = (i) => {
       setActiveDay(i);
@@ -576,12 +602,12 @@ export default function ItineraryPage() {
 
         {/* ── COVER RECAP ──────────────────────────── */}
         <header className="ir-cover">
-          {coverImage
-            ? <img src={coverImage} alt="" className="ir-cover-img" />
-            : <div className="ir-cover-img ir-cover-ph">
-                <ImageIcon size={26} strokeWidth={1.4} />
-                <span>Your Goa trip</span>
-              </div>}
+          <img
+            src={coverImage}
+            alt=""
+            className="ir-cover-img"
+            onError={(e) => { e.currentTarget.src = "/images/Hero-img.jpg"; }}
+          />
           <div className="ir-cover-shade" />
           <div className="grain" />
 
@@ -709,12 +735,13 @@ export default function ItineraryPage() {
                 <span className="ir-slot-num">{String(si + 1).padStart(2, "0")}</span>
 
                 <div className="ir-slot-media">
-                  {slot.image
-                    ? <img src={slot.image} alt={slot.place} loading="lazy" />
-                    : <div className="ir-slot-ph">
-                        <ImageIcon size={22} strokeWidth={1.4} />
-                        <span>{slot.place}</span>
-                      </div>}
+                  <img
+                    src={slotImage(slot)}
+                    alt={slot.place}
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+                  />
+                  {!slot.image && <span className="ir-slot-tag">{slot.type}</span>}
                 </div>
 
                 <div className="ir-slot-body">

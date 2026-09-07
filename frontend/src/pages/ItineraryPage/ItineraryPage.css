@@ -491,8 +491,14 @@
   width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
   border-radius: 3px;
 }
-.ir-slot-media { width: 100%; aspect-ratio: 16 / 10; background: #E4DFD5; }
+.ir-slot-media { position: relative; width: 100%; aspect-ratio: 16 / 10; background: #E4DFD5; }
 .ir-slot-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ir-slot-tag {
+  position: absolute; left: 12px; bottom: 12px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: #fff; background: rgba(20,16,13,0.7); backdrop-filter: blur(4px);
+  padding: 5px 10px; border-radius: 3px;
+}
 .ir-slot-ph {
   width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
