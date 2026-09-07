@@ -207,13 +207,17 @@ async function buildCatalogPool() {
 const CATALOG_MIN = 4;
 
 function choosePool(catalogPool) {
+  const photographed = catalogPool.filter((p) => p.image);
+
+  // Enough listings that DO have a photo — use only those, so every stop the
+  // generator picks carries its own distinct image (no two cards share a
+  // generic category picture).
+  if (photographed.length >= CATALOG_MIN) return photographed;
+
   if (catalogPool.length >= CATALOG_MIN) {
-    // Photographed listings first, so the generator reaches for those before
-    // the ones that would fall back to a category image on the card.
-    return [
-      ...catalogPool.filter((p) => p.image),
-      ...catalogPool.filter((p) => !p.image),
-    ];
+    // Some real listings but not enough photographed ones — use the whole
+    // catalogue, photographed first.
+    return [...photographed, ...catalogPool.filter((p) => !p.image)];
   }
   // Too thin — fall back: catalogue in front, curated list (with coords) behind.
   const seen = new Set(catalogPool.map((p) => p.name.toLowerCase()));
@@ -417,6 +421,26 @@ ${JSON.stringify(promptPool)}`;
 // metacharacters ("Café Bodega", "Brittos") matches literally.
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// The generator (especially the AI) rarely echoes a listing's name verbatim —
+// it drops apostrophes ("Britto's" → "Brittos"), adds the area
+// ("Thalassa, Vagator"), prefixes "The", or changes case/accents. Normalising
+// both sides to a bare alphanumeric key, and also trying just the part before
+// the first comma, makes the match land far more often — which is the
+// difference between a card showing that place's real photo and falling back
+// to a shared category image.
+const nameKey = (value) =>
+  String(value || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // strip accents
+    .toLowerCase()
+    .replace(/^the\s+/, "")
+    .replace(/[^a-z0-9]+/g, "");
+
+const nameVariants = (value) => {
+  const full = String(value || "");
+  const head = full.split(",")[0];
+  return [...new Set([nameKey(full), nameKey(head)].filter(Boolean))];
+};
+
 /**
  * Attaches a photo, slug and coordinates to every slot by matching its `place`
  * name (case-insensitive) back to the pool the generator chose from — which is
@@ -427,13 +451,23 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$
  * pool build missed. Best-effort — a failure here just means fewer photos.
  */
 async function enrichSlots(itinerary, pool = []) {
-  const poolByName = new Map(pool.map((p) => [p.name.trim().toLowerCase(), p]));
+  const poolByName = new Map();
+  for (const p of pool) {
+    for (const k of nameVariants(p.name)) if (!poolByName.has(k)) poolByName.set(k, p);
+  }
 
   const slots = (itinerary.days || []).flatMap((d) => d.slots || []);
+  const lookup = (map, place) => {
+    for (const k of nameVariants(place)) {
+      const hit = map.get(k);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
 
   // 1. Fill from the pool entry the generator picked.
   for (const slot of slots) {
-    const entry = poolByName.get((slot.place || "").trim().toLowerCase());
+    const entry = lookup(poolByName, slot.place);
     if (entry) {
       if (!slot.image && entry.image) slot.image = entry.image;
       if (!slot.slug && entry.slug) slot.slug = entry.slug;
@@ -450,26 +484,33 @@ async function enrichSlots(itinerary, pool = []) {
     }
   }
 
-  // 2. For anything still without a photo, one DB lookup by exact name.
+  // 2. For anything still without a photo, one DB lookup — matching the full
+  //    name or just the part before a comma, either as a prefix.
   try {
     const need = [
       ...new Set(
-        slots.filter((s) => !s.image).map((s) => (s.place || "").trim()).filter(Boolean)
+        slots
+          .filter((s) => !s.image)
+          .flatMap((s) => [(s.place || "").trim(), (s.place || "").split(",")[0].trim()])
+          .filter((n) => n.length >= 3)
       ),
     ];
     if (need.length === 0) return itinerary;
 
     const listings = await Business.find({
       status: "approved",
-      $or: need.map((n) => ({ name: new RegExp(`^${escapeRegex(n)}$`, "i") })),
+      $or: need.map((n) => ({ name: new RegExp(`^${escapeRegex(n)}`, "i") })),
     })
       .select("name slug heroImage gallery latitude longitude")
       .lean();
 
-    const byName = new Map(listings.map((b) => [b.name.toLowerCase(), b]));
+    const byName = new Map();
+    for (const b of listings) {
+      for (const k of nameVariants(b.name)) if (!byName.has(k)) byName.set(k, b);
+    }
     for (const slot of slots) {
       if (slot.image) continue;
-      const match = byName.get((slot.place || "").trim().toLowerCase());
+      const match = lookup(byName, slot.place);
       if (!match) continue;
       slot.image = match.heroImage || match.gallery?.[0] || undefined;
       slot.slug = slot.slug || match.slug || undefined;
@@ -491,7 +532,13 @@ export const generateItinerary = asyncHandler(async (req, res) => {
   // Built only from the operator's own approved listings once there are enough
   // of them (see choosePool / CATALOG_MIN); the curated hardcoded list is a
   // backstop for a near-empty catalogue only.
-  const pool = choosePool(await buildCatalogPool());
+  const catalogPool = await buildCatalogPool();
+  const pool = choosePool(catalogPool);
+  logger.info(
+    `Itinerary pool: ${pool.length} places (${catalogPool.length} in catalogue, ` +
+    `${catalogPool.filter((p) => p.image).length} with photos, ` +
+    `${pool.filter((p) => p.image).length} usable with photos)`
+  );
 
   let itinerary;
   try {
@@ -502,6 +549,13 @@ export const generateItinerary = asyncHandler(async (req, res) => {
   }
 
   await enrichSlots(itinerary, pool);
+
+  const total = (itinerary.days || []).flatMap((d) => d.slots || []).length;
+  const withPhoto = (itinerary.days || [])
+    .flatMap((d) => d.slots || [])
+    .filter((s) => s.image).length;
+  logger.info(`Itinerary generated: ${withPhoto}/${total} stops resolved to a listing photo`);
+
   return sendSuccess(res, { data: itinerary });
 });
 
