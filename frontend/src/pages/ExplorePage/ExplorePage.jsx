@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Check,
   Compass,
   Heart,
   MapPin,
+  SlidersHorizontal,
 } from "lucide-react";
 import { CATEGORIES } from "../../constants/categories";
 import { getBusinesses, getFavorites, addFavorite, removeFavorite } from "../../services/api";
@@ -549,6 +551,180 @@ function IntroScroller({
 }
 
 /* ══════════════════════════════════════════════════════
+   FilterMenu — single "Filters" button that opens a small
+   popover holding every list option (open/closed scope and
+   price ordering). Closes on outside-click or Escape.
+══════════════════════════════════════════════════════ */
+function FilterMenu({ showAll, onToggleShowAll, priceLowToHigh, onTogglePrice }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const activeCount = (showAll ? 1 : 0) + (priceLowToHigh ? 1 : 0);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const row = (checked, label, onClick) => (
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      aria-checked={checked}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        width: "100%",
+        padding: "10px 12px",
+        border: "none",
+        borderRadius: 8,
+        background: "transparent",
+        color: theme.colors.textPrimary,
+        fontFamily: theme.typography.fontBody,
+        fontSize: 13.5,
+        fontWeight: theme.typography.weightMedium,
+        textAlign: "left",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = theme.colors.bgPage)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          flexShrink: 0,
+          borderRadius: 5,
+          border: `1.5px solid ${checked ? theme.colors.secondary : theme.colors.borderLight}`,
+          background: checked ? theme.colors.secondary : "transparent",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked && <Check size={12} strokeWidth={3} color={theme.colors.textInverse} />}
+      </span>
+      {label}
+    </button>
+  );
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
+          minHeight: 34,
+          padding: "6px 14px",
+          borderRadius: theme.radii.pill,
+          border: `1.5px solid ${activeCount ? theme.colors.secondary : theme.colors.borderLight}`,
+          background: activeCount ? theme.colors.secondary : theme.colors.bgCard,
+          color: activeCount ? theme.colors.textInverse : theme.colors.textBody,
+          fontFamily: theme.typography.fontBody,
+          fontSize: 12.5,
+          fontWeight: theme.typography.weightMedium,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          transition: theme.transitions.fast,
+        }}
+      >
+        <SlidersHorizontal size={14} strokeWidth={2} />
+        Filters{activeCount ? ` · ${activeCount}` : ""}
+        <ChevronDown size={14} strokeWidth={2} style={{ transform: open ? "rotate(180deg)" : "none", transition: theme.transitions.fast }} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            left: 0,
+            zIndex: 20,
+            width: 264,
+            padding: 8,
+            borderRadius: 12,
+            background: theme.colors.bgCard,
+            border: `1px solid ${theme.colors.borderLight}`,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.14)",
+          }}
+        >
+          <p
+            style={{
+              margin: "6px 12px 8px",
+              fontSize: 10.5,
+              fontWeight: theme.typography.weightBold,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: theme.colors.textMuted,
+            }}
+          >
+            Availability
+          </p>
+          {row(showAll, "Show all (incl. closed)", onToggleShowAll)}
+          <p
+            style={{
+              margin: "12px 12px 8px",
+              fontSize: 10.5,
+              fontWeight: theme.typography.weightBold,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: theme.colors.textMuted,
+            }}
+          >
+            Sort by
+          </p>
+          {row(priceLowToHigh, "Price: Low to High", onTogglePrice)}
+
+          {activeCount > 0 && (
+            <>
+              <div style={{ height: 1, background: theme.colors.borderLight, margin: "8px 4px" }} />
+              <button
+                type="button"
+                onClick={() => {
+                  if (showAll) onToggleShowAll();
+                  if (priceLowToHigh) onTogglePrice();
+                }}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  border: "none",
+                  borderRadius: 8,
+                  background: "transparent",
+                  color: theme.colors.accent,
+                  fontFamily: theme.typography.fontBody,
+                  fontSize: 12.5,
+                  fontWeight: theme.typography.weightBold,
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
+                Clear filters
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
    ExplorePage
 ══════════════════════════════════════════════════════ */
 const ExplorePage = () => {
@@ -565,6 +741,9 @@ const ExplorePage = () => {
   // Category pages default to places open right now; this reveals the closed
   // ones too (dimmed, badged) for people planning ahead for tomorrow.
   const [showAll, setShowAll] = useState(false);
+  // Reorders the grid cheapest-first (by priceLevel). Off by default, which
+  // keeps the editor's-pick ordering the API returns.
+  const [priceLowToHigh, setPriceLowToHigh] = useState(false);
 
   // ?category=food narrows the list to that category. Derived straight from the
   // URL rather than mirrored into state, so a link, a back/forward step and an
@@ -591,7 +770,7 @@ const ExplorePage = () => {
   // we were on — a filter with fewer results might not even have a page 3.
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, showAll]);
+  }, [activeCategory, showAll, priceLowToHigh]);
 
   // Refetches this exact page whenever the category, toggle or page number
   // changes — the narrowing happens in the query, so each page is its own
@@ -605,6 +784,7 @@ const ExplorePage = () => {
         const { items, total: found } = await getBusinesses({
           ...(CATEGORY_QUERIES[activeCategory] || {}),
           openNow: showAll ? false : undefined,
+          sort: priceLowToHigh ? "price_asc" : undefined,
           page,
           limit: PAGE_SIZE,
         });
@@ -618,7 +798,7 @@ const ExplorePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeCategory, showAll, page]);
+  }, [activeCategory, showAll, priceLowToHigh, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -933,30 +1113,12 @@ const ExplorePage = () => {
                     ? (activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa.")
                     : " right now"}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAll((v) => !v)}
-                  aria-pressed={showAll}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    minHeight: 34,
-                    padding: "6px 14px",
-                    borderRadius: theme.radii.pill,
-                    border: `1.5px solid ${showAll ? theme.colors.secondary : theme.colors.borderLight}`,
-                    background: showAll ? theme.colors.secondary : theme.colors.bgCard,
-                    color: showAll ? theme.colors.textInverse : theme.colors.textBody,
-                    fontFamily: theme.typography.fontBody,
-                    fontSize: 12.5,
-                    fontWeight: theme.typography.weightMedium,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: theme.transitions.fast,
-                  }}
-                >
-                  {showAll ? "Showing all — open now only" : "Show all (incl. closed)"}
-                </button>
+                <FilterMenu
+                  showAll={showAll}
+                  onToggleShowAll={() => setShowAll((v) => !v)}
+                  priceLowToHigh={priceLowToHigh}
+                  onTogglePrice={() => setPriceLowToHigh((v) => !v)}
+                />
               </div>
 
               {visibleBusinesses.length > 0 ? (

@@ -12,6 +12,9 @@ export const listBusinessesRules = [
   query("openNow").optional().isBoolean(),
   // Order open places first without hiding the closed ones (for the homepage row).
   query("openFirst").optional().isBoolean(),
+  // Result ordering. Only "price_asc" (cheapest first) is offered today; any
+  // other value falls back to the default editor's-pick ordering.
+  query("sort").optional().isIn(["price_asc"]),
   // Bounds are enforced in the controller too; rejecting nonsense here keeps a
   // negative page or a non-numeric limit from reaching the query at all.
   query("page").optional().isInt({ min: 1, max: 10000 }),

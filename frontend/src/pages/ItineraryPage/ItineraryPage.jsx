@@ -24,9 +24,13 @@ import {
   Backpack,
   Users,
   Baby,
-  Printer,
   MapPin,
-  Lightbulb
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Maximize2,
+  Navigation,
+  X,
 } from "lucide-react";
 import "./ItineraryPage.css";
 
@@ -75,8 +79,78 @@ const TRAVEL_STYLES = [
   { value: "family",  icon: Baby,  label: "Family",  desc: "Kid-friendly, safe areas, easy pace" },
 ];
 
-const PERIOD_COLORS = { Morning: "#B86A00", Afternoon: "#1A5C38", Evening: "#4A2882" };
-const PERIOD_BG     = { Morning: "#FDF3E0", Afternoon: "#E8F5EE", Evening: "#EDE6F8" };
+const PERIOD_COLORS = { Morning: "#B86A00", Afternoon: "#1A5C38", Evening: "#4A2882", Night: "#3A2A6B" };
+
+// Only ever show a real photo of the place — the one attached from its
+// listing. No stand-in / category images: a stop with no listing photo shows
+// a blank panel rather than a picture of somewhere else.
+const slotImage = (slot) => slot?.image || null;
+
+/* ─── map modal — expands the day map in-page, no new tab (mirrors the
+   listing page's MapModal) ─────────────────────────────────────────── */
+function ItineraryMapModal({ title, subtitle, embedSrc, directionsUrl, stops = [], onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div className="ir-mapmodal-overlay" onClick={onClose}>
+      <div className="ir-mapmodal" onClick={(e) => e.stopPropagation()}>
+        <div className="ir-mapmodal-frame">
+          {embedSrc ? (
+            <iframe
+              title="expanded itinerary map"
+              src={embedSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="ir-map-placeholder">
+              <MapPin size={22} /> <span>Map unavailable</span>
+            </div>
+          )}
+        </div>
+
+        <div className="ir-mapmodal-side">
+          <button className="ir-mapmodal-close" onClick={onClose} aria-label="Close map">
+            <X size={18} />
+          </button>
+          <h3 className="ir-mapmodal-title">{title}</h3>
+          {subtitle && <p className="ir-mapmodal-sub">{subtitle}</p>}
+          <div className="ir-mapmodal-rule" />
+
+          <ol className="ir-mapmodal-stops">
+            {stops.map((s, i) => (
+              <li key={i}>
+                <span className="ir-mapmodal-stopnum">{i + 1}</span>
+                <span>
+                  <span className="ir-mapmodal-stopname">{s.place}</span>
+                  {s.time && <span className="ir-mapmodal-stoptime">{s.time}</span>}
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <a
+            className="ir-map-btn primary"
+            href={directionsUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ marginTop: "auto" }}
+          >
+            <Navigation size={14} /> Directions
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LOADING_LINES = [
   "Asking our local correspondents in Anjuna…",
@@ -166,6 +240,9 @@ export default function ItineraryPage() {
   const [loadingLine, setLoadingLine] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const [form, setForm] = useState({
     duration: "", budget: "", vibe: "", interests: [], style: "",
@@ -198,6 +275,7 @@ export default function ItineraryPage() {
           setForm(saved.form);
           setItinerary(saved.data);
           setActiveDay(0);
+          setSaved(true);
           setStep("result");
         } else {
           setStep("form");
@@ -236,6 +314,7 @@ export default function ItineraryPage() {
 
   setStep("loading");
   setError(null);
+  setSaved(false);
 
   try {
     const data = await generateItinerary(form);
@@ -243,12 +322,9 @@ export default function ItineraryPage() {
     setItinerary(data);
     setActiveDay(0);
     setStep("result");
-
-    // Persist to the account so the tourist sees this same itinerary next
-    // time instead of it being lost or having to regenerate one.
-    saveMyItinerary(form, data).catch(e =>
-      console.error("Failed to save itinerary to account", e)
-    );
+    // Not saved yet — the traveller saves it once, deliberately, from the
+    // button at the end. (It used to auto-save here, which then left that
+    // button doing nothing.)
   } catch (e) {
     console.error(e);
     setError(
@@ -257,6 +333,40 @@ export default function ItineraryPage() {
     setStep("form");
   }
 };
+
+  // In-app toast. `leaving` drives the slide-out so it dismisses smoothly
+  // instead of vanishing. All timers are tracked so a rapid re-save resets
+  // the sequence cleanly and nothing fires after unmount.
+  const [toast, setToast] = useState(null); // { kind: "ok"|"err", text, leaving }
+  const toastTimers = useRef([]);
+  const clearToastTimers = () => {
+    toastTimers.current.forEach(clearTimeout);
+    toastTimers.current = [];
+  };
+  const showToast = (kind, text) => {
+    clearToastTimers();
+    setToast({ kind, text, leaving: false });
+    toastTimers.current.push(
+      setTimeout(() => setToast((t) => (t ? { ...t, leaving: true } : t)), 3200),
+      setTimeout(() => setToast(null), 3600)
+    );
+  };
+  useEffect(() => clearToastTimers, []);
+
+  const handleSave = async () => {
+    if (!itinerary || saving || saved) return;
+    setSaving(true);
+    try {
+      await saveMyItinerary(form, itinerary);
+      setSaved(true);
+      showToast("ok", "Saved — find it under Saved");
+    } catch (e) {
+      console.error("Failed to save itinerary", e);
+      showToast("err", "Couldn’t save — please try again");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /* ══════════════════════════════════════════════════════
      STEP: CHECKING (brief, while we look for a saved itinerary)
@@ -513,211 +623,301 @@ export default function ItineraryPage() {
   ══════════════════════════════════════════════════════ */
   if (step === "result" && itinerary) {
     const it = itinerary;
+    const days = it.days || [];
+    const day = days[activeDay] || days[0] || { slots: [] };
+    const dayCount = days.length;
+    const isFirstDay = activeDay <= 0;
+    const isLastDay = activeDay >= dayCount - 1;
+
+    // Cover photo: the first real listing image in the trip, or nothing —
+    // the cover falls back to its plain dark panel rather than a stand-in.
+    const coverImage =
+      days.flatMap(d => d.slots || []).find(s => s.image)?.image || null;
+
+    const goToDay = (i) => {
+      setActiveDay(i);
+      setMapOpen(false);
+      requestAnimationFrame(() =>
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      );
+    };
+
+    const stopQuery = (s) => `${s.place}${s.area ? `, ${s.area}` : ", Goa"}`;
+
+    // Google Maps *directions* link, opened in a new tab by the "Directions"
+    // button — same behaviour as the listing page's directions button.
+    const gmapsRoute = (slots) => {
+      const stops = (slots || []).map(s => encodeURIComponent(stopQuery(s)));
+      if (stops.length === 0) return "https://www.google.com/maps/search/?api=1&query=Goa";
+      if (stops.length === 1)
+        return `https://www.google.com/maps/search/?api=1&query=${stops[0]}`;
+      return `https://www.google.com/maps/dir/${stops.join("/")}`;
+    };
+
+    // Keyless Google Maps embed for the in-page map — a route through the day's
+    // stops (saddr/daddr classic embed shows every waypoint), or a single-point
+    // search when the day has one stop. Same iframe approach as the listing.
+    const dayEmbed = (slots) => {
+      const stops = (slots || []).map(s => encodeURIComponent(stopQuery(s)));
+      if (stops.length === 0) return null;
+      if (stops.length === 1)
+        return `https://maps.google.com/maps?q=${stops[0]}&z=13&output=embed`;
+      return `https://maps.google.com/maps?saddr=${stops[0]}&daddr=${stops.slice(1).join("+to:")}&output=embed`;
+    };
+    const dayEmbedSrc = dayEmbed(day.slots);
 
     return (
-      <div className="itin-result-page" ref={resultRef}>
+      <div className="ir-page" ref={resultRef}>
 
-        {/* ── COVER ─────────────────────────────────── */}
-        <div className="itin-cover"
-          style={{ minHeight: isMobile ? "72svh" : "90svh" }}>
-          <div className="itin-cover-bg" />
-          <div className="itin-cover-overlay" />
+        {toast && (
+          <div
+            className={`ir-toast ir-toast--${toast.kind}${toast.leaving ? " ir-toast--leaving" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span className="ir-toast-icon">{toast.kind === "ok" ? "✓" : "!"}</span>
+            {toast.text}
+          </div>
+        )}
+
+        {mapOpen && (
+          <ItineraryMapModal
+            title={`Day ${day.day} — ${day.title}`}
+            subtitle={day.theme}
+            embedSrc={dayEmbedSrc}
+            directionsUrl={gmapsRoute(day.slots)}
+            stops={day.slots || []}
+            onClose={() => setMapOpen(false)}
+          />
+        )}
+
+        {/* ── COVER RECAP ──────────────────────────── */}
+        <header className="ir-cover">
+          {coverImage && (
+            <img
+              src={coverImage}
+              alt=""
+              className="ir-cover-img"
+              onError={(e) => { e.currentTarget.hidden = true; }}
+            />
+          )}
+          <div className="ir-cover-shade" />
           <div className="grain" />
 
-          {/* top meta */}
-          <div className="cover-meta"
-            style={{ padding: isMobile ? "0 24px" : "0 clamp(48px,8vw,140px)" }}>
-            <span className="cover-meta-text">TRUGOA · PERSONAL ITINERARY</span>
-            <button className="cover-edit-btn" onClick={() => { setStep("form"); window.scrollTo(0,0); }}>
-              ← Edit Preferences
-            </button>
-          </div>
-
-          {/* main editorial text — bottom anchored */}
-          <div className="cover-content"
-            style={{
-              left:    isMobile ? 24 : "clamp(48px,8vw,140px)",
-              right:   isMobile ? 24 : "auto",
-              bottom:  isMobile ? 72 : 100,
-              maxWidth: isMobile ? "calc(100% - 48px)" : "58%",
-            }}>
-            <div className="cover-eyebrow-row">
-              <span className="cover-eyebrow-line" />
-              <span className="cover-eyebrow-text">
-                {form.duration} Days &nbsp;·&nbsp;
-                {BUDGETS.find(b => b.value === form.budget)?.sub} &nbsp;·&nbsp;
-                {VIBES.find(v => v.value === form.vibe)?.label}
-              </span>
-            </div>
-            <h1 className="cover-h1"
-              style={{ fontSize: isMobile ? "clamp(44px,12vw,68px)" : "clamp(62px,7.5vw,108px)" }}>
-              {it.title}
-            </h1>
-            <p className="cover-tagline">{it.tagline}</p>
-            <div className="cover-stats">
-              <div className="cover-stat">
-                <span className="cstat-num">{form.duration}</span>
-                <span className="cstat-label">Days</span>
-              </div>
-              <div className="cstat-rule" />
-              <div className="cover-stat">
-                <span className="cstat-num">{it.totalBudget}</span>
-                <span className="cstat-label">Total estimate</span>
-              </div>
-              <div className="cstat-rule" />
-              <div className="cover-stat">
-                <span className="cstat-num">{it.bestSeason}</span>
-                <span className="cstat-label">Best season</span>
-              </div>
-            </div>
-          </div>
-
-          {/* frosted day-nav bar */}
-          <nav className="cover-day-nav no-scrollbar">
-            {it.days?.map((d, i) => (
-              <button key={i}
-                className={`day-nav-btn ${activeDay === i ? "active" : ""}`}
-                onClick={() => {
-                  setActiveDay(i);
-                  document.getElementById(`day-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}>
-                <span className="dnav-num">Day {d.day}</span>
-                <span className="dnav-title">{d.title}</span>
+          <div className="ir-cover-inner"
+            style={{ padding: isMobile ? "20px 20px 0" : "26px clamp(32px,6vw,90px) 0" }}>
+            <div className="ir-cover-top">
+              <button className="ir-edit"
+                onClick={() => { setStep("form"); window.scrollTo(0, 0); }}>
+                ← Edit
               </button>
-            ))}
-          </nav>
-        </div>
-
-
-        {/* ── OVERVIEW ───────────────────────────── */}
-        <div className="itin-overview"
-          style={{ padding: isMobile ? "64px 24px" : "96px clamp(48px,8vw,140px)" }}>
-          <div className="overview-inner"
-            style={{ flexDirection: isMobile ? "column" : "row" }}>
-            <div className="overview-left">
-              <p className="eyebrow-dark-sm">About This Itinerary</p>
-              <blockquote className="overview-quote">{it.overview}</blockquote>
             </div>
-            {!isMobile && <div className="overview-vdivider" />}
-            <div className="overview-right">
-              <p className="eyebrow-dark-sm">Practical Notes</p>
-              <p className="overview-notes">{it.practicalNotes}</p>
-              <div className="overview-mood">
-                <span className="mood-label">Mood</span>
-                <span className="mood-value">{it.coverMood}</span>
+
+            <div className="ir-cover-main">
+              <h1 className="ir-title"
+                style={{ fontSize: isMobile ? "clamp(30px,8vw,42px)" : "clamp(40px,4.4vw,60px)" }}>
+                {it.title}
+              </h1>
+              <p className="ir-tagline">{it.tagline}</p>
+              {it.totalBudget && (
+                <span className="ir-price-tag">{it.totalBudget}</span>
+              )}
+            </div>
+
+            <nav className="ir-daytabs no-scrollbar">
+              {days.map((d, i) => (
+                <button key={i}
+                  className={`ir-daytab ${i === activeDay ? "active" : ""}`}
+                  onClick={() => goToDay(i)}>
+                  <span className="ir-daytab-n">Day {d.day}</span>
+                  <span className="ir-daytab-t">{d.title}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </header>
+
+        {/* ── BRIEF (mood + good to know) ──────────── */}
+        <section className="ir-brief"
+          style={{ padding: isMobile ? "40px 24px" : "56px clamp(48px,8vw,140px)" }}>
+          <h2 className="ir-brief-head">{day.theme || it.coverMood}</h2>
+          <div className="ir-brief-cols">
+            {it.practicalNotes && (
+              <div className="ir-brief-col">
+                <span className="ir-brief-label">Good to know</span>
+                <p>{it.practicalNotes}</p>
               </div>
+            )}
+            <div className="ir-brief-col">
+              <span className="ir-brief-label">Pace</span>
+              <p>{day.title}{day.dayCost ? ` · ${day.dayCost}` : ""}</p>
             </div>
           </div>
-        </div>
+        </section>
 
-
-        {/* ── DAYS ───────────────────────────────── */}
-        {it.days?.map((day, di) => (
-          <section key={di} id={`day-${di}`}
-            className={`itin-day ${di % 2 === 0 ? "day-bg-light" : "day-bg-cream"}`}
-            style={{ padding: isMobile ? "72px 24px" : "96px clamp(48px,8vw,140px)" }}>
-
-            {/* Day header */}
-            <div className="day-header">
-              <div className="day-bignum"
-                style={{ fontSize: isMobile ? "clamp(80px,22vw,160px)" : "clamp(120px,14vw,200px)" }}>
-                {String(day.day).padStart(2, "0")}
+        {/* ── DAY MAP (inline, click to expand — same as the listing page) ── */}
+        {dayEmbedSrc && (
+          <section className="ir-mapsection"
+            style={{ padding: isMobile ? "0 20px 8px" : "0 clamp(40px,7vw,120px) 8px" }}>
+            <div className="ir-mapsection-head">
+              <div>
+                <span className="ir-brief-label">Day {day.day} on the map</span>
+                <p className="ir-mapsection-sub">
+                  {(day.slots || []).length} {(day.slots || []).length === 1 ? "stop" : "stops"} · tap to expand
+                </p>
               </div>
-              <div className="day-header-text">
-                <p className="day-eyebrow">Day {day.day} of {it.days.length}</p>
-                <h2 className="day-title"
-                  style={{ fontSize: isMobile ? "clamp(32px,9vw,52px)" : "clamp(42px,5vw,68px)" }}>
-                  {day.title}
-                </h2>
-                <p className="day-theme">{day.theme}</p>
-              </div>
-              <div className="day-cost-tag">{day.dayCost}</div>
+              <a className="ir-mapbtn" href={gmapsRoute(day.slots)} target="_blank" rel="noreferrer">
+                <Navigation size={13} strokeWidth={2} /> Directions
+                <ArrowUpRight size={13} strokeWidth={2} />
+              </a>
             </div>
 
-            <div className="day-rule" />
-
-            {/* Timeline */}
-            <div className="timeline">
-              {day.slots?.map((slot, si) => (
-                <div key={si} className="tl-slot">
-
-                  {/* Time column */}
-                  <div className="tl-time-col">
-                    <span className="tl-time">{slot.time}</span>
-                    <span className="tl-period"
-                      style={{ background: PERIOD_BG[slot.period], color: PERIOD_COLORS[slot.period] }}>
-                      {slot.period}
-                    </span>
-                  </div>
-
-                  {/* Track */}
-                  <div className="tl-track">
-                    <div className="tl-dot" />
-                    {si < day.slots.length - 1 && <div className="tl-line" />}
-                  </div>
-
-                  {/* Content */}
-                  <div className="tl-content">
-                    <span className="tl-type">{slot.type}</span>
-                    <h3 className="tl-place">{slot.place}</h3>
-                    <span className="tl-area"><MapPin /></span>
-                    <p className="tl-desc">{slot.description}</p>
-                    <div className="tl-footer">
-                      {slot.insiderTip && (
-                        <div className="tl-tip">
-                          <span className="tl-tip-icon"><Lightbulb /></span>
-                          <span className="tl-tip-text">{slot.insiderTip}</span>
-                        </div>
-                      )}
-                      {slot.estimatedCost && (
-                        <div className="tl-cost">
-                          <span className="tl-cost-label">Est. cost</span>
-                          <span className="tl-cost-val">{slot.estimatedCost}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              ))}
+            <div
+              className="ir-map-wrap"
+              role="button"
+              tabIndex={0}
+              onClick={() => setMapOpen(true)}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setMapOpen(true)}
+            >
+              <iframe
+                title={`Day ${day.day} map`}
+                src={dayEmbedSrc}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                style={{ pointerEvents: "none" }}
+              />
+              <div className="ir-map-expand"><Maximize2 size={14} /> Expand</div>
             </div>
           </section>
-        ))}
+        )}
 
-
-        {/* ── END SPREAD ─────────────────────────── */}
-        <div className="itin-end"
-          style={{ padding: isMobile ? "72px 24px" : "96px clamp(48px,8vw,140px)" }}>
-          <p className="eyebrow-light-sm">Your Journey Awaits</p>
-          <h2 className="end-title"
-            style={{ fontSize: isMobile ? "clamp(38px,10vw,56px)" : "clamp(50px,5.5vw,80px)" }}>
-            {it.totalBudget} total,<br />
-            <em>priceless memories.</em>
-          </h2>
-          <p className="end-sub">
-            Every place here is verified by TruGoa's local team. Prices are honest.
-            Tips are real. This is Goa as the locals live it.
-          </p>
-          <div className="end-actions">
-            <button className="btn-gold" onClick={() => window.print()}> <Printer /></button>
-            <button className="btn-outline-itin" onClick={() => { setStep("form"); window.scrollTo(0,0); }}>↻ Build Another</button>
-            <button className="btn-outline-itin" onClick={() => navigate("/explore")}>Explore Listings →</button>
+        {/* ── ACTIVE DAY ───────────────────────────── */}
+        <section className="ir-day"
+          style={{ padding: isMobile ? "40px 20px 72px" : "64px clamp(40px,7vw,120px) 96px" }}>
+          <div className="ir-day-head">
+            <div>
+              <p className="ir-day-eyebrow">Day {day.day} of {dayCount}</p>
+              <h2 className="ir-day-title"
+                style={{ fontSize: isMobile ? "clamp(30px,8vw,40px)" : "clamp(38px,4vw,54px)" }}>
+                {day.title}
+              </h2>
+              <p className="ir-day-theme">{day.theme}</p>
+            </div>
+            {day.dayCost && <span className="ir-day-cost">{day.dayCost}</span>}
           </div>
-        </div>
+
+          <a className="ir-mapbtn" href={gmapsRoute(day.slots)} target="_blank" rel="noreferrer">
+            <MapPin size={13} strokeWidth={2} /> Day {day.day} directions
+            <ArrowUpRight size={13} strokeWidth={2} />
+          </a>
+
+          <div className="ir-slots">
+            {(day.slots || []).map((slot, si) => (
+              <article key={si} className="ir-slot">
+                <span className="ir-slot-num">{String(si + 1).padStart(2, "0")}</span>
+
+                {slotImage(slot) && (
+                  <div className="ir-slot-media">
+                    <img
+                      src={slotImage(slot)}
+                      alt={slot.place}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.closest(".ir-slot-media").hidden = true;
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="ir-slot-body">
+                  <div className="ir-slot-meta">
+                    <span className="ir-slot-time">{slot.time}</span>
+                    <span className="ir-slot-metadot" />
+                    <span className="ir-slot-type">{slot.type}</span>
+                  </div>
+                  {slot.period && (
+                    <span className="ir-slot-period"
+                      style={{ color: PERIOD_COLORS[slot.period], borderColor: PERIOD_COLORS[slot.period] }}>
+                      {slot.period}
+                    </span>
+                  )}
+                  {slot.slug
+                    ? <h3 className="ir-slot-place">
+                        <a
+                          href={`/listings/${slot.slug}`}
+                          onClick={(e) => { e.preventDefault(); navigate(`/listings/${slot.slug}`); }}
+                        >
+                          {slot.place}
+                        </a>
+                      </h3>
+                    : <h3 className="ir-slot-place">{slot.place}</h3>}
+                  {slot.area && (
+                    <p className="ir-slot-area">
+                      <MapPin size={12} strokeWidth={2} /> {slot.area}
+                    </p>
+                  )}
+                  {slot.description && <p className="ir-slot-desc">{slot.description}</p>}
+                  {slot.insiderTip && (
+                    <div className="ir-slot-tip">
+                      <MapPin size={13} strokeWidth={2.2} className="ir-slot-tip-icon" />
+                      <span>{slot.insiderTip}</span>
+                    </div>
+                  )}
+                  {slot.estimatedCost && (
+                    <p className="ir-slot-cost">
+                      Est. cost <strong>{slot.estimatedCost}</strong> per person
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="ir-nav">
+            {!isFirstDay && (
+              <button className="ir-nav-back" onClick={() => goToDay(activeDay - 1)}>
+                <ArrowLeft size={15} strokeWidth={2} /> Back to Day {days[activeDay - 1].day}
+              </button>
+            )}
+            {!isLastDay ? (
+              <button className="ir-nav-next" onClick={() => goToDay(activeDay + 1)}>
+                Continue to Day {days[activeDay + 1].day}
+                <ArrowRight size={16} strokeWidth={2} />
+              </button>
+            ) : (
+              saved ? (
+                <button
+                  className="ir-nav-save is-saved"
+                  onClick={() => navigate("/saved")}
+                >
+                  ✓ Saved · View in Saved
+                </button>
+              ) : (
+                <button
+                  className="ir-nav-save"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save this itinerary"}
+                </button>
+              )
+            )}
+          </div>
+        </section>
 
         {/* ── Footer */}
-        <div className="itin-foot"
-          style={{ padding: isMobile ? "24px" : `28px clamp(48px,8vw,140px)` }}>
+        <footer className="ir-foot"
+          style={{ padding: isMobile ? "22px 24px" : "26px clamp(48px,8vw,140px)" }}>
           <span className="itin-logo" onClick={() => navigate("/")}>
             <span style={{ color: "#2D6A4F" }}>Tru</span>
             <span style={{ color: "#F0B429" }}>Goa</span>
           </span>
-          <span className="itin-foot-note">© 2025 TruGoa · AI-powered, locally verified</span>
-        </div>
-
+          <span className="ir-foot-tag">Simple plans. Memorable days.</span>
+        </footer>
       </div>
     );
   }
+
 
   return null;
 }

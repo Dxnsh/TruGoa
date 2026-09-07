@@ -60,6 +60,17 @@ function Lightbox({ images, startIndex, onClose }) {
   const next = useCallback(() =>
     setCurrent(c => (c + 1) % images.length), [images.length]);
 
+  // Horizontal swipe on touch — a drag past 50px flips the photo, matching the
+  // arrow buttons. Anything shorter is treated as a tap and ignored.
+  const touchStartX = useRef(null);
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStartX.current === null || images.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > 50) (dx < 0 ? next : prev)();
+  };
+
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "Escape")     onClose();
@@ -76,7 +87,12 @@ function Lightbox({ images, startIndex, onClose }) {
 
   return (
     <div className="lb-overlay" onClick={onClose}>
-      <div className="lb-inner" onClick={e => e.stopPropagation()}>
+      <div
+        className="lb-inner"
+        onClick={e => e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <button className="lb-close" onClick={onClose}>✕</button>
         <div className="lb-counter">{current + 1} / {images.length}</div>
         <img key={current} src={images[current]} alt={`Photo ${current + 1}`} className="lb-img" />
@@ -328,12 +344,40 @@ function InfoCard({ biz, nearbyNames, userDistance, userOrigin, driving, saved, 
 function GlimpsesStrip({ name, images, onOpen }) {
   const scrollerRef = useRef(null);
   const isMobile = useIsMobile();
+  // Which arrows are usable right now — recomputed from the real scroll
+  // position so the forward arrow stops being a dead button at the end and a
+  // back arrow appears once you've moved off the start.
+  const [edges, setEdges] = useState({ atStart: true, atEnd: false });
+
+  const syncEdges = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({
+      atStart: el.scrollLeft <= 1,
+      atEnd: el.scrollLeft >= max - 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    syncEdges();
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", syncEdges, { passive: true });
+    window.addEventListener("resize", syncEdges);
+    return () => {
+      el.removeEventListener("scroll", syncEdges);
+      window.removeEventListener("resize", syncEdges);
+    };
+  }, [syncEdges, images.length]);
 
   if (!images.length) return null;
 
-  const scrollBy = (dir) => {
+  const scrollByDir = (dir) => {
     scrollerRef.current?.scrollBy({ left: dir * (isMobile ? 180 : 240), behavior: "smooth" });
   };
+
+  const overflows = images.length > (isMobile ? 2 : 3);
 
   return (
     <div>
@@ -349,8 +393,21 @@ function GlimpsesStrip({ name, images, onOpen }) {
             />
           ))}
         </div>
-        {!isMobile && images.length > 3 && (
-          <button className="dp-glimpses-arrow" onClick={() => scrollBy(1)}>
+        {overflows && !edges.atStart && (
+          <button
+            className="dp-glimpses-arrow dp-glimpses-arrow-left"
+            onClick={() => scrollByDir(-1)}
+            aria-label="Previous photos"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
+        {overflows && !edges.atEnd && (
+          <button
+            className="dp-glimpses-arrow dp-glimpses-arrow-right"
+            onClick={() => scrollByDir(1)}
+            aria-label="More photos"
+          >
             <ChevronRight size={18} />
           </button>
         )}

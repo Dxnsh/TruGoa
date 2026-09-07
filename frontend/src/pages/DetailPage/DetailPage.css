@@ -232,12 +232,16 @@
 }
 .dp-glimpse-thumb:hover { transform: translateY(-4px); }
 .dp-glimpses-arrow {
-  position: absolute; right: -4px; bottom: -20px;
+  position: absolute; top: 50%; transform: translateY(-50%);
   width: 42px; height: 42px; border-radius: 50%;
   background: white; border: 1px solid rgba(0,0,0,0.1); color: #1A1F1C;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  z-index: 2; transition: background 0.2s, transform 0.2s;
 }
+.dp-glimpses-arrow:hover { background: #f5f5f5; }
+.dp-glimpses-arrow-left  { left: 8px; }
+.dp-glimpses-arrow-right { right: 8px; }
 
 /* ── Reach ── */
 .dp-reach-list { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; }

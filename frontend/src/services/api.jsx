@@ -35,7 +35,8 @@ const unwrap = (json) => json.data;
 // ─── BUSINESSES (Public) ──────────────────────────────────────────────────────
 
 // GET one page of approved businesses.
-// Optional: { category, tag, area, priceLevel, featured, search, page, limit }
+// Optional: { category, tag, area, priceLevel, sort, featured, search, page, limit }
+// `sort` accepts "price_asc" (cheapest first); omitted means editor's-pick order.
 // `category` may be a comma-separated list; it is matched OR-ed with `tag`.
 //
 // Resolves to { items, total, page, limit, totalPages, hasMore } — this used
@@ -46,6 +47,7 @@ export const getBusinesses = async (params = {}) => {
   if (params.tag)        query.set("tag",        params.tag);
   if (params.area)       query.set("area",       params.area);
   if (params.priceLevel) query.set("priceLevel", params.priceLevel);
+  if (params.sort)       query.set("sort",       params.sort);
   if (params.featured)   query.set("featured",   "true");
   if (params.search)     query.set("search",     params.search);
   if (params.page)       query.set("page",       String(params.page));

@@ -174,7 +174,14 @@ export const getBusinesses = asyncHandler(async (req, res) => {
   if (conditions.length) filter.$and = conditions;
 
   const { page, limit, skip } = paginationFrom(req.query, 24, 100);
-  const sort = { editorPick: -1, featured: -1, createdAt: -1 };
+  // Default ordering puts editor's picks and featured places first. "price_asc"
+  // reorders cheapest-first instead — the priceLevel enum ("budget", "mid",
+  // "premium") happens to sort low-to-high alphabetically, so a plain ascending
+  // sort on it is correct, with the usual keys kept as tie-breakers.
+  const sort =
+    req.query.sort === "price_asc"
+      ? { priceLevel: 1, editorPick: -1, featured: -1, createdAt: -1 }
+      : { editorPick: -1, featured: -1, createdAt: -1 };
 
   const openNow = wantsOpenNow(req.query, { defaultOn: !search });
   const openFirst = isTrue(req.query.openFirst);
