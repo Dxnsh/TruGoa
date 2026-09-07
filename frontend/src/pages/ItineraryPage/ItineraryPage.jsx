@@ -173,6 +173,7 @@ export default function ItineraryPage() {
   const [activeDay, setActiveDay] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     duration: "", budget: "", vibe: "", interests: [], style: "",
@@ -267,13 +268,27 @@ export default function ItineraryPage() {
   }
 };
 
+  const [toast, setToast] = useState(null); // { kind: "ok"|"err", text }
+  const toastTimer = useRef(null);
+  const showToast = (kind, text) => {
+    setToast({ kind, text });
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  };
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
   const handleSave = async () => {
-    if (!itinerary) return;
+    if (!itinerary || saving) return;
+    setSaving(true);
     try {
       await saveMyItinerary(form, itinerary);
       setSaved(true);
+      showToast("ok", "Itinerary saved to your account");
     } catch (e) {
       console.error("Failed to save itinerary", e);
+      showToast("err", "Couldn’t save — please try again");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -573,6 +588,13 @@ export default function ItineraryPage() {
     return (
       <div className="ir-page" ref={resultRef}>
 
+        {toast && (
+          <div className={`ir-toast ir-toast--${toast.kind}`} role="status" aria-live="polite">
+            <span className="ir-toast-icon">{toast.kind === "ok" ? "✓" : "!"}</span>
+            {toast.text}
+          </div>
+        )}
+
         {/* ── COVER RECAP ──────────────────────────── */}
         <header className="ir-cover">
           {coverImage && (
@@ -764,8 +786,8 @@ export default function ItineraryPage() {
                 <ArrowRight size={16} strokeWidth={2} />
               </button>
             ) : (
-              <button className="ir-nav-save" onClick={handleSave} disabled={saved}>
-                {saved ? "Itinerary saved ✓" : "Save this itinerary"}
+              <button className="ir-nav-save" onClick={handleSave} disabled={saved || saving}>
+                {saving ? "Saving…" : saved ? "Itinerary saved ✓" : "Save this itinerary"}
               </button>
             )}
           </div>

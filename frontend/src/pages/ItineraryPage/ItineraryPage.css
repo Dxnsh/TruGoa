@@ -348,6 +348,31 @@
   min-height: 100svh;
 }
 
+/* ── Save toast ──────────────────────────────── */
+.ir-toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+  z-index: 200;
+  display: flex; align-items: center; gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 13px 20px; border-radius: 8px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  color: #fff; background: #14100D;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+  animation: ir-toast-in 0.28s cubic-bezier(0.18,0.89,0.32,1.28);
+}
+.ir-toast--ok  { background: #1E4D36; }
+.ir-toast--err { background: #7A2418; }
+.ir-toast-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.18); font-size: 12px;
+}
+@keyframes ir-toast-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@media print { .ir-toast { display: none !important; } }
+
 /* ── Cover recap ─────────────────────────────── */
 .ir-cover { position: relative; background: #14100D; overflow: hidden; }
 .ir-cover-img {
