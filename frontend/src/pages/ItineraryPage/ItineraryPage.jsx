@@ -538,11 +538,6 @@ export default function ItineraryPage() {
     const isFirstDay = activeDay <= 0;
     const isLastDay = activeDay >= dayCount - 1;
 
-    const budgetSub = BUDGETS.find(b => b.value === form.budget)?.sub || "";
-    const vibeLabel = VIBES.find(v => v.value === form.vibe)?.label || "";
-    const badge = [`${form.duration} Days`, budgetSub, vibeLabel]
-      .filter(Boolean).join(" · ");
-
     // Cover photo: the first real listing image in the trip, or nothing —
     // the cover falls back to its plain dark panel rather than a stand-in.
     const coverImage =
@@ -594,7 +589,6 @@ export default function ItineraryPage() {
           <div className="ir-cover-inner"
             style={{ padding: isMobile ? "20px 20px 0" : "26px clamp(32px,6vw,90px) 0" }}>
             <div className="ir-cover-top">
-              <span className="ir-badge">{badge}</span>
               <button className="ir-edit"
                 onClick={() => { setStep("form"); window.scrollTo(0, 0); }}>
                 ← Edit
@@ -607,22 +601,9 @@ export default function ItineraryPage() {
                 {it.title}
               </h1>
               <p className="ir-tagline">{it.tagline}</p>
-              <div className="ir-stats">
-                <div className="ir-stat">
-                  <span className="ir-stat-n">{form.duration}</span>
-                  <span className="ir-stat-l">Days</span>
-                </div>
-                <span className="ir-stat-div" />
-                <div className="ir-stat">
-                  <span className="ir-stat-n">{it.totalBudget}</span>
-                  <span className="ir-stat-l">Total estimate</span>
-                </div>
-                <span className="ir-stat-div" />
-                <div className="ir-stat">
-                  <span className="ir-stat-n">{it.bestSeason}</span>
-                  <span className="ir-stat-l">Best season</span>
-                </div>
-              </div>
+              {it.totalBudget && (
+                <span className="ir-price-tag">{it.totalBudget}</span>
+              )}
             </div>
 
             <nav className="ir-daytabs no-scrollbar">

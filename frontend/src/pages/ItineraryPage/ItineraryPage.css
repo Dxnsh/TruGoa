@@ -364,14 +364,8 @@
 .ir-cover-inner { position: relative; z-index: 2; max-width: 1100px; margin: 0 auto; }
 
 .ir-cover-top {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  margin-bottom: 40px;
-}
-.ir-badge {
-  font-size: 10px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase;
-  color: rgba(255,255,255,0.75);
-  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
-  padding: 8px 14px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 16px;
+  margin-bottom: 44px;
 }
 .ir-edit {
   flex-shrink: 0;
@@ -382,26 +376,23 @@
 }
 .ir-edit:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
 
-.ir-cover-main { margin-bottom: 32px; }
+.ir-cover-main { margin-bottom: 36px; }
 .ir-title {
   font-family: 'Cormorant Garamond', serif; font-weight: 600;
-  color: #fff; line-height: 1.02; letter-spacing: -1.5px; margin: 0 0 16px;
+  color: #fff; line-height: 1.04; letter-spacing: -1.5px; margin: 0 0 18px;
+  max-width: 640px;
 }
 .ir-tagline {
-  font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.7;
-  max-width: 440px; margin: 0 0 28px;
+  font-size: 15px; color: rgba(255,255,255,0.62); line-height: 1.7;
+  max-width: 460px; margin: 0 0 24px;
 }
-.ir-stats { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-.ir-stat { display: flex; flex-direction: column; gap: 5px; }
-.ir-stat-n {
-  font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600;
-  color: #fff; line-height: 1;
+.ir-price-tag {
+  display: inline-block;
+  font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700;
+  color: #F0B429; background: rgba(240,180,41,0.1);
+  border: 1px solid rgba(240,180,41,0.3);
+  padding: 8px 16px; border-radius: 4px; line-height: 1;
 }
-.ir-stat-l {
-  font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
-}
-.ir-stat-div { width: 1px; height: 30px; background: rgba(255,255,255,0.14); }
 
 .ir-daytabs {
   display: flex; gap: 8px; overflow-x: auto;
