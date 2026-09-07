@@ -197,9 +197,25 @@ async function buildCatalogPool() {
   }
 }
 
-// Merge the live catalogue in front of the hardcoded pool, de-duped by name,
-// so real listings are always preferred and the curated list only fills gaps.
-function mergePools(catalogPool) {
+// Below this many usable catalogue listings there isn't enough to build an
+// itinerary from real places alone, so the curated hardcoded list is mixed in
+// as a backstop (a fresh install with almost nothing added still gets a plan).
+// At or above it, the itinerary is built ONLY from the operator's own approved
+// listings — every stop is then a place they can actually see and manage, and
+// the generator simply revisits places across days when the pool is short,
+// rather than pulling in anything that isn't in the catalogue.
+const CATALOG_MIN = 4;
+
+function choosePool(catalogPool) {
+  if (catalogPool.length >= CATALOG_MIN) {
+    // Photographed listings first, so the generator reaches for those before
+    // the ones that would fall back to a category image on the card.
+    return [
+      ...catalogPool.filter((p) => p.image),
+      ...catalogPool.filter((p) => !p.image),
+    ];
+  }
+  // Too thin — fall back: catalogue in front, curated list (with coords) behind.
   const seen = new Set(catalogPool.map((p) => p.name.toLowerCase()));
   const fallback = PLACE_POOL
     .filter((p) => !seen.has(p.name.toLowerCase()))
@@ -472,9 +488,10 @@ export const generateItinerary = asyncHandler(async (req, res) => {
   const { duration, budget, vibe, interests, style } = req.body;
   const params = { duration, budget, vibe, interests, style };
 
-  // Catalogue-first pool: real listings (each with its own photo) preferred,
-  // the curated hardcoded list only filling gaps.
-  const pool = mergePools(await buildCatalogPool());
+  // Built only from the operator's own approved listings once there are enough
+  // of them (see choosePool / CATALOG_MIN); the curated hardcoded list is a
+  // backstop for a near-empty catalogue only.
+  const pool = choosePool(await buildCatalogPool());
 
   let itinerary;
   try {
