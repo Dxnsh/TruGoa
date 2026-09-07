@@ -13,11 +13,11 @@ const slotSchema = new mongoose.Schema({
   description:   { type: String, maxlength: 2000 },
   insiderTip:    { type: String, maxlength: 1000 },
   estimatedCost: { type: String, trim: true, maxlength: 80 },
-  // Filled in by enrichSlotsWithListings() when the slot's `place` matches a
-  // real curated listing — the result page uses `image` for the card photo and
-  // `slug` to link through to the full listing; the coordinates let the day's
-  // "View on map" build a real route. All optional: a slot with no catalogue
-  // match keeps only the text fields above and the card shows a placeholder.
+  // Filled in by enrichSlots(): coordinates come from the curated place pool
+  // (so the itinerary map has a pin for every stop) and are upgraded to the
+  // exact listing geo when the `place` matches a real Business; `image` and
+  // `slug` are set only on a listing match. All optional — a slot with no
+  // match still carries pool coordinates but shows a placeholder card.
   image:         { type: String, maxlength: 500 },
   slug:          { type: String, trim: true, maxlength: 200 },
   latitude:      { type: Number, min: -90,  max: 90 },

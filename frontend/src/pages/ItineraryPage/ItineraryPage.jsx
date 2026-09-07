@@ -5,6 +5,7 @@ import { useTourist } from "../../context/TouristContext";
 import { generateItinerary, getMyItinerary, saveMyItinerary } from "../../services/api";
 import LoginModal from "../../components/LoginModal/LoginModal";
 import SEO from "../../components/SEO/SEO";
+import ItineraryMap, { DAY_COLORS } from "./ItineraryMap";
 import {
   Waves,
   Landmark,
@@ -550,11 +551,11 @@ export default function ItineraryPage() {
       );
     };
 
-    // "View on map" → a Google Maps route through the day's stops (a plain
-    // search when there's only one), built from the place names + area since
-    // most listings still have no coordinates.
-    const mapUrl = (d) => {
-      const stops = (d.slots || [])
+    // A Google Maps route through a list of stops (a plain search when there's
+    // only one) — built from place names + area, since Google geocodes those
+    // fine and it works even for stops with no coordinates.
+    const gmapsRoute = (slots) => {
+      const stops = (slots || [])
         .map(s => `${s.place}${s.area ? `, ${s.area}` : ", Goa"}`)
         .map(encodeURIComponent);
       if (stops.length === 0) return "https://www.google.com/maps/search/?api=1&query=Goa";
@@ -562,6 +563,13 @@ export default function ItineraryPage() {
         return `https://www.google.com/maps/search/?api=1&query=${stops[0]}`;
       return `https://www.google.com/maps/dir/${stops.join("/")}`;
     };
+
+    const allSlots = days.flatMap(d => d.slots || []);
+    const totalStops = allSlots.length;
+    const pinnedCount = allSlots.filter(
+      s => typeof s.latitude === "number" && typeof s.longitude === "number"
+    ).length;
+    const tripMapUrl = gmapsRoute(allSlots);
 
     return (
       <div className="ir-page" ref={resultRef}>
@@ -642,6 +650,39 @@ export default function ItineraryPage() {
           </div>
         </section>
 
+        {/* ── TRIP MAP ─────────────────────────────── */}
+        <section className="ir-mapsection"
+          style={{ padding: isMobile ? "0 20px 8px" : "0 clamp(40px,7vw,120px) 8px" }}>
+          <div className="ir-mapsection-head">
+            <div>
+              <span className="ir-brief-label">The whole trip</span>
+              <p className="ir-mapsection-sub">
+                {pinnedCount > 0
+                  ? `${pinnedCount} of ${totalStops} stops mapped · Day ${day.day} highlighted`
+                  : "Stops for this trip"}
+              </p>
+            </div>
+            <a className="ir-mapbtn" href={tripMapUrl} target="_blank" rel="noreferrer">
+              <MapPin size={13} strokeWidth={2} /> Open in Google Maps
+              <ArrowUpRight size={13} strokeWidth={2} />
+            </a>
+          </div>
+
+          <ItineraryMap days={days} activeDay={activeDay} onSelectDay={goToDay} />
+
+          <div className="ir-maplegend">
+            {days.map((d, i) => (
+              <button key={i}
+                className={`ir-maplegend-item ${i === activeDay ? "active" : ""}`}
+                onClick={() => goToDay(i)}>
+                <span className="ir-maplegend-dot"
+                  style={{ background: DAY_COLORS[i % DAY_COLORS.length] }} />
+                Day {d.day}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* ── ACTIVE DAY ───────────────────────────── */}
         <section className="ir-day"
           style={{ padding: isMobile ? "40px 20px 72px" : "64px clamp(40px,7vw,120px) 96px" }}>
@@ -657,8 +698,9 @@ export default function ItineraryPage() {
             {day.dayCost && <span className="ir-day-cost">{day.dayCost}</span>}
           </div>
 
-          <a className="ir-mapbtn" href={mapUrl(day)} target="_blank" rel="noreferrer">
-            <MapPin size={13} strokeWidth={2} /> View on map <ArrowUpRight size={13} strokeWidth={2} />
+          <a className="ir-mapbtn" href={gmapsRoute(day.slots)} target="_blank" rel="noreferrer">
+            <MapPin size={13} strokeWidth={2} /> Day {day.day} directions
+            <ArrowUpRight size={13} strokeWidth={2} />
           </a>
 
           <div className="ir-slots">

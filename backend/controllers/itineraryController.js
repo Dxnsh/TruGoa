@@ -112,6 +112,33 @@ const PLACE_POOL = [
   { name: "Fontainhas Walking Trail", area: "Fontainhas, Panaji", type: "Heritage", period: "Morning", vibe: ["heritage"], desc: "A self-guided wander through Panaji's Latin Quarter — ochre and blue houses, wrought-iron balconies, and a genuinely different architectural register from the rest of Goa.", tip: "Early morning light (before 9am) makes the pastel facades look their best in photos." },
 ];
 
+// Approximate coordinates for every curated place above, so the itinerary map
+// can plot a pin for each stop even when the place isn't (yet) a Business
+// listing with its own geo. A real listing match in enrichSlots() overrides
+// these with the listing's own latitude/longitude.
+const POOL_COORDS = {
+  "Thalassa":                      { lat: 15.5990, lng: 73.7386 },
+  "Curlies":                       { lat: 15.5657, lng: 73.7407 },
+  "Brittos":                       { lat: 15.5560, lng: 73.7517 },
+  "Café Bodega":                   { lat: 15.4909, lng: 73.8278 },
+  "Reis Magos Fort":               { lat: 15.5010, lng: 73.8060 },
+  "Gunpowder":                     { lat: 15.5940, lng: 73.7530 },
+  "Arambol Beach":                 { lat: 15.6866, lng: 73.7043 },
+  "Palolem Beach":                 { lat: 15.0100, lng: 74.0233 },
+  "Antares":                       { lat: 15.5920, lng: 73.7360 },
+  "Chapora Fort":                  { lat: 15.6055, lng: 73.7370 },
+  "Anjuna Flea Market":            { lat: 15.5745, lng: 73.7440 },
+  "Mandovi River Cruise":          { lat: 15.4980, lng: 73.8280 },
+  "Cola Beach":                    { lat: 15.0630, lng: 74.0450 },
+  "Dudhsagar Falls":               { lat: 15.3144, lng: 74.3144 },
+  "Grande Island Scuba":           { lat: 15.3600, lng: 73.7600 },
+  "Divar Island":                  { lat: 15.5170, lng: 73.9200 },
+  "Colva Beach":                   { lat: 15.2790, lng: 73.9220 },
+  "Sunburn Festival Grounds Area": { lat: 15.5930, lng: 73.7360 },
+  "Ritz Classic":                  { lat: 15.4980, lng: 73.8290 },
+  "Fontainhas Walking Trail":      { lat: 15.4989, lng: 73.8324 },
+};
+
 const PERIOD_ORDER = ["Morning", "Afternoon", "Evening"];
 
 function shuffle(arr) {
@@ -307,7 +334,21 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$
  * those. Best-effort: any failure here just means no photos, never a failed
  * generation.
  */
-async function enrichSlotsWithListings(itinerary) {
+async function enrichSlots(itinerary) {
+  // 1. Fall back to the curated pool coordinates for every slot, so the map
+  //    has a pin per stop even with no listing behind it.
+  for (const day of itinerary.days || []) {
+    for (const slot of day.slots || []) {
+      const coords = POOL_COORDS[(slot.place || "").trim()];
+      if (coords && typeof slot.latitude !== "number") {
+        slot.latitude = coords.lat;
+        slot.longitude = coords.lng;
+      }
+    }
+  }
+
+  // 2. Overlay real listing data (photo, slug, exact geo) where a matching
+  //    approved Business exists.
   try {
     const names = [
       ...new Set(
@@ -332,8 +373,8 @@ async function enrichSlotsWithListings(itinerary) {
       for (const slot of day.slots || []) {
         const match = byName.get((slot.place || "").trim().toLowerCase());
         if (!match) continue;
-        slot.image = match.heroImage || match.gallery?.[0] || undefined;
-        slot.slug = match.slug || undefined;
+        slot.image = match.heroImage || match.gallery?.[0] || slot.image;
+        slot.slug = match.slug || slot.slug;
         if (typeof match.latitude === "number") slot.latitude = match.latitude;
         if (typeof match.longitude === "number") slot.longitude = match.longitude;
       }
@@ -356,7 +397,7 @@ export const generateItinerary = asyncHandler(async (req, res) => {
     itinerary = buildMockItinerary(params);
   }
 
-  await enrichSlotsWithListings(itinerary);
+  await enrichSlots(itinerary);
   return sendSuccess(res, { data: itinerary });
 });
 
