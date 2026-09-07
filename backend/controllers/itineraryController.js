@@ -18,6 +18,13 @@ const client = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+// Same env override the AI chat uses (controllers/aiController.js). The old
+// hardcoded "llama-3.3-70b-versatile" was retired by Groq and started 404ing,
+// which silently sent every itinerary to the offline template generator —
+// interests ignored, copy identical per vibe. Keep this in step with Groq's
+// current model list; override with GROQ_MODEL without a redeploy.
+const ITINERARY_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+
 /* ─── cost tiers per budget (used for slot / day / total cost strings) ─── */
 const COST_TIERS = {
   budget:  { slot: [150, 500],   day: [1200, 1800],  daily: 1500 },
@@ -375,15 +382,28 @@ Return STRICT JSON only, matching exactly this shape (no markdown, no commentary
   ]
 }`;
 
+// The whole catalogue serialised is ~16k tokens — over the Groq free tier's
+// 8k tokens/minute ceiling, so the request 413s and every itinerary drops to
+// the offline generator. Send a scoped, trimmed slice instead: places whose
+// vibe tags include the chosen vibe first, topped up to AI_POOL_CAP with the
+// rest, and each description clipped. Enough for the model to plan a good
+// trip, small enough to fit the limit.
+const AI_POOL_CAP = 30;
+const AI_DESC_CHARS = 160;
+
 async function generateWithAI({ duration, budget, vibe, interests, style }, pool = PLACE_POOL) {
   const days = Number(duration);
   const slotsPerDay = days <= 3 ? 4 : 3;
 
+  const onVibe = pool.filter((p) => p.vibe?.includes(vibe));
+  const offVibe = pool.filter((p) => !p.vibe?.includes(vibe));
+  const scoped = [...onVibe, ...offVibe].slice(0, AI_POOL_CAP);
+
   // Only the fields the model needs to choose and describe a place — image,
-  // slug and coordinates are attached afterwards from the same pool by name.
-  const promptPool = pool.map((p) => ({
+  // slug and coordinates are attached afterwards from the full pool by name.
+  const promptPool = scoped.map((p) => ({
     name: p.name, area: p.area, type: p.type, period: p.period,
-    vibe: p.vibe, desc: p.desc, tip: p.tip,
+    desc: (p.desc || "").slice(0, AI_DESC_CHARS), tip: (p.tip || "").slice(0, 160),
   }));
 
   const userPrompt = `Build a ${days}-day Goa itinerary.
@@ -397,7 +417,7 @@ CURATED_PLACES (JSON — the only places you may use):
 ${JSON.stringify(promptPool)}`;
 
   const response = await client.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: ITINERARY_MODEL,
     temperature: 0.8,
     max_tokens: 3000,
     response_format: { type: "json_object" },
