@@ -18,7 +18,7 @@ const slotSchema = new mongoose.Schema({
   // exact listing geo when the `place` matches a real Business; `image` and
   // `slug` are set only on a listing match. All optional — a slot with no
   // match still carries pool coordinates but shows a placeholder card.
-  image:         { type: String, maxlength: 2000 }, // Google photo URLs are long
+  image:         { type: String, maxlength: 500 },
   slug:          { type: String, trim: true, maxlength: 200 },
   latitude:      { type: Number, min: -90,  max: 90 },
   longitude:     { type: Number, min: -180, max: 180 },
