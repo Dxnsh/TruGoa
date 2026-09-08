@@ -187,6 +187,33 @@
   color: white;
   border-radius: 18px 18px 4px 18px;
 }
+
+/* Rendered-Markdown body of an assistant bubble. The bubble itself keeps
+   white-space: pre-wrap for the plain-text user side, so undo it here and let
+   real block elements do the spacing. */
+.chat-md { white-space: normal; }
+.chat-md > *:first-child { margin-top: 0; }
+.chat-md > *:last-child { margin-bottom: 0; }
+.chat-md p { margin: 0 0 10px; }
+.chat-md h2, .chat-md h3, .chat-md h4, .chat-md h5 {
+  margin: 16px 0 6px;
+  font-family: 'Instrument Sans', sans-serif;
+  line-height: 1.35;
+}
+.chat-md h2 { font-size: 16px; font-weight: 700; }
+.chat-md h3 { font-size: 14.5px; font-weight: 700; }
+.chat-md h4, .chat-md h5 { font-size: 13.5px; font-weight: 600; }
+.chat-md ul, .chat-md ol { margin: 6px 0 12px; padding-left: 20px; }
+.chat-md li { margin: 3px 0; }
+.chat-md strong { font-weight: 700; }
+.chat-md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  background: rgba(0,0,0,0.06);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.chat-md a { color: #B45309; text-decoration: underline; }
 .gg-itinerary-cta {
   display: flex;
   align-items: center;

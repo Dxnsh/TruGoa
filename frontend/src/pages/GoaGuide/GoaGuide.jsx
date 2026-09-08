@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { sendChatMessage } from "../../services/api";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
+import ChatMarkdown from "../../components/ChatMarkdown/ChatMarkdown";
 import SEO from "../../components/SEO/SEO";
 import useIsMobile from "../../hooks/useIsMobile";
 import "./GoaGuide.css";
@@ -497,7 +498,9 @@ export default function GoaGuide() {
                   <div className="gg-msg-avatar">🌴</div>
                 )}
                 <div className={`gg-bubble gg-bubble-${m.role === "assistant" ? "ai" : "user"}`}>
-                  {m.content}
+                  {m.role === "assistant"
+                    ? <ChatMarkdown text={m.content} />
+                    : m.content}
                   {m.redirectUrl && (
                     <button
                       className="gg-itinerary-cta"
