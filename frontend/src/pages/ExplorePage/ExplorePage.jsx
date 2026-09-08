@@ -8,6 +8,8 @@ import {
   Compass,
   Heart,
   MapPin,
+  Search,
+  X,
   SlidersHorizontal,
 } from "lucide-react";
 import { CATEGORIES } from "../../constants/categories";
@@ -55,6 +57,11 @@ const CATEGORY_QUERIES = {
 
 // How many cards a page of the grid holds.
 const PAGE_SIZE = 12;
+
+// Desktop content cap. Without it, sections stretch the full viewport on a wide
+// laptop — the 4-up grid balloons, images turn huge and the AI banner's short
+// column drifts miles from its image. Everything below is centred inside this.
+const PAGE_MAX = 1240;
 
 // Full page-number list for small totals, or a windowed 1 … n-1, n, n+1 … last
 // for big ones — never a wall of buttons.
@@ -744,6 +751,16 @@ const ExplorePage = () => {
   // Reorders the grid cheapest-first (by priceLevel). Off by default, which
   // keeps the editor's-pick ordering the API returns.
   const [priceLowToHigh, setPriceLowToHigh] = useState(false);
+  // Free-text search over name / area / category / description. `searchInput` is
+  // what's in the box; `searchTerm` is the debounced value the query actually
+  // runs on, so we're not firing a request on every keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(searchInput.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   // ?category=food narrows the list to that category. Derived straight from the
   // URL rather than mirrored into state, so a link, a back/forward step and an
@@ -770,7 +787,7 @@ const ExplorePage = () => {
   // we were on — a filter with fewer results might not even have a page 3.
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, showAll, priceLowToHigh]);
+  }, [activeCategory, showAll, priceLowToHigh, searchTerm]);
 
   // Refetches this exact page whenever the category, toggle or page number
   // changes — the narrowing happens in the query, so each page is its own
@@ -783,6 +800,7 @@ const ExplorePage = () => {
         setError(null);
         const { items, total: found } = await getBusinesses({
           ...(CATEGORY_QUERIES[activeCategory] || {}),
+          search: searchTerm || undefined,
           openNow: showAll ? false : undefined,
           sort: priceLowToHigh ? "price_asc" : undefined,
           page,
@@ -798,7 +816,7 @@ const ExplorePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeCategory, showAll, priceLowToHigh, page]);
+  }, [activeCategory, showAll, priceLowToHigh, searchTerm, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -857,8 +875,9 @@ const ExplorePage = () => {
 
   // "Nothing at all" and "nothing open right now" need different words — the
   // latter isn't an empty catalogue, it's a time of day.
-  const nothingToShow = !businesses.length && showAll;
-  const nothingOpenNow = !businesses.length && !showAll;
+  const nothingForSearch = !businesses.length && !!searchTerm;
+  const nothingToShow = !businesses.length && showAll && !searchTerm;
+  const nothingOpenNow = !businesses.length && !showAll && !searchTerm;
 
   return (
     <div style={{ fontFamily: theme.typography.fontBody, background: theme.colors.bgPage, minHeight: "100vh", overflowX: "hidden" }}>
@@ -867,13 +886,14 @@ const ExplorePage = () => {
         title="Explore Goa"
         description="Browse verified restaurants, cafes, stays, beaches and hidden gems across Goa — filtered by category, area and price, with honest local tips."
       />
+      <div style={{ maxWidth: PAGE_MAX, margin: "0 auto" }}>
       {/* ── HERO ─────────────────────────────────────── */}
       <div
         style={{
           background: theme.colors.bgPage,
           padding: isMobile
             ? "40px 20px 28px"
-            : `64px ${theme.spacing.pagePadding} 40px`,
+            : `56px ${theme.spacing.pagePadding} 36px`,
         }}
       >
         <p
@@ -920,6 +940,73 @@ const ExplorePage = () => {
             margin: "0 0 24px",
           }}
         />
+
+        {/* Free-text search — runs server-side over name, area, category and
+            description, debounced so it doesn't fire per keystroke. */}
+        <div
+          style={{
+            position: "relative",
+            maxWidth: isMobile ? "100%" : 440,
+            marginBottom: 20,
+          }}
+        >
+          <Search
+            size={17}
+            strokeWidth={2}
+            style={{
+              position: "absolute",
+              left: 14,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: theme.colors.textMuted,
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search places, areas, cuisines…"
+            aria-label="Search places"
+            style={{
+              width: "100%",
+              height: 44,
+              padding: "0 40px 0 40px",
+              borderRadius: theme.radii.pill,
+              border: `1.5px solid ${theme.colors.borderLight}`,
+              background: theme.colors.bgCard,
+              color: theme.colors.textPrimary,
+              fontFamily: theme.typography.fontBody,
+              fontSize: 14,
+              outline: "none",
+            }}
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              aria-label="Clear search"
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                color: theme.colors.textMuted,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          )}
+        </div>
 
         {/* Category pills — the primary way to filter the grid below. Single
             scrollable row rather than wrapping, so it never breaks into a
@@ -994,7 +1081,7 @@ const ExplorePage = () => {
           {/* ── EDITOR'S PICKS — hidden while a category is active, since
                  its picks span every category and would contradict the
                  filter the user just applied ── */}
-          {!activeCategory && editorsPicks.length > 0 && (
+          {!activeCategory && !searchTerm && editorsPicks.length > 0 && (
             <div
               style={{
                 padding: isMobile ? "32px 16px" : `48px ${theme.spacing.pagePadding}`,
@@ -1093,7 +1180,9 @@ const ExplorePage = () => {
                   marginBottom: 6,
                 }}
               >
-                {activeCategoryMeta ? activeCategoryMeta.label : "All Places"}
+                {searchTerm
+                  ? `Results for “${searchTerm}”`
+                  : activeCategoryMeta ? activeCategoryMeta.label : "All Places"}
               </div>
               <div
                 style={{
@@ -1107,11 +1196,17 @@ const ExplorePage = () => {
                 }}
               >
                 <span>
-                  {total} {showAll ? "verified" : "open"}{" "}
-                  {total === 1 ? "place" : "places"}
-                  {showAll
-                    ? (activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa.")
-                    : " right now"}
+                  {searchTerm ? (
+                    <>{total} {total === 1 ? "place" : "places"} found</>
+                  ) : (
+                    <>
+                      {total} {showAll ? "verified" : "open"}{" "}
+                      {total === 1 ? "place" : "places"}
+                      {showAll
+                        ? (activeCategoryMeta ? ` · ${activeCategoryMeta.sub}` : " across Goa.")
+                        : " right now"}
+                    </>
+                  )}
                 </span>
                 <FilterMenu
                   showAll={showAll}
@@ -1244,6 +1339,18 @@ const ExplorePage = () => {
             </div>
           )}
 
+          {/* ── NO SEARCH MATCHES ─────────────────────── */}
+          {nothingForSearch && (
+            <div style={{ padding: isMobile ? "0 16px 60px" : `0 ${theme.spacing.pagePadding} 60px` }}>
+              <EmptyState
+                icon="🔍"
+                title={`No places match “${searchTerm}”`}
+                subtitle="Try a different spelling, a nearby area, or a broader term."
+                action={<PrimaryButton onClick={() => setSearchInput("")}>Clear search</PrimaryButton>}
+              />
+            </div>
+          )}
+
           {/* ── AI GUIDE CTA BANNER ───────────────────── */}
           <div
             style={{
@@ -1319,6 +1426,7 @@ const ExplorePage = () => {
           </div>
         </>
       )}
+      </div>
 
       {showLoginModal && (
         <LoginModal
