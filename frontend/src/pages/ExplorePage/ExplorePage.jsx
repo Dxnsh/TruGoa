@@ -809,7 +809,7 @@ const ExplorePage = () => {
         if (cancelled) return;
         setBusinesses(items.map((biz, i) => mapBusiness(biz, i)));
         setTotal(found ?? items.length);
-      } catch (err) {
+      } catch {
         if (!cancelled) setError("Could not load places. Please check your connection and try again.");
       } finally {
         if (!cancelled) setLoading(false);

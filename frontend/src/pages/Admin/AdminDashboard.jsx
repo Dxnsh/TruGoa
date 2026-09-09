@@ -13,7 +13,7 @@ import FoodForm from "./forms/FoodForm";
 import StayForm from "./forms/StayForm";
 import HiddenGoaForm from "./forms/HiddenGoaForm";
 import NightlifeForm from "./forms/NightlifeForm";
-import sacredPlaces from "./forms/sacredPlaces";
+import SacredPlaces from "./forms/sacredPlaces";
 import ArtGallery from "./forms/ArtGallery";
 import TrendingManager from "./TrendingManager";
 
@@ -31,7 +31,7 @@ const FORM_TYPES = [
   { key: "stays",     label: "Stay",         Component: StayForm },
   { key: "hidden",    label: "Hidden Goa",   Component: HiddenGoaForm },
   { key: "nightlife", label: "Nightlife",    Component: NightlifeForm },
-  { key: "sacredPlaces",   label: "sacredPlaces", Component:  sacredPlaces},
+  { key: "sacredPlaces",   label: "Sacred Places", Component: SacredPlaces },
   { key: "art", label: "Art Gallery", Component: ArtGallery },
 ];
 

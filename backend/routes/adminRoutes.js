@@ -8,10 +8,12 @@ import {
   approveBusiness,
   rejectBusiness,
   getStats,
+  checkBusinessName,
 } from "../controllers/adminController.js";
 import {
   adminGetStories,
   adminGetStory,
+  checkStorySlug,
   createStory,
   updateStory,
   deleteStory,
@@ -67,6 +69,7 @@ router.post("/login", adminLoginLimiter, adminLoginRules, validate, adminLogin);
 
 router.post("/businesses", adminAuth, createBusinessRules, validate, createBusiness);
 router.get("/businesses", adminAuth, getAllBusinesses);
+router.get("/businesses/check-name", adminAuth, checkBusinessName);
 router.put("/businesses/:id", adminAuth, updateBusinessRules, validate, updateBusiness);
 router.delete("/businesses/:id", adminAuth, businessIdParamRules, validate, deleteBusiness);
 router.get("/stats", adminAuth, getStats);
@@ -75,6 +78,7 @@ router.patch("/businesses/:id/reject", adminAuth, businessIdParamRules, validate
 
 // The admin list includes drafts, which the public routes hide.
 router.get("/stories", adminAuth, adminGetStories);
+router.get("/stories/check-slug", adminAuth, checkStorySlug);
 router.get("/stories/:slug", adminAuth, storySlugParamRules, validate, adminGetStory);
 router.post("/stories", adminAuth, createStoryRules, validate, createStory);
 router.put("/stories/:id", adminAuth, updateStoryRules, validate, updateStory);
