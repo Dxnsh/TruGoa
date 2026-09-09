@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { theme } from "../../Theme";
-import { getStories, getStoryBySlug, adminDeleteStory } from "../../services/api";
+import { adminGetStories, adminGetStory, adminUpdateStory, adminDeleteStory } from "../../services/api";
 import StoryForm from "./StoryForm";
 
 const StoriesManager = ({ isMobile }) => {
@@ -9,12 +9,14 @@ const StoriesManager = ({ isMobile }) => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null); // full story doc being edited, or null for create
   const [loadingEdit, setLoadingEdit] = useState(null); // slug currently being fetched for edit
+  const [publishingId, setPublishingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
+  // The admin list includes drafts — the public one doesn't.
   const fetchStories = async () => {
     try {
       setLoading(true);
-      setStories(await getStories());
+      setStories(await adminGetStories());
     } catch {
       // leave stories as-is; list will just show empty state
     } finally {
@@ -29,13 +31,28 @@ const StoriesManager = ({ isMobile }) => {
   const openEdit = async (summary) => {
     setLoadingEdit(summary.slug);
     try {
-      const full = await getStoryBySlug(summary.slug);
+      const full = await adminGetStory(summary.slug);
       setEditing(full);
       setShowForm(true);
     } catch {
       alert("Failed to load this story collection. Please try again.");
     } finally {
       setLoadingEdit(null);
+    }
+  };
+
+  const togglePublished = async (story) => {
+    const next = !story.published;
+    if (!next && !window.confirm(`Unpublish "${story.title}"? It will disappear from the public Stories page.`)) return;
+
+    setPublishingId(story._id);
+    try {
+      await adminUpdateStory(story._id, { published: next });
+      setStories(prev => prev.map(s => (s._id === story._id ? { ...s, published: next } : s)));
+    } catch {
+      alert(`Failed to ${next ? "publish" : "unpublish"}. Please try again.`);
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -67,7 +84,7 @@ const StoriesManager = ({ isMobile }) => {
             Story Collections
           </div>
           <div style={{ fontSize: 13, color: theme.colors.textMuted, marginTop: 2 }}>
-            {stories.length} collection{stories.length === 1 ? "" : "s"}
+            {stories.length} collection{stories.length === 1 ? "" : "s"} · {stories.filter(s => s.published).length} published
           </div>
         </div>
         <button
@@ -116,6 +133,8 @@ const StoriesManager = ({ isMobile }) => {
               boxShadow: theme.shadows.card,
               display: "flex", flexDirection: isMobile ? "column" : "row",
               gap: isMobile ? 12 : 16, alignItems: isMobile ? "stretch" : "center",
+              // Drafts read as unfinished at a glance.
+              opacity: story.published ? 1 : 0.72,
             }}>
               <div style={{
                 width: 80, height: 80, flexShrink: 0, borderRadius: theme.radii.md,
@@ -142,6 +161,16 @@ const StoriesManager = ({ isMobile }) => {
                   }}>
                     {story.category}
                   </span>
+                  <span style={{
+                    borderRadius: theme.radii.pill, padding: "3px 10px", fontSize: 11,
+                    fontWeight: theme.typography.weightBold, letterSpacing: 0.4,
+                    textTransform: "uppercase",
+                    background: story.published ? theme.colors.primaryLight : theme.colors.bgSurface,
+                    color: story.published ? theme.colors.primaryText : theme.colors.textMuted,
+                    border: `1px solid ${story.published ? "transparent" : theme.colors.borderLight}`,
+                  }}>
+                    {story.published ? "Published" : "Draft"}
+                  </span>
                 </div>
                 <div style={{ fontSize: 13, color: theme.colors.textMuted, marginBottom: 4 }}>
                   /{story.slug}
@@ -158,6 +187,21 @@ const StoriesManager = ({ isMobile }) => {
               </div>
 
               <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto", flexShrink: 0 }}>
+                <button
+                  onClick={() => togglePublished(story)}
+                  disabled={publishingId === story._id}
+                  style={{
+                    background: story.published ? theme.colors.bgSurface : theme.colors.primary,
+                    color: story.published ? theme.colors.textBody : "white",
+                    border: `1.5px solid ${story.published ? theme.colors.borderLight : "transparent"}`,
+                    borderRadius: theme.radii.md,
+                    padding: "10px 20px", fontSize: 13, fontWeight: theme.typography.weightBold,
+                    fontFamily: theme.typography.fontBody,
+                    cursor: publishingId === story._id ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {publishingId === story._id ? "..." : story.published ? "Unpublish" : "Publish"}
+                </button>
                 <button
                   onClick={() => openEdit(story)}
                   disabled={loadingEdit === story.slug}

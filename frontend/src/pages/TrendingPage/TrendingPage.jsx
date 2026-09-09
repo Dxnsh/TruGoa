@@ -12,9 +12,9 @@ const TrendingPage = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // Runs once on mount ([] deps), so loading/error already hold their initial
+    // values — no need to re-set them here.
     let cancelled = false;
-    setLoading(true);
-    setError(false);
     getTrendingPlaces()
       .then((data) => { if (!cancelled) setPlaces(Array.isArray(data) ? data : []); })
       .catch(() => { if (!cancelled) setError(true); })

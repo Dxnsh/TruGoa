@@ -761,7 +761,6 @@ export default function DetailPage() {
     ? biz.category.charAt(0).toUpperCase() + biz.category.slice(1)
     : "Places";
 
-  const heroHeadline = biz.tagline || biz.name;
   const heroDescription = biz.desc;
   // Names only, no distance figure — same call as the swipe deck's cards:
   // a straight-line number here reads as wrong next to the real driving
@@ -776,15 +775,15 @@ export default function DetailPage() {
     ? metresBetween(userOrigin, pointOf(biz))
     : null;
 
-  const scrollToContent = () => {
-    contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const toggleFavorite = async () => {
     if (!isTouristLoggedIn) {
       setShowSaveLogin(true);
       return;
     }
+    // Ignore repeat taps while a save/unsave is in flight — otherwise a quick
+    // double-click fires add and remove back to back and the two responses can
+    // land out of order, leaving the server state opposite to the button.
+    if (savingFavorite) return;
     const next = !saved;
     setSaved(next); // optimistic
     setSavingFavorite(true);

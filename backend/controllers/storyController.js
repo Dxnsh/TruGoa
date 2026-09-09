@@ -43,6 +43,20 @@ export const adminGetStory = asyncHandler(async (req, res) => {
   sendSuccess(res, { data: story });
 });
 
+// GET /admin/stories/check-slug?slug=&excludeId= — live duplicate check for
+// the New/Edit Story form, so a clashing slug is flagged as it's typed rather
+// than only on save (where Story.create / update throws the 11000 → 409).
+export const checkStorySlug = asyncHandler(async (req, res) => {
+  const slug = (req.query.slug || "").trim().toLowerCase();
+  if (!slug) return sendSuccess(res, { data: { duplicate: false } });
+
+  const filter = { slug };
+  if (req.query.excludeId) filter._id = { $ne: req.query.excludeId };
+  const match = await Story.findOne(filter).select("_id slug title").lean();
+
+  sendSuccess(res, { data: { duplicate: !!match, match: match || null } });
+});
+
 // Admin-authenticated mutations ------------------------------------------
 
 // POST /admin/stories

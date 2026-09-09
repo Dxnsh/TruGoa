@@ -128,28 +128,8 @@ useEffect(() => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const [placesRef,  placesVisible ] = useScrollReveal();
-  const [journeyRef, journeyVisible] = useScrollReveal();
-  const [guideRef,   guideVisible  ] = useScrollReveal();
   const [storiesRef, storiesVisible] = useScrollReveal();
-  const [statsRef,   statsVisible  ] = useScrollReveal();
   const [trendingRef, trendingVisible] = useScrollReveal();
-  // Journey steps are a card deck rather than a static row — one step is in
-  // focus at a time, and the rest stack behind it.
-  const [stepIndex, setStepIndex] = useState(0);
-  const swipeStartX = useRef(null);
-
-  const stepCount = JOURNEY_WAY_STEPS.length;
-  const goToStep = (delta) =>
-    setStepIndex((i) => (i + delta + stepCount) % stepCount);
-
-  // Horizontal drag past 40px flips the deck; anything shorter counts as a tap.
-  const onDeckPointerDown = (e) => { swipeStartX.current = e.clientX; };
-  const onDeckPointerUp = (e) => {
-    if (swipeStartX.current === null) return;
-    const dx = e.clientX - swipeStartX.current;
-    swipeStartX.current = null;
-    if (Math.abs(dx) > 40) goToStep(dx < 0 ? 1 : -1);
-  };
 
   // "Featured Places" used to list four individual businesses; a name and
   // a town tells a visitor nothing about what kind of place it is before they

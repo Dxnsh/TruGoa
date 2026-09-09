@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { theme } from "../../Theme";
-import { adminCreateBusiness, adminUpdateBusiness } from "../../services/api";
+import { adminCreateBusiness, adminUpdateBusiness, adminCheckBusinessName } from "../../services/api";
 import {
   inputStyle, labelStyle, toList,
   blankOpeningHours, openingHoursToForm, openingHoursFromForm,
@@ -63,13 +63,38 @@ const BusinessForm = ({ business, onClose, onSaved }) => {
   const [form, setForm] = useState(business ? toFormState(business) : blankForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [dupMatch, setDupMatch] = useState(null);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  // Flag a name that already belongs to another listing, debounced while the
+  // admin types. This is advisory — the create/update endpoints reject a true
+  // duplicate regardless — but catching it here saves filling in the whole form.
+  useEffect(() => {
+    const name = form.name.trim();
+    if (name.length < 2) { setDupMatch(null); return; }
+
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const { duplicate, match } = await adminCheckBusinessName(name, business?._id);
+        if (!cancelled) setDupMatch(duplicate ? match : null);
+      } catch {
+        if (!cancelled) setDupMatch(null);
+      }
+    }, 400);
+
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.name, business?._id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.location.trim() || !form.category) {
       setError("Name, location and category are required.");
+      return;
+    }
+    if (dupMatch) {
+      setError(`A listing named "${dupMatch.name}" already exists. Use a distinct name or edit the existing listing.`);
       return;
     }
     setSaving(true);
@@ -128,7 +153,21 @@ const BusinessForm = ({ business, onClose, onSaved }) => {
           <SectionHeading>Basics</SectionHeading>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Name *">
-              <input style={inputStyle} value={form.name} onChange={e => set("name", e.target.value)} />
+              <input
+                style={{
+                  ...inputStyle,
+                  ...(dupMatch ? { borderColor: theme.colors.danger } : {}),
+                }}
+                value={form.name}
+                onChange={e => set("name", e.target.value)}
+              />
+              {dupMatch && (
+                <div style={{ marginTop: 6, fontSize: 12, color: theme.colors.danger }}>
+                  Already listed as “{dupMatch.name}”
+                  {dupMatch.location ? ` — ${dupMatch.location}` : ""}
+                  {dupMatch.status ? ` (${dupMatch.status})` : ""}.
+                </div>
+              )}
             </Field>
             <Field label="Category *">
               <select style={inputStyle} value={form.category} onChange={e => set("category", e.target.value)}>
@@ -295,11 +334,11 @@ const BusinessForm = ({ business, onClose, onSaved }) => {
             }}>
               Cancel
             </button>
-            <button type="submit" disabled={saving} style={{
-              background: saving ? theme.colors.borderLight : theme.colors.primary,
+            <button type="submit" disabled={saving || !!dupMatch} style={{
+              background: (saving || dupMatch) ? theme.colors.borderLight : theme.colors.primary,
               border: "none", borderRadius: theme.radii.md, padding: "12px 26px", fontSize: 14,
               fontWeight: theme.typography.weightBold, color: "white",
-              cursor: saving ? "not-allowed" : "pointer", fontFamily: theme.typography.fontBody,
+              cursor: (saving || dupMatch) ? "not-allowed" : "pointer", fontFamily: theme.typography.fontBody,
             }}>
               {saving ? "Saving..." : isEdit ? "Save Changes" : "Create Business"}
             </button>

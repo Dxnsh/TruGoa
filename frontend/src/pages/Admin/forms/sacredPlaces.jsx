@@ -33,7 +33,7 @@ const toFormState = (biz) => ({
   openingHoursNote: biz.openingHoursNote || "",
 });
 
-const sacredPlaces = ({ business, onClose, onSaved }) => {
+const SacredPlaces = ({ business, onClose, onSaved }) => {
   const isEdit = !!business?._id;
   const [form, setForm] = useState(business ? toFormState(business) : blank);
   const [saving, setSaving] = useState(false);
@@ -180,4 +180,4 @@ const sacredPlaces = ({ business, onClose, onSaved }) => {
   );
 };
 
-export default sacredPlaces;
+export default SacredPlaces;

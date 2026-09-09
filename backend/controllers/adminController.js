@@ -128,6 +128,14 @@ export const createBusiness = asyncHandler(async (req, res) => {
     tags, featured, editorPick,
   } = req.body;
 
+  const duplicate = await findDuplicateBusiness(name);
+  if (duplicate) {
+    throw new ApiError(
+      409,
+      `A listing named "${duplicate.name}" already exists${duplicate.location ? ` (${duplicate.location})` : ""}.`
+    );
+  }
+
   const business = await Business.create(cleanEnums(cleanHoursField({
     name: name.trim(),
     location: location.trim(),
@@ -171,7 +179,16 @@ export const updateBusiness = asyncHandler(async (req, res) => {
   for (const field of BUSINESS_EDITABLE_FIELDS) {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
   }
-  if (updates.name) updates.name = updates.name.trim();
+  if (updates.name) {
+    updates.name = updates.name.trim();
+    const duplicate = await findDuplicateBusiness(updates.name, req.params.id);
+    if (duplicate) {
+      throw new ApiError(
+        409,
+        `Another listing named "${duplicate.name}" already exists${duplicate.location ? ` (${duplicate.location})` : ""}.`
+      );
+    }
+  }
   if (updates.location) updates.location = updates.location.trim();
   if (updates.category) updates.category = updates.category.toLowerCase();
   cleanEnums(updates);
@@ -224,6 +241,37 @@ export const deleteBusiness = asyncHandler(async (req, res) => {
 // Search runs here rather than in the browser: with results split across
 // pages, filtering client-side would only ever search the page in hand.
 const escapeRegexAdmin = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Case-insensitive exact match on a trimmed name, with runs of whitespace
+// collapsed so "Cafe  Bhonsle" and "Cafe Bhonsle" are treated as the same
+// listing. Used to block duplicate businesses at create/update time and to
+// power the live "name already exists" check in the admin form.
+const exactNameRegex = (name) => {
+  const normalized = String(name).trim().replace(/\s+/g, " ");
+  return new RegExp(`^${escapeRegexAdmin(normalized).replace(/ /g, "\\s+")}$`, "i");
+};
+
+// Returns the existing business that collides with `name`, or null. `excludeId`
+// lets an edit ignore the row being edited.
+const findDuplicateBusiness = (name, excludeId) => {
+  const filter = { name: exactNameRegex(name) };
+  if (excludeId) filter._id = { $ne: excludeId };
+  return Business.findOne(filter).select("_id name location status").lean();
+};
+
+// ── GET /admin/businesses/check-name?name=&excludeId= ─────────────────────
+// Lightweight lookup the Add/Edit form calls as the admin types, so a clash is
+// flagged before they fill in the rest of the form and hit save.
+export const checkBusinessName = asyncHandler(async (req, res) => {
+  const name = (req.query.name || "").trim();
+  if (!name) {
+    return sendSuccess(res, { data: { duplicate: false } });
+  }
+  const match = await findDuplicateBusiness(name, req.query.excludeId);
+  sendSuccess(res, {
+    data: { duplicate: !!match, match: match || null },
+  });
+});
 
 export const getAllBusinesses = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginationFrom(req.query, 50, 200);

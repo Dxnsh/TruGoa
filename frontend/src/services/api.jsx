@@ -365,6 +365,32 @@ export const adminDeleteUploadedImage = async (publicId) => {
   }
 };
 
+// Admin list — drafts included (the public getStories returns published only).
+export const adminGetStories = async () => {
+  const res = await fetch(`${ADMIN_URL}/stories`, { headers: adminHeader() });
+  if (!res.ok) throw new Error("Failed to fetch story collections");
+  return unwrap(await res.json());
+};
+
+// Full detail by slug, drafts included — the edit form loads through this.
+export const adminGetStory = async (slug) => {
+  const res = await fetch(`${ADMIN_URL}/stories/${slug}`, { headers: adminHeader() });
+  if (!res.ok) throw new Error("Story collection not found");
+  return unwrap(await res.json());
+};
+
+// Live duplicate-slug check for the New/Edit Story form.
+// Returns { duplicate: boolean, match: { _id, slug, title } | null }.
+export const adminCheckStorySlug = async (slug, excludeId) => {
+  const query = new URLSearchParams({ slug });
+  if (excludeId) query.set("excludeId", excludeId);
+  const res = await fetch(`${ADMIN_URL}/stories/check-slug?${query.toString()}`, {
+    headers: adminHeader(),
+  });
+  if (!res.ok) throw new Error("Failed to check slug");
+  return unwrap(await res.json());
+};
+
 export const adminCreateStory = async (data) => {
   const res = await fetch(`${ADMIN_URL}/stories`, {
     method:  "POST",
@@ -638,6 +664,18 @@ export const adminUpdateBusiness = async (id, data) => {
   }
   return unwrap(await res.json());
 };
+// Live duplicate-name check for the Add/Edit Business form. Returns
+// { duplicate: boolean, match: { _id, name, location, status } | null }.
+export const adminCheckBusinessName = async (name, excludeId) => {
+  const query = new URLSearchParams({ name });
+  if (excludeId) query.set("excludeId", excludeId);
+  const res = await fetch(`${ADMIN_URL}/businesses/check-name?${query.toString()}`, {
+    headers: adminHeader(),
+  });
+  if (!res.ok) throw new Error("Failed to check name");
+  return unwrap(await res.json());
+};
+
 export const adminGetTrendingPlaces = async () => {
   const res = await fetch(`${TRENDING_URL}/admin/all`, { headers: adminHeader() });
   if (!res.ok) throw new Error("Failed to fetch trending places");

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { theme } from "../../Theme";
-import { adminCreateStory, adminUpdateStory } from "../../services/api";
+import { adminCreateStory, adminUpdateStory, adminCheckStorySlug } from "../../services/api";
 import { inputStyle, labelStyle } from "./adminFormKit";
 import { SingleImageUpload } from "./ImageUpload";
 
@@ -43,6 +43,7 @@ const blankArticle = () => ({
 const blankTop = {
   category: "", slug: "", title: "", desc: "", image: "", readTime: "",
   manifestoTitle: "", manifestoText1: "", manifestoText2: "",
+  published: false,
 };
 
 const toFormState = (story) => ({
@@ -166,8 +167,29 @@ const StoryForm = ({ story, onClose, onSaved }) => {
   const [form, setForm] = useState(story ? toFormState(story) : { ...blankTop, stories: [] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [slugClash, setSlugClash] = useState(null);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  // Flag a slug that already belongs to another story collection, debounced
+  // while typing. Advisory only — createStory/updateStory still reject a true
+  // duplicate with a 409 — but it catches the clash before the form is filled.
+  useEffect(() => {
+    const slug = form.slug.trim();
+    if (slug.length < 2) { setSlugClash(null); return; }
+
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const { duplicate, match } = await adminCheckStorySlug(slug, story?._id);
+        if (!cancelled) setSlugClash(duplicate ? match : null);
+      } catch {
+        if (!cancelled) setSlugClash(null);
+      }
+    }, 400);
+
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.slug, story?._id]);
 
   const addArticle = () => set("stories", [...form.stories, blankArticle()]);
   const updateArticle = (i, next) => {
@@ -181,6 +203,10 @@ const StoryForm = ({ story, onClose, onSaved }) => {
     e.preventDefault();
     if (!form.category.trim() || !form.slug.trim() || !form.title.trim() || !form.image.trim()) {
       setError("Category, slug, title and image are required.");
+      return;
+    }
+    if (slugClash) {
+      setError(`The slug "${slugClash.slug}" is already used by "${slugClash.title}". Choose a different slug.`);
       return;
     }
     setSaving(true);
@@ -235,7 +261,18 @@ const StoryForm = ({ story, onClose, onSaved }) => {
         <form onSubmit={handleSubmit} style={{ padding: "24px 28px 28px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Category *"><input style={inputStyle} value={form.category} onChange={e => set("category", e.target.value)} placeholder="DESTINATIONS" /></Field>
-            <Field label="Slug *"><input style={inputStyle} value={form.slug} onChange={e => set("slug", e.target.value)} /></Field>
+            <Field label="Slug *">
+              <input
+                style={{ ...inputStyle, ...(slugClash ? { borderColor: theme.colors.danger } : {}) }}
+                value={form.slug}
+                onChange={e => set("slug", e.target.value)}
+              />
+              {slugClash && (
+                <div style={{ marginTop: 6, fontSize: 12, color: theme.colors.danger }}>
+                  Already used by “{slugClash.title}”. Choose a different slug.
+                </div>
+              )}
+            </Field>
           </div>
 
           <Field label="Title *"><input style={inputStyle} value={form.title} onChange={e => set("title", e.target.value)} /></Field>
@@ -248,6 +285,11 @@ const StoryForm = ({ story, onClose, onSaved }) => {
 
           <SingleImageUpload label="Cover Image *" value={form.image} onChange={url => set("image", url)} />
           <Field label="Read Time"><input style={inputStyle} value={form.readTime} onChange={e => set("readTime", e.target.value)} placeholder="8 min read" /></Field>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: theme.colors.textBody, cursor: "pointer", marginBottom: 4 }}>
+            <input type="checkbox" checked={!!form.published} onChange={e => set("published", e.target.checked)} />
+            Published (visible on the public Stories page)
+          </label>
 
           {/* ── Opening section — shown right under the hero on /stories/:slug ── */}
           <div style={sectionHeadStyle}>Opening Section (shown on the page)</div>
@@ -295,11 +337,11 @@ const StoryForm = ({ story, onClose, onSaved }) => {
             }}>
               Cancel
             </button>
-            <button type="submit" disabled={saving} style={{
-              background: saving ? theme.colors.borderLight : theme.colors.primary,
+            <button type="submit" disabled={saving || !!slugClash} style={{
+              background: (saving || slugClash) ? theme.colors.borderLight : theme.colors.primary,
               border: "none", borderRadius: theme.radii.md, padding: "12px 26px", fontSize: 14,
               fontWeight: theme.typography.weightBold, color: "white",
-              cursor: saving ? "not-allowed" : "pointer", fontFamily: theme.typography.fontBody,
+              cursor: (saving || slugClash) ? "not-allowed" : "pointer", fontFamily: theme.typography.fontBody,
             }}>
               {saving ? "Saving..." : isEdit ? "Save Changes" : "Create Story Collection"}
             </button>

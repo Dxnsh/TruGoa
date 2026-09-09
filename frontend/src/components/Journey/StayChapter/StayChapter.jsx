@@ -218,7 +218,6 @@ export default function StayChapter() {
                 padding: 32,
                 borderRadius: 24,
                 cursor: "pointer",
-                transform: "translateY(-2px)"
               }}
             >
               <Hotel

@@ -19,7 +19,7 @@ const LoginModal = ({ onClose, onSuccess, message }) => {
       touristLogin(token, tourist);
       onSuccess?.();
       onClose();
-    } catch (err) {
+    } catch {
       setError("Login failed. Please try again.");
     } finally {
       setLoading(false);

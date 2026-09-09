@@ -161,69 +161,9 @@ const LOADING_LINES = [
   "Mapping the route that avoids the tourist traps…",
 ];
 
-/* ─── prompt builder ─────────────────────────────────────── */
-const buildPrompt = (form) => {
-  const budgetLabels = {
-    budget:  "₹1,500/day (backpacker)",
-    mid:     "₹3,500/day (comfortable)",
-    premium: "₹7,000/day (premium)",
-    luxury:  "₹15,000+/day (luxury)",
-  };
-  const vibeLabel    = VIBES.find(v => v.value === form.vibe)?.label || form.vibe;
-  const interests    = form.interests.map(v => INTERESTS.find(i => i.value === v)?.label).join(", ");
-  const styleLabel   = TRAVEL_STYLES.find(s => s.value === form.style)?.label || form.style;
-
-  return `You are a world-class Goa travel editor for a luxury Indian travel publication like Condé Nast Traveller India.
-Create a deeply editorial, hyper-specific ${form.duration}-day Goa itinerary.
-
-Traveller profile:
-- Duration: ${form.duration} days
-- Budget: ${budgetLabels[form.budget]}
-- Vibe: ${vibeLabel}
-- Interests: ${interests || "general travel"}
-- Travel style: ${styleLabel}
-
-Return ONLY a valid JSON object — no markdown, no extra text, just the JSON.
-
-{
-  "title": "evocative 5–7 word trip title e.g. 'Five Days in Slow Glorious North Goa'",
-  "tagline": "one atmospheric sentence 25–35 words making someone feel the trip",
-  "overview": "2–3 sentences about the character of this itinerary — editorial tone not bullet points",
-  "coverMood": "3–5 evocative mood words e.g. 'Golden. Unhurried. Quietly extraordinary.'",
-  "totalBudget": "total estimated cost range for whole trip e.g. ₹14,000–₹18,000",
-  "bestSeason": "e.g. October–March",
-  "practicalNotes": "2–3 short specific practical tips for this exact traveller profile",
-  "days": [
-    {
-      "day": 1,
-      "title": "editorial day title 4–6 words evocative",
-      "theme": "one-line day mood e.g. Arrive slow. Let Goa find you.",
-      "dayCost": "estimated spend for this day e.g. ₹2,800–₹3,500",
-      "slots": [
-        {
-          "time": "9:00 AM",
-          "period": "Morning",
-          "place": "exact real place name",
-          "area": "neighbourhood e.g. Fontainhas Panaji",
-          "type": "Café or Beach or Restaurant or Market or Activity or Heritage or Bar",
-          "description": "2–3 sentences editorial first-person style with specific sensory details real dishes specific spots within the place what time of day feels best",
-          "insiderTip": "one specific local insight a table a dish a time of day what to avoid",
-          "estimatedCost": "e.g. ₹350–₹500 per person"
-        }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Use REAL specific Goa places: Thalassa, Ritz Classic, Café Bodega, Curlies, Palolem, Arambol, Brittos, Gunpowder, Antares, etc.
-- Match every recommendation to the budget tier
-- 3–5 slots per day depending on duration and pace
-- Every description must feel written by a travel editor who has been there
-- Insider tips must be genuinely useful and specific not generic
-- Spread across appropriate north or south Goa based on vibe
-- Include mix of Morning Afternoon Evening periods`;
-};
+/* The itinerary prompt is built server-side now (backend
+   controllers/itineraryController.js) — the client only posts the raw form to
+   POST /itinerary/generate. The old client-side buildPrompt() lived here. */
 
 /* ══════════════════════════════════════════════════════════
    MAIN COMPONENT
