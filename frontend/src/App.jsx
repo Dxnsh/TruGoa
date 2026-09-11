@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar/Navbar";
+import AIGuideFab from "./components/AIGuideFab/AIGuideFab";
 import Homepage from "./pages/HomePage/Homepage";
 import ExplorePage from "./pages/ExplorePage/ExplorePage";
 import DetailPage from "./pages/DetailPage/DetailPage";
@@ -65,6 +66,7 @@ function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <AIGuideFab />
       <Analytics />
     </BrowserRouter>
   );

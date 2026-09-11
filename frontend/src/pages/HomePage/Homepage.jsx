@@ -12,7 +12,7 @@ import SEO from "../../components/SEO/SEO";
 import { CATEGORIES } from "../../constants/categories";
 import DiscoverSwipe from "../../components/DiscoverSwipe/DiscoverSwipe";
 import Logo from "../../components/Logo/Logo";
-import { getBusinesses, getStories } from "../../services/api";
+import { getBusinesses, getStories, getNearbyBusinesses } from "../../services/api";
 import { mapBusiness } from "../../services/mapper";
 import { useTourist } from "../../context/TouristContext";
 import LoginModal from "../../components/LoginModal/LoginModal";
@@ -170,6 +170,50 @@ useEffect(() => {
     return () => { cancelled = true; };
   }, []);
 
+  // Hero stats — real figures only. `verified` is the live count of approved
+  // listings; `nearby` is how many of them sit within 15 km of the visitor,
+  // set only when the browser gives a real fix AND the backend answered from
+  // the proximity tier (scope "nearby"). Anything we can't source stays out of
+  // the row rather than showing a placeholder.
+  const [heroStats, setHeroStats] = useState({ verified: null, nearby: null });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getBusinesses({ openNow: false, limit: 1 })
+      .then(({ total }) => {
+        if (!cancelled && typeof total === "number") {
+          setHeroStats((s) => ({ ...s, verified: total }));
+        }
+      })
+      .catch(() => {});
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { scope, places } = await getNearbyBusinesses({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              maxDistance: 15000,
+              limit: 50,
+              openNow: false,
+            });
+            if (!cancelled && scope === "nearby") {
+              setHeroStats((s) => ({ ...s, nearby: places.length }));
+            }
+          } catch {
+            /* no nearby figure — the row just omits it */
+          }
+        },
+        () => {},
+        { timeout: 10000, maximumAge: 5 * 60 * 1000 }
+      );
+    }
+
+    return () => { cancelled = true; };
+  }, []);
+
   const [stories, setStories] = useState([]);
 
   useEffect(() => {
@@ -281,18 +325,25 @@ useEffect(() => {
               unsponsored, and picked by people who live here.
             </p>
 
-            <div className="hd-copy-stats">
-              {[
-                { value: "20+", label: "Verified places" },
-                { value: "15 km", label: "Around you" },
-                { value: "0", label: "Paid listings" },
-              ].map((s) => (
-                <div key={s.label} className="hd-copy-stat">
-                  <div className="hd-copy-stat-value">{s.value}</div>
-                  <div className="hd-copy-stat-label">{s.label}</div>
-                </div>
-              ))}
-            </div>
+            {heroStats.verified != null && (
+              <div className="hd-copy-stats">
+                {[
+                  { value: String(heroStats.verified), label: "Verified places" },
+                  heroStats.nearby != null && {
+                    value: String(heroStats.nearby),
+                    label: "Within 15 km of you",
+                  },
+                  { value: "0", label: "Paid listings" },
+                ]
+                  .filter(Boolean)
+                  .map((s) => (
+                    <div key={s.label} className="hd-copy-stat">
+                      <div className="hd-copy-stat-value">{s.value}</div>
+                      <div className="hd-copy-stat-label">{s.label}</div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
           {/* Live swipe deck — geolocation + real places from the database */}
@@ -495,19 +546,6 @@ useEffect(() => {
       </section> */}
 
       <Footer />
-
-      {/* Floating AI-guide launcher — a round mark that sits above the page on
-          every screen size, the way a chat widget does, and opens GoaGuide. */}
-      <button
-        className="fab-ai"
-        onClick={() => navigate("/goaguide")}
-        aria-label="Ask GoaGuide AI"
-      >
-        <span className="fab-ai-mark">
-          <Logo size={24} withWord={false} />
-        </span>
-        <span className="fab-ai-label">Ask GoaGuide AI</span>
-      </button>
     </div>
   );
 };

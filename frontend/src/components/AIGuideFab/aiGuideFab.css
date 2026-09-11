@@ -1,0 +1,60 @@
+/* ═══════════════════════════════════════════
+   FLOATING AI BUTTON
+═══════════════════════════════════════════ */
+/* Floating GoaGuide launcher — a round mark pinned to the corner like a chat
+   widget. On desktop it grows a label on hover; on mobile it stays a circle. */
+.fab-ai {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 8px;
+  background: var(--hp-green-dark, #1f3d2b);
+  color: var(--color-text-inverse, #fff);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.25s ease;
+}
+.fab-ai:hover { background: var(--color-secondary); transform: translateY(-2px); }
+.fab-ai:active { transform: translateY(0); }
+
+.fab-ai-mark {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-ai-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.28s ease, opacity 0.2s ease, padding 0.28s ease;
+}
+.fab-ai:hover .fab-ai-label,
+.fab-ai:focus-visible .fab-ai-label {
+  max-width: 180px;
+  opacity: 1;
+  padding-right: 10px;
+}
+
+@media (max-width: 900px) {
+  /* Touch has no hover — keep it a clean tappable circle. */
+  .fab-ai { gap: 0; padding: 8px; }
+  .fab-ai-label { display: none; }
+}
