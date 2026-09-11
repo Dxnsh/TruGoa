@@ -777,17 +777,33 @@ const ExplorePage = () => {
     { cafe: { label: "Cafés", sub: "Coffee, bakes and slow mornings" },
       restaurant: { label: "Restaurants", sub: "Kitchens worth the trip" } }[activeCategory];
 
+  // North/South Goa toggle — a second, independent narrowing on top of
+  // category, so people can jump straight to "beaches in North Goa" etc.
+  // Stored in the URL alongside ?category= so both survive a refresh/share.
+  const regionKey = searchParams.get("region");
+  const activeRegion = ["north-goa", "south-goa"].includes(regionKey) ? regionKey : null;
+
   const setCategory = (key) => {
-    if (key && CATEGORY_FILTERS[key]) setSearchParams({ category: key });
-    else setSearchParams({});
+    const next = {};
+    if (key && CATEGORY_FILTERS[key]) next.category = key;
+    if (activeRegion) next.region = activeRegion;
+    setSearchParams(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Switching category or the open/closed toggle invalidates whatever page
-  // we were on — a filter with fewer results might not even have a page 3.
+  const setRegion = (key) => {
+    const next = {};
+    if (activeCategory) next.category = activeCategory;
+    if (key) next.region = key;
+    setSearchParams(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Switching category, region or the open/closed toggle invalidates whatever
+  // page we were on — a filter with fewer results might not even have a page 3.
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, showAll, priceLowToHigh, searchTerm]);
+  }, [activeCategory, activeRegion, showAll, priceLowToHigh, searchTerm]);
 
   // Refetches this exact page whenever the category, toggle or page number
   // changes — the narrowing happens in the query, so each page is its own
@@ -800,6 +816,7 @@ const ExplorePage = () => {
         setError(null);
         const { items, total: found } = await getBusinesses({
           ...(CATEGORY_QUERIES[activeCategory] || {}),
+          area: activeRegion || undefined,
           search: searchTerm || undefined,
           openNow: showAll ? false : undefined,
           sort: priceLowToHigh ? "price_asc" : undefined,
@@ -816,7 +833,7 @@ const ExplorePage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeCategory, showAll, priceLowToHigh, searchTerm, page]);
+  }, [activeCategory, activeRegion, showAll, priceLowToHigh, searchTerm, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -1045,6 +1062,55 @@ const ExplorePage = () => {
                 }}
               >
                 {c.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* North/South Goa toggle — a second axis of narrowing on top of the
+            category pills above, so a search can be "beaches" AND "North Goa"
+            at once. */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            gap: 8,
+            marginTop: 12,
+          }}
+        >
+          {[
+            { key: null, label: "All Goa" },
+            { key: "north-goa", label: "North Goa" },
+            { key: "south-goa", label: "South Goa" },
+          ].map((r) => {
+            const isOn = activeRegion === r.key;
+            return (
+              <button
+                key={r.key ?? "all-goa"}
+                onClick={() => setRegion(r.key)}
+                aria-pressed={isOn}
+                style={{
+                  flexShrink: 0,
+                  padding: "7px 16px",
+                  borderRadius: theme.radii.pill,
+                  border: `1.5px solid ${isOn ? theme.colors.accent : theme.colors.borderLight}`,
+                  background: isOn ? theme.colors.accent : "transparent",
+                  color: isOn ? theme.colors.textInverse : theme.colors.textMuted,
+                  fontFamily: theme.typography.fontBody,
+                  fontSize: 12.5,
+                  fontWeight: isOn ? theme.typography.weightBold : theme.typography.weightMedium,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: theme.transitions.fast,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <MapPin size={12} strokeWidth={2} />
+                {r.label}
               </button>
             );
           })}
